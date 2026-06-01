@@ -140,6 +140,14 @@ export function TodayPage() {
     return () => clearTimeout(id);
   }, [blockModal.open, blockModal.focusCustomer]);
 
+  // ── 時刻 → 予定/実績 自動判定ヘルパー ───────────────────────────────────────
+  const inferPlannedActual = (startMin: number, endMin: number): { isPlanned: boolean; isActual: boolean } => {
+    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+    if (endMin <= nowMin)   return { isPlanned: false, isActual: true };   // 全て過去 → 実績
+    if (startMin >= nowMin) return { isPlanned: true,  isActual: false };  // 全て未来 → 予定
+    return { isPlanned: true, isActual: true };                            // またぐ → 両方
+  };
+
   // ── D&C chip selection ─────────────────────────────────────────────────────
   const handleChipSelected = (type: BlockType) => {
     const { startMin, endMin } = confirmChip(type);
@@ -163,6 +171,7 @@ export function TodayPage() {
   };
 
   const openDialogFromDrag = (startMin: number, endMin: number, type?: BlockType) => {
+    const pa = inferPlannedActual(startMin, endMin);
     setBlockModal({
       open: true,
       block: {
@@ -170,7 +179,7 @@ export function TodayPage() {
         startTime: minutesToTime(startMin),
         endTime:   minutesToTime(Math.min(endMin, DAY_END)),
         title: type ? BLOCK_LABELS[type] : '',
-        memo: '', isPlanned: false, isActual: true, attachments: [],
+        memo: '', ...pa, attachments: [],
       },
       isNew: true,
       focusCustomer: !!type,
@@ -190,17 +199,33 @@ export function TodayPage() {
     if (!report) { addToast({ type: 'warning', message: '先に日報を作成してください' }); return; }
     const nowH = new Date().getHours();
     const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
+    const startMin = nowH * 60 + nowM;
+    const endMin   = Math.min(startMin + 60, DAY_END);
+    const pa = inferPlannedActual(startMin, endMin);
     setBlockModal({
       open: true,
       block: {
         type,
-        startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-        endTime: `${String(Math.min(nowH + 1, 22)).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-        title: BLOCK_LABELS[type], memo: '', isPlanned: false, isActual: true, attachments: [],
+        startTime: minutesToTime(startMin),
+        endTime:   minutesToTime(endMin),
+        title: BLOCK_LABELS[type], memo: '', ...pa, attachments: [],
       },
       isNew: true,
       focusCustomer: true,
     });
+  };
+
+  // ── 予定 → 実績化ワンタップ ─────────────────────────────────────────
+  const handleActualize = (block: TimeBlock) => {
+    if (!report) return;
+    // 元の予定ブロックは isPlanned:true のまま残す。実績ブロックを新規生成。
+    addBlock(report.id, {
+      ...block,
+      id: undefined as unknown as string,   // store generates new id
+      isPlanned: false,
+      isActual: true,
+    } as Omit<TimeBlock, 'id'>);
+    addToast({ type: 'success', message: '✅ 実績ブロックを生成しました。ドラッグで時間を調整できます。' });
   };
 
   // ── block modal ────────────────────────────────────────────────────────────
@@ -210,13 +235,16 @@ export function TodayPage() {
     } else {
       const nowH = new Date().getHours();
       const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
+      const startMin = nowH * 60 + nowM;
+      const endMin   = Math.min(startMin + 60, DAY_END);
+      const pa = inferPlannedActual(startMin, endMin);
       setBlockModal({
         open: true,
         block: {
           type: 'visit',
-          startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-          endTime: `${String(nowH + 1).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-          title: '', memo: '', isPlanned: false, isActual: true, attachments: [],
+          startTime: minutesToTime(startMin),
+          endTime:   minutesToTime(endMin),
+          title: '', memo: '', ...pa, attachments: [],
         },
         isNew: true,
         focusCustomer: false,
@@ -394,12 +422,14 @@ export function TodayPage() {
                       // planned/actual visual style
                       const isPlannedOnly = block.isPlanned && !block.isActual;
                       const isActualOnly  = !block.isPlanned && block.isActual;
-                      const isBoth        = block.isPlanned && block.isActual;
+                      // horizontal offset: planned slightly right, actual slightly left, both full-width
+                      const leftPx  = isPlannedOnly ? '60px' : '52px';
+                      const rightPx = isActualOnly  ? '16px' : '8px';
                       const plannedActualClass = isPlannedOnly
-                        ? 'border-dashed opacity-70'
+                        ? 'border-dashed opacity-75'
                         : isActualOnly
                           ? 'border-solid'
-                          : 'border-solid border-l-4';  // both: thicker left accent
+                          : 'border-solid border-l-4';
                       const plannedBadge = isPlannedOnly ? '📋' : isActualOnly ? '✅' : '📋✅';
                       return (
                         <div
@@ -407,19 +437,15 @@ export function TodayPage() {
                           data-block="true"
                           style={{
                             top: `${top}px`, height: `${height}px`,
-                            left: '52px', right: '8px',
+                            left: leftPx, right: rightPx,
                             cursor: isDragging ? 'grabbing' : 'grab',
                             opacity: isDragging ? 0.85 : 1,
-                            zIndex: isDragging ? 20 : undefined,
+                            zIndex: isDragging ? 20 : isPlannedOnly ? 5 : 10,
                             transition: isDragging ? 'none' : 'box-shadow 0.15s',
                           }}
-                          className={`absolute rounded-lg px-2 py-1 select-none hover:shadow-md ${colorClass} ${plannedActualClass}`}
-                          onMouseDown={e => {
-                            // resize handles take priority; body = move
-                            startDrag(e, block.id, 'move', origStart, origEnd);
-                          }}
+                          className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md ${colorClass} ${plannedActualClass}`}
+                          onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd); }}
                           onClick={e => {
-                            // suppress click if we actually dragged
                             if (isDragging) { e.stopPropagation(); return; }
                             handleOpenBlock(block);
                           }}
@@ -438,6 +464,17 @@ export function TodayPage() {
                           <div className="text-[10px] text-current opacity-70 pointer-events-none">
                             {minutesToTime(startMin)}–{minutesToTime(endMin)}
                           </div>
+                          {/* ✅ 実績化ボタン（予定のみのブロックに表示） */}
+                          {isPlannedOnly && height >= 32 && (
+                            <button
+                              className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600 transition-all z-20"
+                              onMouseDown={e => e.stopPropagation()}
+                              onClick={e => { e.stopPropagation(); handleActualize(block); }}
+                              title="実績ブロックを生成"
+                            >
+                              ✅ 実績化
+                            </button>
+                          )}
                           {/* Bottom resize handle */}
                           <div
                             className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
