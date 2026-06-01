@@ -19,7 +19,8 @@ export interface BlockDragState {
 }
 
 interface UseBlockDragOptions {
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;  // planned col ref (for D&C compat)
+  actualRef?: React.RefObject<HTMLDivElement | null>;    // actual col ref
   onCommit: (blockId: string, startMin: number, endMin: number) => void;
 }
 
@@ -34,7 +35,7 @@ function yToRawMin(clientY: number, containerTop: number): number {
   return DAY_START + ((clientY - containerTop) / HOUR_PX) * 60;
 }
 
-export function useBlockDrag({ containerRef, onCommit }: UseBlockDragOptions) {
+export function useBlockDrag({ containerRef, actualRef, onCommit }: UseBlockDragOptions) {
   const [dragState, setDragState] = useState<BlockDragState | null>(null);
 
   // ref holds mutable drag context (avoids stale closures in document listeners)
@@ -45,6 +46,7 @@ export function useBlockDrag({ containerRef, onCommit }: UseBlockDragOptions) {
     origEnd: number;
     anchorClientY: number;       // mousedown Y
     containerTop: number;
+    colRef: React.RefObject<HTMLDivElement | null>;  // which column this drag started in
   } | null>(null);
 
   // ── start drag ────────────────────────────────────────────────────────────
@@ -54,13 +56,15 @@ export function useBlockDrag({ containerRef, onCommit }: UseBlockDragOptions) {
     mode: DragMode,
     origStart: number,
     origEnd: number,
+    col: 'planned' | 'actual' = 'planned',
   ) => {
-    e.stopPropagation();   // prevent new-block creation in parent mousedown
+    e.stopPropagation();
     e.preventDefault();
-    const containerTop = containerRef.current?.getBoundingClientRect().top ?? 0;
-    ctx.current = { mode, blockId, origStart, origEnd, anchorClientY: e.clientY, containerTop };
+    const colRef = col === 'actual' ? (actualRef ?? containerRef) : containerRef;
+    const containerTop = colRef.current?.getBoundingClientRect().top ?? 0;
+    ctx.current = { mode, blockId, origStart, origEnd, anchorClientY: e.clientY, containerTop, colRef };
     setDragState({ blockId, mode, startMin: origStart, endMin: origEnd });
-  }, [containerRef]);
+  }, [containerRef, actualRef]);
 
   // ── mouse move / up on document ───────────────────────────────────────────
   useEffect(() => {
@@ -69,7 +73,7 @@ export function useBlockDrag({ containerRef, onCommit }: UseBlockDragOptions) {
       if (!c) return;
 
       // recompute containerTop live (in case of scroll)
-      const containerTop = containerRef.current?.getBoundingClientRect().top ?? c.containerTop;
+      const containerTop = c.colRef.current?.getBoundingClientRect().top ?? c.containerTop;
       const dyMin = ((e.clientY - c.anchorClientY) / HOUR_PX) * 60;
       const duration = c.origEnd - c.origStart;
 

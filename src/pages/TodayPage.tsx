@@ -47,6 +47,7 @@ export function TodayPage() {
 
   const isMobile = useIsMobile();
   const timelineRef = useRef<HTMLDivElement>(null);
+  const actualColRef = useRef<HTMLDivElement>(null);
 
   const [report, setReport] = useState(() => getTodayReport());
   const [showStartModal, setShowStartModal]   = useState(false);
@@ -86,6 +87,7 @@ export function TodayPage() {
   // ── block move / resize ────────────────────────────────────────────────────
   const { blockDragState, startDrag } = useBlockDrag({
     containerRef: timelineRef,
+    actualRef: actualColRef,
     onCommit: (blockId, startMin, endMin) => {
       if (!report) return;
       updateBlock(report.id, blockId, {
@@ -381,130 +383,168 @@ export function TodayPage() {
                     ))}
                   </div>
 
-                  {/* Timeline grid */}
-                  <div
-                    ref={timelineRef}
-                    className="relative px-4 py-2 select-none"
-                    style={{
-                      height: `${((DAY_END - DAY_START) / 60) * HOUR_PX + 32}px`,
-                      cursor: dragState?.active ? 'ns-resize' : 'crosshair',
-                    }}
-                    onMouseDown={onTimelineMouseDown}
-                    onTouchStart={onTimelineTouchStart}
-                  >
-                    {/* Hour lines */}
-                    {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
-                      const min = DAY_START + i * 60;
-                      const h = Math.floor(min / 60);
-                      const m = min % 60;
-                      return (
-                        <div key={i} style={{ top: `${minuteToY(min)}px` }}
-                          className="absolute left-0 right-0 flex items-center gap-2 pointer-events-none">
-                          <span className="w-10 text-right text-xs text-gray-400 flex-shrink-0">
+                  {/* ── 2列タイムライングリッド ─────────────────────────────── */}
+                  {/* 列ヘッダー */}
+                  <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '40px 1fr 1px 1fr' }}>
+                    <div />
+                    <div className="px-2 py-1.5 text-center text-xs font-semibold text-indigo-600 bg-indigo-50">📋 予定</div>
+                    <div className="bg-gray-200" />
+                    <div className="px-2 py-1.5 text-center text-xs font-semibold text-emerald-600 bg-emerald-50">✅ 実績</div>
+                  </div>
+
+                  {/* タイムライン本体（時刻軸 + 左=予定列 + 右=実績列） */}
+                  <div className="flex" style={{ height: `${((DAY_END - DAY_START) / 60) * HOUR_PX + 32}px` }}>
+
+                    {/* 時刻軸 */}
+                    <div className="relative flex-shrink-0" style={{ width: '40px' }}>
+                      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
+                        const min = DAY_START + i * 60;
+                        const h = Math.floor(min / 60);
+                        const m = min % 60;
+                        return (
+                          <div key={i} style={{ top: `${minuteToY(min) + 8}px` }}
+                            className="absolute right-1 text-[10px] text-gray-400 leading-none pointer-events-none">
                             {h}:{String(m).padStart(2, '0')}
-                          </span>
-                          <div className="flex-1 border-t border-gray-100" />
-                        </div>
-                      );
-                    })}
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                    {/* Existing Blocks */}
-                    {report.blocks.map(block => {
-                      // if this block is being dragged, show preview position
-                      const isDragging = blockDragState?.blockId === block.id;
-                      const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
-                      const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
-                      const top    = minuteToY(startMin) + 4;
-                      const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
-                      const colorClass = BLOCK_COLORS[block.type];
-                      const origStart = timeToMinutes(block.startTime);
-                      const origEnd   = timeToMinutes(block.endTime);
-                      // planned/actual visual style
-                      const isPlannedOnly = block.isPlanned && !block.isActual;
-                      const isActualOnly  = !block.isPlanned && block.isActual;
-                      // horizontal offset: planned slightly right, actual slightly left, both full-width
-                      const leftPx  = isPlannedOnly ? '60px' : '52px';
-                      const rightPx = isActualOnly  ? '16px' : '8px';
-                      const plannedActualClass = isPlannedOnly
-                        ? 'border-dashed opacity-75'
-                        : isActualOnly
-                          ? 'border-solid'
-                          : 'border-solid border-l-4';
-                      const plannedBadge = isPlannedOnly ? '📋' : isActualOnly ? '✅' : '📋✅';
-                      return (
+                    {/* 予定列 */}
+                    <div
+                      ref={timelineRef}
+                      className="relative flex-1 border-r border-gray-100 select-none bg-indigo-50/20"
+                      style={{ cursor: dragState?.active ? 'ns-resize' : 'crosshair' }}
+                      onMouseDown={onTimelineMouseDown}
+                      onTouchStart={onTimelineTouchStart}
+                    >
+                      {/* 横罫線 */}
+                      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => (
+                        <div key={i} style={{ top: `${minuteToY(DAY_START + i * 60) + 8}px` }}
+                          className="absolute left-0 right-0 border-t border-gray-100 pointer-events-none" />
+                      ))}
+
+                      {/* 予定ブロック（isPlanned=true） */}
+                      {report.blocks.filter(b => b.isPlanned).map(block => {
+                        const isDragging = blockDragState?.blockId === block.id;
+                        const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
+                        const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
+                        const top    = minuteToY(startMin) + 8;
+                        const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
+                        const colorClass = BLOCK_COLORS[block.type];
+                        const origStart = timeToMinutes(block.startTime);
+                        const origEnd   = timeToMinutes(block.endTime);
+                        const isPlannedOnly = block.isPlanned && !block.isActual;
+                        return (
+                          <div
+                            key={block.id}
+                            data-block="true"
+                            style={{
+                              top: `${top}px`, height: `${height}px`,
+                              left: '4px', right: '4px',
+                              cursor: isDragging ? 'grabbing' : 'grab',
+                              opacity: isDragging ? 0.85 : 1,
+                              zIndex: isDragging ? 20 : 10,
+                              transition: isDragging ? 'none' : 'box-shadow 0.15s',
+                            }}
+                            className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md border-dashed ${colorClass}`}
+                            onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd); }}
+                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block); }}
+                          >
+                            <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                              onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd)} />
+                            <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
+                              <span>{BLOCK_EMOJIS[block.type]}</span>
+                              <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
+                            </div>
+                            <div className="text-[10px] text-current opacity-70 pointer-events-none">
+                              {minutesToTime(startMin)}–{minutesToTime(endMin)}
+                            </div>
+                            {/* ✅ 実績化ボタン */}
+                            {isPlannedOnly && height >= 32 && (
+                              <button
+                                className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600 transition-all z-20"
+                                onMouseDown={e => e.stopPropagation()}
+                                onClick={e => { e.stopPropagation(); handleActualize(block); }}
+                                title="実績ブロックを生成"
+                              >
+                                ✅ 実績化
+                              </button>
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                              onMouseDown={e => startDrag(e, block.id, 'resizeBottom', origStart, origEnd)} />
+                          </div>
+                        );
+                      })}
+
+                      {/* D&C 仮ブロック（予定列で操作） */}
+                      {dragState?.active && (
                         <div
-                          key={block.id}
-                          data-block="true"
                           style={{
-                            top: `${top}px`, height: `${height}px`,
-                            left: leftPx, right: rightPx,
-                            cursor: isDragging ? 'grabbing' : 'grab',
-                            opacity: isDragging ? 0.85 : 1,
-                            zIndex: isDragging ? 20 : isPlannedOnly ? 5 : 10,
-                            transition: isDragging ? 'none' : 'box-shadow 0.15s',
+                            top: `${minuteToY(dragState.startMin) + 8}px`,
+                            height: `${Math.max(((dragState.endMin - dragState.startMin) / 60) * HOUR_PX - 4, 20)}px`,
+                            left: '4px', right: '4px',
                           }}
-                          className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md ${colorClass} ${plannedActualClass}`}
-                          onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd); }}
-                          onClick={e => {
-                            if (isDragging) { e.stopPropagation(); return; }
-                            handleOpenBlock(block);
-                          }}
+                          className="absolute rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/60 pointer-events-none z-10 flex items-start px-2 py-1"
                         >
-                          {/* Top resize handle */}
-                          <div
-                            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
-                            onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd)}
-                          />
-                          {/* Block content */}
-                          <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
-                            <span>{BLOCK_EMOJIS[block.type]}</span>
-                            <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
-                            <span className="ml-auto text-[10px] opacity-60 flex-shrink-0">{plannedBadge}</span>
-                          </div>
-                          <div className="text-[10px] text-current opacity-70 pointer-events-none">
-                            {minutesToTime(startMin)}–{minutesToTime(endMin)}
-                          </div>
-                          {/* ✅ 実績化ボタン（予定のみのブロックに表示） */}
-                          {isPlannedOnly && height >= 32 && (
-                            <button
-                              className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600 transition-all z-20"
-                              onMouseDown={e => e.stopPropagation()}
-                              onClick={e => { e.stopPropagation(); handleActualize(block); }}
-                              title="実績ブロックを生成"
-                            >
-                              ✅ 実績化
-                            </button>
-                          )}
-                          {/* Bottom resize handle */}
-                          <div
-                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
-                            onMouseDown={e => startDrag(e, block.id, 'resizeBottom', origStart, origEnd)}
-                          />
+                          <span className="text-xs text-blue-600 font-medium mt-0.5 truncate">
+                            {`${minutesToTime(dragState.startMin)} - ${minutesToTime(dragState.endMin)}`}
+                            {' ⏱'}
+                            {(() => { const dur = dragState.endMin - dragState.startMin; const h = Math.floor(dur / 60); const m = dur % 60; return h > 0 && m > 0 ? `${h}h${m}m` : h > 0 ? `${h}h` : `${m}m`; })()}
+                          </span>
                         </div>
-                      );
-                    })}
+                      )}
+                    </div>
 
-                    {/* Drag phantom block */}
-                    {dragState?.active && (
-                      <div
-                        style={{
-                          top:    `${minuteToY(dragState.startMin) + 4}px`,
-                          height: `${Math.max(((dragState.endMin - dragState.startMin) / 60) * HOUR_PX - 4, 20)}px`,
-                          left: '52px', right: '8px',
-                        }}
-                        className="absolute rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/60 pointer-events-none z-10 flex items-start px-2 py-1"
-                      >
-                        <span className="text-xs text-blue-600 font-medium mt-0.5 truncate">
-                          {`${minutesToTime(dragState.startMin)} - ${minutesToTime(dragState.endMin)}`}
-                          {' ⏱'}
-                          {(() => {
-                            const dur = dragState.endMin - dragState.startMin;
-                            const h = Math.floor(dur / 60); const m = dur % 60;
-                            return h > 0 && m > 0 ? `${h}h${m}m` : h > 0 ? `${h}h` : `${m}m`;
-                          })()}
-                        </span>
-                      </div>
-                    )}
+                    {/* 実績列 */}
+                    <div ref={actualColRef} className="relative flex-1 select-none bg-emerald-50/20">
+                      {/* 横罫線 */}
+                      {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => (
+                        <div key={i} style={{ top: `${minuteToY(DAY_START + i * 60) + 8}px` }}
+                          className="absolute left-0 right-0 border-t border-gray-100 pointer-events-none" />
+                      ))}
+
+                      {/* 実績ブロック（isActual=true） */}
+                      {report.blocks.filter(b => b.isActual).map(block => {
+                        const isDragging = blockDragState?.blockId === block.id;
+                        const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
+                        const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
+                        const top    = minuteToY(startMin) + 8;
+                        const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
+                        const colorClass = BLOCK_COLORS[block.type];
+                        const origStart = timeToMinutes(block.startTime);
+                        const origEnd   = timeToMinutes(block.endTime);
+                        return (
+                          <div
+                            key={block.id}
+                            data-block="true"
+                            style={{
+                              top: `${top}px`, height: `${height}px`,
+                              left: '4px', right: '4px',
+                              cursor: isDragging ? 'grabbing' : 'grab',
+                              opacity: isDragging ? 0.85 : 1,
+                              zIndex: isDragging ? 20 : 10,
+                              transition: isDragging ? 'none' : 'box-shadow 0.15s',
+                            }}
+                            className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md border-solid ${colorClass}`}
+                            onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd, 'actual'); }}
+                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block); }}
+                          >
+                            <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                              onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd, 'actual')} />
+                            <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
+                              <span>{BLOCK_EMOJIS[block.type]}</span>
+                              <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
+                            </div>
+                            <div className="text-[10px] text-current opacity-70 pointer-events-none">
+                              {minutesToTime(startMin)}–{minutesToTime(endMin)}
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                              onMouseDown={e => startDrag(e, block.id, 'resizeBottom', origStart, origEnd, 'actual')} />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
