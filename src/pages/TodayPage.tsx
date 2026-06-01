@@ -170,7 +170,7 @@ export function TodayPage() {
         startTime: minutesToTime(startMin),
         endTime:   minutesToTime(Math.min(endMin, DAY_END)),
         title: type ? BLOCK_LABELS[type] : '',
-        memo: '', isPlanned: true, isActual: true, attachments: [],
+        memo: '', isPlanned: false, isActual: true, attachments: [],
       },
       isNew: true,
       focusCustomer: !!type,
@@ -196,7 +196,7 @@ export function TodayPage() {
         type,
         startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
         endTime: `${String(Math.min(nowH + 1, 22)).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-        title: BLOCK_LABELS[type], memo: '', isPlanned: true, isActual: true, attachments: [],
+        title: BLOCK_LABELS[type], memo: '', isPlanned: false, isActual: true, attachments: [],
       },
       isNew: true,
       focusCustomer: true,
@@ -216,7 +216,7 @@ export function TodayPage() {
           type: 'visit',
           startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
           endTime: `${String(nowH + 1).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
-          title: '', memo: '', isPlanned: true, isActual: true, attachments: [],
+          title: '', memo: '', isPlanned: false, isActual: true, attachments: [],
         },
         isNew: true,
         focusCustomer: false,
@@ -244,7 +244,7 @@ export function TodayPage() {
           type: b.type,
           startTime: b.endTime!,
           endTime: minutesToTime(Math.min(endMin + 60, DAY_END)),
-          title: '', memo: '', isPlanned: true, isActual: true, attachments: [],
+          title: '', memo: '', isPlanned: false, isActual: true, attachments: [],
         },
         isNew: true,
         focusCustomer: true,
@@ -391,6 +391,16 @@ export function TodayPage() {
                       const colorClass = BLOCK_COLORS[block.type];
                       const origStart = timeToMinutes(block.startTime);
                       const origEnd   = timeToMinutes(block.endTime);
+                      // planned/actual visual style
+                      const isPlannedOnly = block.isPlanned && !block.isActual;
+                      const isActualOnly  = !block.isPlanned && block.isActual;
+                      const isBoth        = block.isPlanned && block.isActual;
+                      const plannedActualClass = isPlannedOnly
+                        ? 'border-dashed opacity-70'
+                        : isActualOnly
+                          ? 'border-solid'
+                          : 'border-solid border-l-4';  // both: thicker left accent
+                      const plannedBadge = isPlannedOnly ? '📋' : isActualOnly ? '✅' : '📋✅';
                       return (
                         <div
                           key={block.id}
@@ -403,7 +413,7 @@ export function TodayPage() {
                             zIndex: isDragging ? 20 : undefined,
                             transition: isDragging ? 'none' : 'box-shadow 0.15s',
                           }}
-                          className={`absolute border rounded-lg px-2 py-1 select-none hover:shadow-md ${colorClass}`}
+                          className={`absolute rounded-lg px-2 py-1 select-none hover:shadow-md ${colorClass} ${plannedActualClass}`}
                           onMouseDown={e => {
                             // resize handles take priority; body = move
                             startDrag(e, block.id, 'move', origStart, origEnd);
@@ -423,6 +433,7 @@ export function TodayPage() {
                           <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
                             <span>{BLOCK_EMOJIS[block.type]}</span>
                             <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
+                            <span className="ml-auto text-[10px] opacity-60 flex-shrink-0">{plannedBadge}</span>
                           </div>
                           <div className="text-[10px] text-current opacity-70 pointer-events-none">
                             {minutesToTime(startMin)}–{minutesToTime(endMin)}
@@ -700,6 +711,39 @@ export function TodayPage() {
           </>
         }>
         <div className="space-y-3">
+          {/* 予定 / 実績 セレクタ */}
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">種類</label>
+            <div className="flex gap-2">
+              {([
+                { label: '📋 予定のみ',   isPlanned: true,  isActual: false },
+                { label: '✅ 実績のみ',   isPlanned: false, isActual: true  },
+                { label: '📋✅ 予定＋実績', isPlanned: true,  isActual: true  },
+              ] as { label: string; isPlanned: boolean; isActual: boolean }[]).map(opt => {
+                const active =
+                  blockModal.block.isPlanned === opt.isPlanned &&
+                  blockModal.block.isActual  === opt.isActual;
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setBlockModal(s => ({ ...s, block: { ...s.block, isPlanned: opt.isPlanned, isActual: opt.isActual } }))}
+                    className={`flex-1 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
+                      active
+                        ? opt.isPlanned && !opt.isActual
+                          ? 'bg-indigo-50 border-indigo-400 text-indigo-700'
+                          : !opt.isPlanned && opt.isActual
+                            ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                            : 'bg-blue-50 border-blue-400 text-blue-700'
+                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">開始時刻</label>
@@ -715,7 +759,7 @@ export function TodayPage() {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">種別</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">アクティビティ種別</label>
             <div className="flex flex-wrap gap-2">
               {BLOCK_TYPES.map((type, idx) => (
                 <button
