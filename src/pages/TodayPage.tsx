@@ -1,49 +1,88 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Plus, Clock, Send, Eye, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
+import { Plus, Clock, Send, Eye, X, Check } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS, timeToMinutes, formatDate } from '../utils';
+import {
+  BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS,
+  timeToMinutes, minutesToTime, formatDate,
+} from '../utils';
 import type { BlockType, MoodType, ManagerSignal, TimeBlock } from '../types';
+import {
+  ChipPopover, useDragAndChip,
+  DAY_START, DAY_END, HOUR_PX, SNAP, BLOCK_TYPES, minuteToY,
+} from '../components/timeline/DragAndChip';
 
-const DAY_START = 6 * 60; // 6:00
-const DAY_END = 22 * 60 + 30; // 22:30
-const HOUR_PX = 64;
-const SNAP = 15;
-
-function minuteToY(min: number): number {
-  return ((min - DAY_START) / 60) * HOUR_PX;
+// ─── helpers ─────────────────────────────────────────────────────────────────
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return mobile;
 }
-
-const BLOCK_TYPES: BlockType[] = ['visit', 'office', 'phone', 'travel', 'break', 'meeting', 'lunch'];
 
 interface BlockModalState {
   open: boolean;
   block: Partial<TimeBlock>;
   isNew: boolean;
+  /** when true, auto-focus customer field; when false, focus type chips */
+  focusCustomer: boolean;
 }
 
+// ─── component ────────────────────────────────────────────────────────────────
 export function TodayPage() {
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayDisplay = formatDate(today);
   const {
     getTodayReport, createReport, updateReport, updateBlock, deleteBlock, addBlock,
     addTodo, toggleTodo, deleteTodo, submitReport, withdrawReport,
-    customers, currentUserId, addToast, trackingSession, startTracking, stopTracking, discardTracking
+    customers, currentUserId, addToast, trackingSession, startTracking, stopTracking, discardTracking,
   } = useAppStore();
 
+  const isMobile = useIsMobile();
+  const timelineRef = useRef<HTMLDivElement>(null);
+
   const [report, setReport] = useState(() => getTodayReport());
-  const [showStartModal, setShowStartModal] = useState(false);
+  const [showStartModal, setShowStartModal]   = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [showTrackModal, setShowTrackModal] = useState(false);
-  const [blockModal, setBlockModal] = useState<BlockModalState>({ open: false, block: {}, isNew: true });
-  const [trackType, setTrackType] = useState<BlockType>('visit');
+  const [showTrackModal, setShowTrackModal]   = useState(false);
+  const [showLongBlockConfirm, setShowLongBlockConfirm] = useState(false);
+  const [pendingLongBlock, setPendingLongBlock] = useState<{ startMin: number; endMin: number; type?: BlockType } | null>(null);
+
+  const [blockModal, setBlockModal] = useState<BlockModalState>({
+    open: false, block: {}, isNew: true, focusCustomer: false,
+  });
+  const [continueInput, setContinueInput] = useState(false);
+  const customerSelectRef = useRef<HTMLSelectElement>(null);
+  const typeChipRef = useRef<HTMLButtonElement>(null);
+
+  const [trackType, setTrackType]       = useState<BlockType>('visit');
   const [trackCustomer, setTrackCustomer] = useState('');
-  const [elapsedSecs, setElapsedSecs] = useState(0);
+  const [elapsedSecs, setElapsedSecs]   = useState(0);
   const timerRef = useRef<number | undefined>(undefined);
 
+  // ── D&C hook ───────────────────────────────────────────────────────────────
+  const onReportRequired = useCallback((): boolean => {
+    if (!getTodayReport()) {
+      addToast({ type: 'warning', message: '先に日報を作成してください' });
+      setShowStartModal(true);
+      return false;
+    }
+    return true;
+  }, [getTodayReport, addToast]);
+
+  const {
+    dragState, chipVisible,
+    onTimelineMouseDown, onTimelineTouchStart,
+    confirmChip, confirmWithoutType, cancelDrag,
+  } = useDragAndChip(timelineRef, onReportRequired);
+
+  // ── report polling ─────────────────────────────────────────────────────────
   useEffect(() => {
     const r = getTodayReport();
     if (!r) setShowStartModal(true);
@@ -55,7 +94,7 @@ export function TodayPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Tracking timer
+  // ── tracking timer ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (trackingSession) {
       timerRef.current = setInterval(() => {
@@ -72,22 +111,89 @@ export function TodayPage() {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  const handleStartReport = (mode: 'copy_prev' | 'template' | 'blank') => {
-    const r = createReport(currentUserId, today);
-    setShowStartModal(false);
-    addToast({ type: 'success', message: '日報を作成しました' });
-    if (mode === 'copy_prev') {
-      addToast({ type: 'info', message: '前日の予定を引き継ぎました（モック）' });
+  // ── auto-focus after dialog open ───────────────────────────────────────────
+  useEffect(() => {
+    if (!blockModal.open) return;
+    const id = setTimeout(() => {
+      if (blockModal.focusCustomer) {
+        customerSelectRef.current?.focus();
+      } else {
+        typeChipRef.current?.focus();
+      }
+    }, 80);
+    return () => clearTimeout(id);
+  }, [blockModal.open, blockModal.focusCustomer]);
+
+  // ── D&C chip selection ─────────────────────────────────────────────────────
+  const handleChipSelected = (type: BlockType) => {
+    const { startMin, endMin } = confirmChip(type);
+    // 8h check
+    if (endMin - startMin >= 8 * 60) {
+      setPendingLongBlock({ startMin, endMin, type });
+      setShowLongBlockConfirm(true);
+      return;
     }
-    setReport(r);
+    openDialogFromDrag(startMin, endMin, type);
   };
 
+  const handleDragWithoutType = () => {
+    const { startMin, endMin } = confirmWithoutType();
+    if (endMin - startMin >= 8 * 60) {
+      setPendingLongBlock({ startMin, endMin });
+      setShowLongBlockConfirm(true);
+      return;
+    }
+    openDialogFromDrag(startMin, endMin, undefined);
+  };
+
+  const openDialogFromDrag = (startMin: number, endMin: number, type?: BlockType) => {
+    setBlockModal({
+      open: true,
+      block: {
+        type: type ?? 'visit',
+        startTime: minutesToTime(startMin),
+        endTime:   minutesToTime(Math.min(endMin, DAY_END)),
+        title: type ? BLOCK_LABELS[type] : '',
+        memo: '', isPlanned: true, isActual: true, attachments: [],
+      },
+      isNew: true,
+      focusCustomer: !!type,
+    });
+  };
+
+  const handleLongBlockConfirm = () => {
+    setShowLongBlockConfirm(false);
+    if (pendingLongBlock) {
+      openDialogFromDrag(pendingLongBlock.startMin, pendingLongBlock.endMin, pendingLongBlock.type);
+      setPendingLongBlock(null);
+    }
+  };
+
+  // ── quick chip (existing C route) ──────────────────────────────────────────
+  const handleChipClick = (type: BlockType) => {
+    if (!report) { addToast({ type: 'warning', message: '先に日報を作成してください' }); return; }
+    const nowH = new Date().getHours();
+    const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
+    setBlockModal({
+      open: true,
+      block: {
+        type,
+        startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
+        endTime: `${String(Math.min(nowH + 1, 22)).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
+        title: BLOCK_LABELS[type], memo: '', isPlanned: true, isActual: true, attachments: [],
+      },
+      isNew: true,
+      focusCustomer: true,
+    });
+  };
+
+  // ── block modal ────────────────────────────────────────────────────────────
   const handleOpenBlock = (block?: TimeBlock) => {
     if (block) {
-      setBlockModal({ open: true, block: { ...block }, isNew: false });
+      setBlockModal({ open: true, block: { ...block }, isNew: false, focusCustomer: false });
     } else {
       const nowH = new Date().getHours();
       const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
@@ -95,11 +201,12 @@ export function TodayPage() {
         open: true,
         block: {
           type: 'visit',
-          startTime: `${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-          endTime: `${String(nowH + 1).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
+          startTime: `${String(nowH).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
+          endTime: `${String(nowH + 1).padStart(2, '0')}:${String(nowM).padStart(2, '0')}`,
           title: '', memo: '', isPlanned: true, isActual: true, attachments: [],
         },
         isNew: true,
+        focusCustomer: false,
       });
     }
   };
@@ -115,30 +222,30 @@ export function TodayPage() {
       updateBlock(report.id, b.id!, b);
       addToast({ type: 'success', message: '時間ブロックを更新しました' });
     }
-    setBlockModal({ open: false, block: {}, isNew: true });
+    if (continueInput) {
+      // 保存して続けて入力: keep dialog open with cleared fields
+      const endMin = timeToMinutes(b.endTime!);
+      setBlockModal({
+        open: true,
+        block: {
+          type: b.type,
+          startTime: b.endTime!,
+          endTime: minutesToTime(Math.min(endMin + 60, DAY_END)),
+          title: '', memo: '', isPlanned: true, isActual: true, attachments: [],
+        },
+        isNew: true,
+        focusCustomer: true,
+      });
+    } else {
+      setBlockModal({ open: false, block: {}, isNew: true, focusCustomer: false });
+    }
   };
 
   const handleDeleteBlock = (blockId: string) => {
     if (!report) return;
     deleteBlock(report.id, blockId);
     addToast({ type: 'info', message: '削除しました', undoFn: () => addToast({ type: 'info', message: '（元に戻す機能はモックです）' }) });
-    setBlockModal({ open: false, block: {}, isNew: true });
-  };
-
-  const handleChipClick = (type: BlockType) => {
-    if (!report) { addToast({ type: 'warning', message: '先に日報を作成してください' }); return; }
-    const nowH = new Date().getHours();
-    const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
-    setBlockModal({
-      open: true,
-      block: {
-        type,
-        startTime: `${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-        endTime: `${String(Math.min(nowH + 1, 22)).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-        title: BLOCK_LABELS[type], memo: '', isPlanned: true, isActual: true, attachments: [],
-      },
-      isNew: true,
-    });
+    setBlockModal({ open: false, block: {}, isNew: true, focusCustomer: false });
   };
 
   const handleStopTracking = () => {
@@ -149,6 +256,14 @@ export function TodayPage() {
     }
   };
 
+  const handleStartReport = (mode: 'copy_prev' | 'template' | 'blank') => {
+    const r = createReport(currentUserId, today);
+    setShowStartModal(false);
+    addToast({ type: 'success', message: '日報を作成しました' });
+    if (mode === 'copy_prev') addToast({ type: 'info', message: '前日の予定を引き継ぎました（モック）' });
+    setReport(r);
+  };
+
   const handleSubmit = () => {
     if (!report) return;
     submitReport(report.id);
@@ -156,6 +271,7 @@ export function TodayPage() {
     addToast({ type: 'success', message: '日報を提出しました ✓' });
   };
 
+  // ── render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-full">
       {/* Tracking Banner */}
@@ -204,13 +320,17 @@ export function TodayPage() {
               <div className="lg:col-span-2">
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                   <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
+                    <div>
+                      <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
+                      <span className="ml-2 text-xs text-gray-400">← 空白をドラッグして素早く入力</span>
+                    </div>
                     <button onClick={() => handleOpenBlock()}
                       className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">
                       <Plus className="w-3.5 h-3.5" /> 追加
                     </button>
                   </div>
-                  {/* Quick Chips */}
+
+                  {/* Quick Chips (C route) */}
                   <div className="px-4 py-2 border-b border-gray-100 flex gap-2 overflow-x-auto">
                     {BLOCK_TYPES.map(type => (
                       <button key={type} onClick={() => handleChipClick(type)}
@@ -219,8 +339,18 @@ export function TodayPage() {
                       </button>
                     ))}
                   </div>
+
                   {/* Timeline grid */}
-                  <div className="relative px-4 py-2" style={{ height: `${((DAY_END - DAY_START) / 60) * HOUR_PX + 32}px` }}>
+                  <div
+                    ref={timelineRef}
+                    className="relative px-4 py-2 select-none"
+                    style={{
+                      height: `${((DAY_END - DAY_START) / 60) * HOUR_PX + 32}px`,
+                      cursor: dragState?.active ? 'ns-resize' : 'crosshair',
+                    }}
+                    onMouseDown={onTimelineMouseDown}
+                    onTouchStart={onTimelineTouchStart}
+                  >
                     {/* Hour lines */}
                     {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
                       const min = DAY_START + i * 60;
@@ -230,21 +360,23 @@ export function TodayPage() {
                         <div key={i} style={{ top: `${minuteToY(min)}px` }}
                           className="absolute left-0 right-0 flex items-center gap-2 pointer-events-none">
                           <span className="w-10 text-right text-xs text-gray-400 flex-shrink-0">
-                            {h}:{String(m).padStart(2,'0')}
+                            {h}:{String(m).padStart(2, '0')}
                           </span>
                           <div className="flex-1 border-t border-gray-100" />
                         </div>
                       );
                     })}
-                    {/* Blocks */}
+
+                    {/* Existing Blocks */}
                     {report.blocks.map(block => {
                       const startMin = timeToMinutes(block.startTime);
-                      const endMin = timeToMinutes(block.endTime);
-                      const top = minuteToY(startMin) + 4;
+                      const endMin   = timeToMinutes(block.endTime);
+                      const top    = minuteToY(startMin) + 4;
                       const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
                       const colorClass = BLOCK_COLORS[block.type];
                       return (
                         <div key={block.id}
+                          data-block="true"
                           onClick={() => handleOpenBlock(block)}
                           style={{ top: `${top}px`, height: `${height}px`, left: '52px', right: '8px' }}
                           className={`absolute border rounded-lg px-2 py-1 cursor-pointer hover:shadow-md transition-all ${colorClass}`}>
@@ -256,6 +388,28 @@ export function TodayPage() {
                         </div>
                       );
                     })}
+
+                    {/* Drag phantom block */}
+                    {dragState?.active && (
+                      <div
+                        style={{
+                          top:    `${minuteToY(dragState.startMin) + 4}px`,
+                          height: `${Math.max(((dragState.endMin - dragState.startMin) / 60) * HOUR_PX - 4, 20)}px`,
+                          left: '52px', right: '8px',
+                        }}
+                        className="absolute rounded-lg border-2 border-dashed border-blue-400 bg-blue-50/60 pointer-events-none z-10 flex items-start px-2 py-1"
+                      >
+                        <span className="text-xs text-blue-600 font-medium mt-0.5 truncate">
+                          {`${minutesToTime(dragState.startMin)} - ${minutesToTime(dragState.endMin)}`}
+                          {' ⏱'}
+                          {(() => {
+                            const dur = dragState.endMin - dragState.startMin;
+                            const h = Math.floor(dur / 60); const m = dur % 60;
+                            return h > 0 && m > 0 ? `${h}h${m}m` : h > 0 ? `${h}h` : `${m}m`;
+                          })()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -319,7 +473,7 @@ export function TodayPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">朝の気分</p>
                       <div className="flex gap-2">
-                        {(['sunny','partly_cloudy','cloudy','rainy'] as MoodType[]).map(m => (
+                        {(['sunny', 'partly_cloudy', 'cloudy', 'rainy'] as MoodType[]).map(m => (
                           <button key={m} onClick={() => updateReport(report.id, { morningMood: m })}
                             className={`text-lg p-1 rounded-lg ${report.morningMood === m ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'}`}>
                             {MOOD_EMOJIS[m]}
@@ -330,7 +484,7 @@ export function TodayPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">終わりの気分</p>
                       <div className="flex gap-2">
-                        {(['sunny','partly_cloudy','cloudy','rainy'] as MoodType[]).map(m => (
+                        {(['sunny', 'partly_cloudy', 'cloudy', 'rainy'] as MoodType[]).map(m => (
                           <button key={m} onClick={() => updateReport(report.id, { eveningMood: m })}
                             className={`text-lg p-1 rounded-lg ${report.eveningMood === m ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'}`}>
                             {MOOD_EMOJIS[m]}
@@ -341,7 +495,7 @@ export function TodayPage() {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">上長への合図</p>
                       <div className="flex gap-2">
-                        {([['consult','💬 相談したい'],['listen','👂 聞いて'],['ok','👍 今は大丈夫']] as [ManagerSignal, string][]).map(([v, label]) => (
+                        {([['consult', '💬 相談したい'], ['listen', '👂 聞いて'], ['ok', '👍 今は大丈夫']] as [ManagerSignal, string][]).map(([v, label]) => (
                           <button key={v!} onClick={() => updateReport(report.id, { managerSignal: v })}
                             className={`px-2 py-1 text-xs rounded-lg border ${report.managerSignal === v ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                             {label}
@@ -365,12 +519,12 @@ export function TodayPage() {
             {['draft', 'submitted', 'confirmed'].map((s, i) => (
               <div key={s} className="flex items-center gap-1">
                 <div className={`w-3 h-3 rounded-full ${
-                  (s === 'draft' && ['draft','submitted','confirmed'].includes(report.status)) ||
-                  (s === 'submitted' && ['submitted','confirmed'].includes(report.status)) ||
+                  (s === 'draft' && ['draft', 'submitted', 'confirmed'].includes(report.status)) ||
+                  (s === 'submitted' && ['submitted', 'confirmed'].includes(report.status)) ||
                   (s === 'confirmed' && report.status === 'confirmed')
                     ? 'bg-blue-500' : 'bg-gray-200'
                 }`} />
-                <span className="text-xs text-gray-500">{['下書き','提出済','確認済'][i]}</span>
+                <span className="text-xs text-gray-500">{['下書き', '提出済', '確認済'][i]}</span>
                 {i < 2 && <div className="w-6 h-0.5 bg-gray-200" />}
               </div>
             ))}
@@ -393,6 +547,28 @@ export function TodayPage() {
           )}
         </div>
       )}
+
+      {/* ── D&C Chip Popover ─────────────────────────────────────────────────── */}
+      {chipVisible && dragState && (
+        <ChipPopover
+          dragState={dragState}
+          onSelectChip={handleChipSelected}
+          onOpenWithoutType={handleDragWithoutType}
+          onCancel={cancelDrag}
+          isMobile={isMobile}
+        />
+      )}
+
+      {/* ── Long block confirmation ───────────────────────────────────────────── */}
+      <ConfirmDialog
+        open={showLongBlockConfirm}
+        title="長い時間ブロック"
+        message="8時間以上のブロックを作成しますか？誤操作の可能性があります。"
+        confirmLabel="作成する"
+        onConfirm={handleLongBlockConfirm}
+        confirmVariant="primary"
+        onClose={() => { setShowLongBlockConfirm(false); setPendingLongBlock(null); cancelDrag(); }}
+      />
 
       {/* Start Modal */}
       <Modal open={showStartModal} onClose={() => setShowStartModal(false)}
@@ -494,8 +670,11 @@ export function TodayPage() {
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">種別</label>
             <div className="flex flex-wrap gap-2">
-              {BLOCK_TYPES.map(type => (
-                <button key={type} onClick={() => setBlockModal(s => ({ ...s, block: { ...s.block, type } }))}
+              {BLOCK_TYPES.map((type, idx) => (
+                <button
+                  key={type}
+                  ref={idx === 0 && !blockModal.focusCustomer ? typeChipRef : undefined}
+                  onClick={() => setBlockModal(s => ({ ...s, block: { ...s.block, type } }))}
                   className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${blockModal.block.type === type ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                   {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
                 </button>
@@ -504,7 +683,9 @@ export function TodayPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">顧客（任意）</label>
-            <select value={blockModal.block.customerId ?? ''}
+            <select
+              ref={customerSelectRef}
+              value={blockModal.block.customerId ?? ''}
               onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, customerId: e.target.value || undefined } }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
               <option value="">選択しない</option>
@@ -527,6 +708,14 @@ export function TodayPage() {
               rows={2}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none" />
           </div>
+          {blockModal.isNew && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+              <input type="checkbox" checked={continueInput}
+                onChange={e => setContinueInput(e.target.checked)}
+                className="rounded border-gray-300" />
+              ☑ 保存して続けて入力
+            </label>
+          )}
         </div>
       </Modal>
 
