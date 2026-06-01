@@ -14,6 +14,7 @@ import {
   ChipPopover, useDragAndChip,
   DAY_START, DAY_END, HOUR_PX, SNAP, BLOCK_TYPES, minuteToY,
 } from '../components/timeline/DragAndChip';
+import { useBlockDrag } from '../components/timeline/useBlockDrag';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 function useIsMobile(): boolean {
@@ -81,6 +82,18 @@ export function TodayPage() {
     onTimelineMouseDown, onTimelineTouchStart,
     confirmChip, confirmWithoutType, cancelDrag,
   } = useDragAndChip(timelineRef, onReportRequired);
+
+  // ── block move / resize ────────────────────────────────────────────────────
+  const { blockDragState, startDrag } = useBlockDrag({
+    containerRef: timelineRef,
+    onCommit: (blockId, startMin, endMin) => {
+      if (!report) return;
+      updateBlock(report.id, blockId, {
+        startTime: minutesToTime(startMin),
+        endTime:   minutesToTime(endMin),
+      });
+    },
+  });
 
   // ── report polling ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -369,22 +382,56 @@ export function TodayPage() {
 
                     {/* Existing Blocks */}
                     {report.blocks.map(block => {
-                      const startMin = timeToMinutes(block.startTime);
-                      const endMin   = timeToMinutes(block.endTime);
+                      // if this block is being dragged, show preview position
+                      const isDragging = blockDragState?.blockId === block.id;
+                      const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
+                      const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
                       const top    = minuteToY(startMin) + 4;
                       const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
                       const colorClass = BLOCK_COLORS[block.type];
+                      const origStart = timeToMinutes(block.startTime);
+                      const origEnd   = timeToMinutes(block.endTime);
                       return (
-                        <div key={block.id}
+                        <div
+                          key={block.id}
                           data-block="true"
-                          onClick={() => handleOpenBlock(block)}
-                          style={{ top: `${top}px`, height: `${height}px`, left: '52px', right: '8px' }}
-                          className={`absolute border rounded-lg px-2 py-1 cursor-pointer hover:shadow-md transition-all ${colorClass}`}>
-                          <div className="flex items-center gap-1 text-xs font-medium truncate">
+                          style={{
+                            top: `${top}px`, height: `${height}px`,
+                            left: '52px', right: '8px',
+                            cursor: isDragging ? 'grabbing' : 'grab',
+                            opacity: isDragging ? 0.85 : 1,
+                            zIndex: isDragging ? 20 : undefined,
+                            transition: isDragging ? 'none' : 'box-shadow 0.15s',
+                          }}
+                          className={`absolute border rounded-lg px-2 py-1 select-none hover:shadow-md ${colorClass}`}
+                          onMouseDown={e => {
+                            // resize handles take priority; body = move
+                            startDrag(e, block.id, 'move', origStart, origEnd);
+                          }}
+                          onClick={e => {
+                            // suppress click if we actually dragged
+                            if (isDragging) { e.stopPropagation(); return; }
+                            handleOpenBlock(block);
+                          }}
+                        >
+                          {/* Top resize handle */}
+                          <div
+                            className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                            onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd)}
+                          />
+                          {/* Block content */}
+                          <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
                             <span>{BLOCK_EMOJIS[block.type]}</span>
                             <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
                           </div>
-                          <div className="text-[10px] text-current opacity-70">{block.startTime}–{block.endTime}</div>
+                          <div className="text-[10px] text-current opacity-70 pointer-events-none">
+                            {minutesToTime(startMin)}–{minutesToTime(endMin)}
+                          </div>
+                          {/* Bottom resize handle */}
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
+                            onMouseDown={e => startDrag(e, block.id, 'resizeBottom', origStart, origEnd)}
+                          />
                         </div>
                       );
                     })}
