@@ -220,13 +220,22 @@ export function TodayPage() {
   // ── 予定 → 実績化ワンタップ ─────────────────────────────────────────
   const handleActualize = (block: TimeBlock) => {
     if (!report) return;
-    // 元の予定ブロックは isPlanned:true のまま残す。実績ブロックを新規生成。
-    addBlock(report.id, {
-      ...block,
-      id: undefined as unknown as string,   // store generates new id
-      isPlanned: false,
-      isActual: true,
-    } as Omit<TimeBlock, 'id'>);
+    // 予定ブロックのスナップショットで実績ブロックを新規生成。
+    // attachments はディープコピーして独立データにする。
+    const actualBlock: Omit<TimeBlock, 'id'> = {
+      reportId:      block.reportId,
+      type:          block.type,
+      startTime:     block.startTime,
+      endTime:       block.endTime,
+      title:         block.title,
+      memo:          block.memo,
+      customerId:    block.customerId,
+      isPlanned:     false,
+      isActual:      true,
+      plannedBlockId: block.id,   // リンクを保持
+      attachments:   block.attachments.map(a => ({ ...a })),  // shallow clone each attachment
+    };
+    addBlock(report.id, actualBlock);
     addToast({ type: 'success', message: '✅ 実績ブロックを生成しました。ドラッグで時間を調整できます。' });
   };
 

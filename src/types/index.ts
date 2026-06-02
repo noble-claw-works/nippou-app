@@ -54,6 +54,8 @@ export interface TimeBlock {
   isPlanned: boolean;
   isActual: boolean;
   attachments: Attachment[];
+  /** 実績化時にスナップショット元の予定ブロック id を保持。予定ブロックは未設定 */
+  plannedBlockId?: string;
 }
 
 export interface Todo {
