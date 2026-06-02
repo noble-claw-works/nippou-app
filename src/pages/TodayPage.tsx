@@ -48,15 +48,16 @@ export function TodayPage() {
   } = useAppStore();
 
   const isMobile = useIsMobile();
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const actualColRef = useRef<HTMLDivElement>(null);
+  const timelineRef    = useRef<HTMLDivElement>(null);  // 予定列
+  const actualColRef   = useRef<HTMLDivElement>(null);  // 実績列（ブロックドラッグ用）
+  const actualDnCRef   = useRef<HTMLDivElement>(null);  // 実績列（D&C新規作成用）
 
   const [report, setReport] = useState(() => getTodayReport());
   const [showStartModal, setShowStartModal]   = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showTrackModal, setShowTrackModal]   = useState(false);
   const [showLongBlockConfirm, setShowLongBlockConfirm] = useState(false);
-  const [pendingLongBlock, setPendingLongBlock] = useState<{ startMin: number; endMin: number; type?: BlockType } | null>(null);
+  const [pendingLongBlock, setPendingLongBlock] = useState<{ startMin: number; endMin: number; type?: BlockType; col?: 'planned' | 'actual' } | null>(null);
 
   const [blockModal, setBlockModal] = useState<BlockModalState>({
     open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false,
@@ -80,11 +81,19 @@ export function TodayPage() {
     return true;
   }, [getTodayReport, addToast]);
 
+  // 予定列 D&C
   const {
     dragState, chipVisible,
     onTimelineMouseDown, onTimelineTouchStart,
     confirmChip, confirmWithoutType, cancelDrag,
   } = useDragAndChip(timelineRef, onReportRequired);
+
+  // 実績列 D&C
+  const {
+    dragState: actualDragState, chipVisible: actualChipVisible,
+    onTimelineMouseDown: onActualMouseDown, onTimelineTouchStart: onActualTouchStart,
+    confirmChip: actualConfirmChip, confirmWithoutType: actualConfirmWithoutType, cancelDrag: actualCancelDrag,
+  } = useDragAndChip(actualDnCRef, onReportRequired);
 
   // ── block move / resize ────────────────────────────────────────────────────
   const { blockDragState, startDrag } = useBlockDrag({
@@ -145,25 +154,28 @@ export function TodayPage() {
   }, [blockModal.open, blockModal.focusCustomer]);
 
   // ── D&C chip selection ─────────────────────────────────────────────────────
+  // 予定列
   const handleChipSelected = (type: BlockType) => {
     const { startMin, endMin } = confirmChip(type);
-    // 8h check
-    if (endMin - startMin >= 8 * 60) {
-      setPendingLongBlock({ startMin, endMin, type });
-      setShowLongBlockConfirm(true);
-      return;
-    }
-    openDialogFromDrag(startMin, endMin, type);
+    if (endMin - startMin >= 8 * 60) { setPendingLongBlock({ startMin, endMin, type, col: 'planned' }); setShowLongBlockConfirm(true); return; }
+    openDialogFromDrag(startMin, endMin, type, 'planned');
   };
-
   const handleDragWithoutType = () => {
     const { startMin, endMin } = confirmWithoutType();
-    if (endMin - startMin >= 8 * 60) {
-      setPendingLongBlock({ startMin, endMin });
-      setShowLongBlockConfirm(true);
-      return;
-    }
-    openDialogFromDrag(startMin, endMin, undefined);
+    if (endMin - startMin >= 8 * 60) { setPendingLongBlock({ startMin, endMin, col: 'planned' }); setShowLongBlockConfirm(true); return; }
+    openDialogFromDrag(startMin, endMin, undefined, 'planned');
+  };
+
+  // 実績列
+  const handleActualChipSelected = (type: BlockType) => {
+    const { startMin, endMin } = actualConfirmChip(type);
+    if (endMin - startMin >= 8 * 60) { setPendingLongBlock({ startMin, endMin, type, col: 'actual' }); setShowLongBlockConfirm(true); return; }
+    openDialogFromDrag(startMin, endMin, type, 'actual');
+  };
+  const handleActualDragWithoutType = () => {
+    const { startMin, endMin } = actualConfirmWithoutType();
+    if (endMin - startMin >= 8 * 60) { setPendingLongBlock({ startMin, endMin, col: 'actual' }); setShowLongBlockConfirm(true); return; }
+    openDialogFromDrag(startMin, endMin, undefined, 'actual');
   };
 
   const openDialogFromDrag = (startMin: number, endMin: number, type?: BlockType, col: 'planned' | 'actual' = 'actual') => {
@@ -188,7 +200,7 @@ export function TodayPage() {
   const handleLongBlockConfirm = () => {
     setShowLongBlockConfirm(false);
     if (pendingLongBlock) {
-      openDialogFromDrag(pendingLongBlock.startMin, pendingLongBlock.endMin, pendingLongBlock.type);
+      openDialogFromDrag(pendingLongBlock.startMin, pendingLongBlock.endMin, pendingLongBlock.type, pendingLongBlock.col ?? 'actual');
       setPendingLongBlock(null);
     }
   };
@@ -509,7 +521,13 @@ export function TodayPage() {
                     </div>
 
                     {/* 実績列 */}
-                    <div ref={actualColRef} className="relative flex-1 select-none bg-emerald-50/20">
+                    <div
+                      ref={el => { (actualColRef as React.MutableRefObject<HTMLDivElement | null>).current = el; (actualDnCRef as React.MutableRefObject<HTMLDivElement | null>).current = el; }}
+                      className="relative flex-1 select-none bg-emerald-50/20"
+                      style={{ cursor: actualDragState?.active ? 'ns-resize' : 'crosshair' }}
+                      onMouseDown={onActualMouseDown}
+                      onTouchStart={onActualTouchStart}
+                    >
                       {/* 横罫線 */}
                       {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => (
                         <div key={i} style={{ top: `${minuteToY(DAY_START + i * 60) + 8}px` }}
@@ -556,6 +574,24 @@ export function TodayPage() {
                           </div>
                         );
                       })}
+
+                      {/* 実績列 D&C 仳ブロック */}
+                      {actualDragState?.active && (
+                        <div
+                          style={{
+                            top: `${minuteToY(actualDragState.startMin) + 8}px`,
+                            height: `${Math.max(((actualDragState.endMin - actualDragState.startMin) / 60) * HOUR_PX - 4, 20)}px`,
+                            left: '4px', right: '4px',
+                          }}
+                          className="absolute rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-50/60 pointer-events-none z-10 flex items-start px-2 py-1"
+                        >
+                          <span className="text-xs text-emerald-600 font-medium mt-0.5 truncate">
+                            {`${minutesToTime(actualDragState.startMin)} - ${minutesToTime(actualDragState.endMin)}`}
+                            {' ⏱'}
+                            {(() => { const dur = actualDragState.endMin - actualDragState.startMin; const h = Math.floor(dur / 60); const m = dur % 60; return h > 0 && m > 0 ? `${h}h${m}m` : h > 0 ? `${h}h` : `${m}m`; })()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -696,12 +732,23 @@ export function TodayPage() {
       )}
 
       {/* ── D&C Chip Popover ─────────────────────────────────────────────────── */}
+      {/* 予定列 ChipPopover */}
       {chipVisible && dragState && (
         <ChipPopover
           dragState={dragState}
           onSelectChip={handleChipSelected}
           onOpenWithoutType={handleDragWithoutType}
           onCancel={cancelDrag}
+          isMobile={isMobile}
+        />
+      )}
+      {/* 実績列 ChipPopover */}
+      {actualChipVisible && actualDragState && (
+        <ChipPopover
+          dragState={actualDragState}
+          onSelectChip={handleActualChipSelected}
+          onOpenWithoutType={handleActualDragWithoutType}
+          onCancel={actualCancelDrag}
           isMobile={isMobile}
         />
       )}
