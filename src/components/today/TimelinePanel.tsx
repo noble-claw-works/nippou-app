@@ -28,6 +28,9 @@ export interface TimelinePanelProps {
   plannedDnC: UseDragAndChipResult;
   actualDnC: UseDragAndChipResult;
   isMobile: boolean;
+  /** TodayPage から渡す DOM ref（useDragAndChip が参照する実体） */
+  plannedRef: React.RefObject<HTMLDivElement | null>;
+  actualRef: React.RefObject<HTMLDivElement | null>;
   onOpenBlock: (block?: TimeBlock, col?: 'planned' | 'actual') => void;
   onActualize: (block: TimeBlock) => void;
   // chip handlers (for popover)
@@ -168,12 +171,14 @@ function DragGhost({ dragState, col }: { dragState: DragState; col: 'planned' | 
 export function TimelinePanel({
   report, customers, blockDragState, startDrag,
   plannedDnC, actualDnC, isMobile,
+  plannedRef, actualRef,
   onOpenBlock, onActualize,
   onPlannedChipSelected, onPlannedDragWithoutType,
   onActualChipSelected, onActualDragWithoutType,
 }: TimelinePanelProps) {
-  const timelineRef  = useRef<HTMLDivElement>(null);
-  const actualColRef = useRef<HTMLDivElement>(null);
+  // DOM ref は TodayPage から渡されたものを使う（useDragAndChip が同じ ref を参照）
+  const timelineRef  = plannedRef as React.MutableRefObject<HTMLDivElement | null>;
+  const actualColRef = actualRef  as React.MutableRefObject<HTMLDivElement | null>;
 
   const totalHeight = ((DAY_END - DAY_START) / 60) * HOUR_PX + 32;
 
@@ -249,13 +254,7 @@ export function TimelinePanel({
 
           {/* Planned column */}
           <div
-            ref={el => {
-              (timelineRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-              // also expose to DnC hook via ref
-              if (el) {
-                Object.assign(plannedDnC, { _containerEl: el });
-              }
-            }}
+            ref={timelineRef}
             className="relative flex-1 border-r border-gray-100 select-none bg-indigo-50/20"
             style={{ cursor: plannedDnC.dragState?.active ? 'ns-resize' : 'crosshair' }}
             onMouseDown={plannedDnC.onTimelineMouseDown}
@@ -304,9 +303,7 @@ export function TimelinePanel({
 
           {/* Actual column */}
           <div
-            ref={el => {
-              (actualColRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
-            }}
+            ref={actualColRef}
             className="relative flex-1 select-none bg-emerald-50/20"
             style={{ cursor: actualDnC.dragState?.active ? 'ns-resize' : 'crosshair' }}
             onMouseDown={actualDnC.onTimelineMouseDown}

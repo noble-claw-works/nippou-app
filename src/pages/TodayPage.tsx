@@ -175,6 +175,7 @@ export function TodayPage() {
                   report={report} customers={customers}
                   blockDragState={blockDragState} startDrag={startDrag}
                   plannedDnC={plannedDnC} actualDnC={actualDnC} isMobile={isMobile}
+                  plannedRef={timelineRef} actualRef={actualColRef}
                   onOpenBlock={handleOpenBlock} onActualize={handleActualize}
                   onPlannedChipSelected={handleChipSelected} onPlannedDragWithoutType={handleDragWithoutType}
                   onActualChipSelected={handleActualChipSelected} onActualDragWithoutType={handleActualWithoutType}
