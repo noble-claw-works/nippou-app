@@ -13,7 +13,7 @@ import { TimelinePanel } from '../components/today/TimelinePanel';
 import { BlockModal, type BlockModalState } from '../components/today/BlockModal';
 import { SidePanelCards } from '../components/today/SidePanelCards';
 import { TrackingBanner } from '../components/today/TrackingBanner';
-import { StatusBar, SubmitModalContent } from '../components/today/StatusBar';
+import { StatusBar, StatusStepper, SubmitModalContent } from '../components/today/StatusBar';
 
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
@@ -170,15 +170,19 @@ export function TodayPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-gray-900">{formatDate(today)}</h1>
+          {/* ヘッダー: モバイルでは日付・ステータスのみ表示 */}
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-base sm:text-lg font-bold text-gray-900 truncate">{formatDate(today)}</h1>
               {report && <StatusBadge status={report.status} />}
             </div>
-            <button onClick={() => setShowTrackModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-              <Clock className="w-3.5 h-3.5" /> トラッキング開始
+            <button onClick={() => setShowTrackModal(true)} className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] sm:min-h-0">
+              <Clock className="w-3.5 h-3.5" /> <span className="hidden sm:inline">トラッキング開始</span><span className="sm:hidden">•••</span>
             </button>
           </div>
+
+          {/* P1-3: ステッパーをヘッダー直下に配置 */}
+          {report && <StatusStepper report={report} />}
 
           {!report ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
@@ -187,8 +191,9 @@ export function TodayPage() {
               <button onClick={() => setShowStartModal(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">日報を作成する</button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
+            <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4">
+              {/* タイムライン: モバイルでは先に表示 */}
+              <div className="lg:col-span-2 order-1">
                 <TimelinePanel
                   report={report} customers={customers}
                   blockDragState={blockDragState} startDrag={startDrag}
@@ -199,7 +204,8 @@ export function TodayPage() {
                   onActualChipSelected={handleActualChipSelected} onActualDragWithoutType={handleActualWithoutType}
                 />
               </div>
-              <div>
+              {/* サイドパネル: モバイルではタイムラインの後 */}
+              <div className="order-2">
                 <SidePanelCards
                   report={report} customers={customers}
                   onUpdateReport={u => updateReport(report.id, u)}

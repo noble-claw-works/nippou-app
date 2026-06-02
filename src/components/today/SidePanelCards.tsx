@@ -32,11 +32,15 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold text-gray-700">✅ TODO
-          {pending.length > 0 && (
-            <span className="ml-1.5 text-xs bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5">{pending.length}</span>
-          )}
-        </span>
+        <span className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            ✅ TODO
+            {pending.length > 0 && (
+              <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5">{pending.length}件</span>
+            )}
+            {report.todos.length > 0 && pending.length === 0 && (
+              <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">✓ 完了</span>
+            )}
+          </span>
         <button
           onClick={() => setShowInput(v => !v)}
           className="p-1 rounded hover:bg-gray-100"
@@ -178,7 +182,18 @@ function CustomerSummaryCard({ report, customers }: Pick<SidePanelCardsProps, 'r
 function ReflectionCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 'report' | 'onUpdateReport'>) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <span className="text-sm font-semibold text-gray-700 block mb-3">🌤 振り返り</span>
+      {(() => {
+        const done = !!(report.eveningMood && report.managerSignal);
+        return (
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-700">🌤 振り返り</span>
+            {done
+              ? <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">✓ 完了</span>
+              : <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-1.5 py-0.5">未設定</span>
+            }
+          </div>
+        );
+      })()}
       <div className="space-y-3">
         {/* Morning mood */}
         <div>
@@ -246,7 +261,18 @@ function ReflectionCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 'r
 function ThemeCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 'report' | 'onUpdateReport'>) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <span className="text-sm font-semibold text-gray-700 block mb-3">🎯 テーマ</span>
+      {(() => {
+        const done = !!(report.dailyTheme?.trim() || report.mainTheme?.trim());
+        return (
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-700">🎯 テーマ</span>
+            {done
+              ? <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">✓ 入力済</span>
+              : <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-1.5 py-0.5">未入力</span>
+            }
+          </div>
+        );
+      })()}
       <div className="space-y-3">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">今日のテーマ</label>
@@ -287,7 +313,20 @@ function GratitudeCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 're
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
-      <span className="text-sm font-semibold text-gray-700 block mb-3">🙏 感謝3件</span>
+      {(() => {
+        const filled = (report.gratitude ?? []).filter(g => g?.trim()).length;
+        return (
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-gray-700">🙏 感謝3件</span>
+            {filled >= 3
+              ? <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">✓ 完了</span>
+              : filled > 0
+                ? <span className="text-xs bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5">{filled}/3</span>
+                : <span className="text-xs bg-gray-100 text-gray-400 rounded-full px-1.5 py-0.5">未入力</span>
+            }
+          </div>
+        );
+      })()}
       <div className="space-y-2">
         {gratitude.slice(0, 3).map((text, idx) => (
           <div key={idx} className="flex items-center gap-2">

@@ -197,161 +197,190 @@ export function TimelinePanel({
   const nowInRange = nowMin >= DAY_START && nowMin <= DAY_END;
   const nowTop = nowInRange ? minuteToY(nowMin) + 8 : null;
 
-  return (
-    <>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* Panel header */}
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
-            <span className="ml-2 text-xs text-gray-400">← 空白をドラッグして素早く入力</span>
-          </div>
-        </div>
 
-        {/* Column headers */}
-        <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '40px 1fr 1px 1fr' }}>
-          <div />
-          <div className="px-2 py-1.5 flex items-center justify-between bg-indigo-50">
-            <span className="text-xs font-semibold text-indigo-600">📋 予定</span>
-            <button
-              onClick={() => onOpenBlock(undefined, 'planned')}
-              data-testid="add-planned"
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-100 rounded"
-            >
-              <Plus className="w-3 h-3" /> 追加
-            </button>
-          </div>
-          <div className="bg-gray-200" />
-          <div className="px-2 py-1.5 flex items-center justify-between bg-emerald-50">
-            <span className="text-xs font-semibold text-emerald-600">✅ 実績</span>
-            <button
-              onClick={() => onOpenBlock(undefined, 'actual')}
-              data-testid="add-actual"
-              className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-emerald-600 hover:bg-emerald-100 rounded"
-            >
-              <Plus className="w-3 h-3" /> 追加
-            </button>
-          </div>
-        </div>
+  // ── 凡例表示トグル ──────────────────────────────────────────────
+  const [showLegend, setShowLegend] = useState(false);
 
-        {/* Timeline body */}
-        <div className="flex" style={{ height: `${totalHeight}px` }}>
-          {/* Hour axis */}
-          <div className="relative flex-shrink-0" style={{ width: '40px' }}>
-            {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
-              const min = DAY_START + i * 60;
-              const h = Math.floor(min / 60);
-              const m = min % 60;
-              return (
-                <div
-                  key={i}
-                  style={{ top: `${minuteToY(min) + 8}px` }}
-                  className="absolute right-1 text-[10px] text-gray-400 leading-none pointer-events-none"
-                >
-                  {h}:{String(m).padStart(2, '0')}
-                </div>
-              );
-            })}
-          </div>
+  // ── 列レンダー共通関数 ─────────────────────────────────────────
+  const renderColumn = (col: 'planned' | 'actual') => {
+    const isPlanned = col === 'planned';
+    const ref       = isPlanned ? timelineRef : actualColRef;
+    const dnC       = isPlanned ? plannedDnC  : actualDnC;
+    const blocks    = report.blocks.filter(b => isPlanned ? b.isPlanned : b.isActual);
+    const bgClass   = isPlanned ? 'bg-indigo-50/20' : 'bg-emerald-50/20';
+    const headerBg  = isPlanned ? 'bg-indigo-50'    : 'bg-emerald-50';
+    const textCol   = isPlanned ? 'text-indigo-700'  : 'text-emerald-700';
+    const btnCol    = isPlanned ? 'text-indigo-600 hover:bg-indigo-100' : 'text-emerald-600 hover:bg-emerald-100';
+    const label     = isPlanned ? '📋 予定（計画）' : '✅ 実績（結果）';
+    const testId    = isPlanned ? 'add-planned'    : 'add-actual';
 
-          {/* Planned column */}
-          <div
-            ref={timelineRef}
-            className="relative flex-1 border-r border-gray-100 select-none bg-indigo-50/20"
-            style={{ cursor: plannedDnC.dragState?.active ? 'ns-resize' : 'crosshair' }}
-            onMouseDown={plannedDnC.onTimelineMouseDown}
-            onTouchStart={plannedDnC.onTimelineTouchStart}
+    return (
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* 列ヘッダー */}
+        <div className={`px-3 py-2 flex items-center justify-between border-b border-gray-100 ${headerBg}`}>
+          <span className={`text-xs font-bold ${textCol}`}>{label}</span>
+          <button
+            onClick={() => onOpenBlock(undefined, col)}
+            data-testid={testId}
+            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg min-h-[36px] sm:min-h-[28px] ${btnCol}`}
+            aria-label={isPlanned ? '予定を追加' : '実績を追加'}
           >
-            <TimeGrid />
-            {report.blocks.filter(b => b.isPlanned).map(block => {
-              const isDragging = blockDragState?.blockId === block.id;
-              const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
-              const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
-              const origStart = timeToMinutes(block.startTime);
-              const origEnd   = timeToMinutes(block.endTime);
-              return (
-                <BlockCard
-                  key={block.id}
-                  block={block}
-                  isDragging={isDragging}
-                  startMin={startMin}
-                  endMin={endMin}
-                  origStart={origStart}
-                  origEnd={origEnd}
-                  col="planned"
-                  showActualizeBtn={block.isPlanned && !block.isActual}
-                  onDragStart={(e, mode) => startDrag(e, block.id, mode, origStart, origEnd)}
-                  onClick={e => { if (isDragging) { e.stopPropagation(); return; } onOpenBlock(block, 'planned'); }}
-                  onActualize={() => onActualize(block)}
-                />
-              );
-            })}
-            {plannedDnC.dragState?.active && (
-              <DragGhost dragState={plannedDnC.dragState} col="planned" />
-            )}
-            {/* 現時刻マーカー（予定列）*/}
-            {nowTop !== null && (
-              <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${nowTop}px` }}>
-                <div className="relative flex items-center">
+            <Plus className="w-3.5 h-3.5" /> 追加
+          </button>
+        </div>
+
+        {/* タイムライン本体 */}
+        <div
+          ref={ref}
+          className={`relative select-none ${bgClass}`}
+          style={{
+            height: `${totalHeight}px`,
+            cursor: dnC.dragState?.active ? 'ns-resize' : 'crosshair',
+          }}
+          onMouseDown={dnC.onTimelineMouseDown}
+          onTouchStart={dnC.onTimelineTouchStart}
+        >
+          <TimeGrid />
+          {blocks.map(block => {
+            const isDragging = blockDragState?.blockId === block.id;
+            const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
+            const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
+            const origStart = timeToMinutes(block.startTime);
+            const origEnd   = timeToMinutes(block.endTime);
+            return (
+              <BlockCard
+                key={block.id}
+                block={block}
+                isDragging={isDragging}
+                startMin={startMin}
+                endMin={endMin}
+                origStart={origStart}
+                origEnd={origEnd}
+                col={col}
+                showActualizeBtn={isPlanned && !block.isActual}
+                onDragStart={(e, mode) => startDrag(e, block.id, mode, origStart, origEnd, col)}
+                onClick={e => { if (isDragging) { e.stopPropagation(); return; } onOpenBlock(block, col); }}
+                onActualize={() => onActualize(block)}
+              />
+            );
+          })}
+          {dnC.dragState?.active && <DragGhost dragState={dnC.dragState} col={col} />}
+          {/* 現時刻マーカー */}
+          {nowTop !== null && (
+            <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${nowTop}px` }}>
+              <div className="relative flex items-center">
+                {isPlanned && (
                   <span data-testid="now-marker-label" className="absolute -top-3.5 left-0 text-[9px] font-bold text-red-600 bg-white/90 px-0.5 rounded leading-none whitespace-nowrap">
                     {String(Math.floor(nowMin / 60)).padStart(2,'0')}:{String(nowMin % 60).padStart(2,'0')}
                   </span>
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 shadow-sm" />
-                  <div className="flex-1 border-t-2 border-red-400 opacity-80" />
-                </div>
+                )}
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 shadow-sm" />
+                <div className="flex-1 border-t-2 border-red-400 opacity-80" />
               </div>
-            )}
-          </div>
-
-          {/* Actual column */}
-          <div
-            ref={actualColRef}
-            className="relative flex-1 select-none bg-emerald-50/20"
-            style={{ cursor: actualDnC.dragState?.active ? 'ns-resize' : 'crosshair' }}
-            onMouseDown={actualDnC.onTimelineMouseDown}
-            onTouchStart={actualDnC.onTimelineTouchStart}
-          >
-            <TimeGrid />
-            {report.blocks.filter(b => b.isActual).map(block => {
-              const isDragging = blockDragState?.blockId === block.id;
-              const startMin = isDragging ? blockDragState!.startMin : timeToMinutes(block.startTime);
-              const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
-              const origStart = timeToMinutes(block.startTime);
-              const origEnd   = timeToMinutes(block.endTime);
-              return (
-                <BlockCard
-                  key={block.id}
-                  block={block}
-                  isDragging={isDragging}
-                  startMin={startMin}
-                  endMin={endMin}
-                  origStart={origStart}
-                  origEnd={origEnd}
-                  col="actual"
-                  showActualizeBtn={false}
-                  onDragStart={(e, mode) => startDrag(e, block.id, mode, origStart, origEnd, 'actual')}
-                  onClick={e => { if (isDragging) { e.stopPropagation(); return; } onOpenBlock(block, 'actual'); }}
-                  onActualize={() => {}} // no-op for actual
-                />
-              );
-            })}
-            {actualDnC.dragState?.active && (
-              <DragGhost dragState={actualDnC.dragState} col="actual" />
-            )}
-            {/* 現時刻マーカー（実績列）*/}
-            {nowTop !== null && (
-              <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${nowTop}px` }}>
-                <div className="flex items-center">
-                  <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 shadow-sm" />
-                  <div className="flex-1 border-t-2 border-red-400 opacity-80" />
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
+    );
+  };
 
-      {/* ChipPopovers (rendered outside the timeline box, fixed position) */}
+  return (
+    <>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+
+        {/* パネルヘッダー */}
+        <div className="px-3 py-2.5 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
+            <span className="hidden sm:inline text-xs text-gray-400">← ドラッグまたは「追加」ボタンで入力</span>
+          </div>
+          <button
+            onClick={() => setShowLegend(v => !v)}
+            className="flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg min-h-[36px]"
+          >
+            🎨 凡例
+          </button>
+        </div>
+
+        {/* 凡例パネル */}
+        {showLegend && (
+          <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-x-3 gap-y-1">
+            {(Object.keys(BLOCK_LABELS) as import('../../types').BlockType[]).map(type => (
+              <span key={type} className={`inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded ${BLOCK_COLORS[type]}`}>
+                {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
+              </span>
+            ))}
+            <span className="text-xs text-gray-400 self-center ml-2">点線=予定 / 実線=実績</span>
+          </div>
+        )}
+
+        {/* 予定/実績 説明バー（P0-2） */}
+        <div className="hidden sm:grid border-b border-gray-100 text-center" style={{ gridTemplateColumns: '40px 1fr 1px 1fr' }}>
+          <div />
+          <div className="py-1 bg-indigo-100/60 text-xs font-bold text-indigo-700">◀ 予定（計画したこと）</div>
+          <div className="bg-gray-200" />
+          <div className="py-1 bg-emerald-100/60 text-xs font-bold text-emerald-700">実績（実際にやったこと）▶</div>
+        </div>
+
+        {/* タイムライン本体 */}
+        {isMobile ? (
+          <div className="flex flex-col">
+            <div className="flex">
+              <div className="relative flex-shrink-0 bg-gray-50" style={{ width: '36px' }}>
+                {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
+                  const min = DAY_START + i * 60;
+                  const h = Math.floor(min / 60);
+                  return (
+                    <div key={i} style={{ top: `${minuteToY(min) + 8}px` }}
+                      className="absolute right-1 text-[9px] text-gray-400 leading-none pointer-events-none">
+                      {h}:00
+                    </div>
+                  );
+                })}
+                <div style={{ height: `${totalHeight}px` }} />
+              </div>
+              {renderColumn('planned')}
+            </div>
+            <div className="border-t-2 border-dashed border-gray-200 my-1 mx-3" />
+            <div className="flex">
+              <div className="relative flex-shrink-0 bg-gray-50" style={{ width: '36px' }}>
+                {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
+                  const min = DAY_START + i * 60;
+                  const h = Math.floor(min / 60);
+                  return (
+                    <div key={i} style={{ top: `${minuteToY(min) + 8}px` }}
+                      className="absolute right-1 text-[9px] text-gray-400 leading-none pointer-events-none">
+                      {h}:00
+                    </div>
+                  );
+                })}
+                <div style={{ height: `${totalHeight}px` }} />
+              </div>
+              {renderColumn('actual')}
+            </div>
+          </div>
+        ) : (
+          <div className="flex" style={{ height: `${totalHeight}px` }}>
+            <div className="relative flex-shrink-0 bg-gray-50/50" style={{ width: '40px' }}>
+              {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
+                const min = DAY_START + i * 60;
+                const h = Math.floor(min / 60);
+                const m = min % 60;
+                return (
+                  <div key={i} style={{ top: `${minuteToY(min) + 8}px` }}
+                    className="absolute right-1 text-[10px] text-gray-400 leading-none pointer-events-none">
+                    {h}:{String(m).padStart(2,'0')}
+                  </div>
+                );
+              })}
+            </div>
+            {renderColumn('planned')}
+            <div className="w-px bg-gray-200 flex-shrink-0" />
+            {renderColumn('actual')}
+          </div>
+        )}
+      </div>
+
       {plannedDnC.chipVisible && plannedDnC.dragState && (
         <ChipPopover
           dragState={plannedDnC.dragState}
