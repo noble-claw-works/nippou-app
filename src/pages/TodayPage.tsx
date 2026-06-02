@@ -144,14 +144,6 @@ export function TodayPage() {
     return () => clearTimeout(id);
   }, [blockModal.open, blockModal.focusCustomer]);
 
-  // ── 時刻 → 予定/実績 自動判定ヘルパー ───────────────────────────────────────
-  const inferPlannedActual = (startMin: number, endMin: number): { isPlanned: boolean; isActual: boolean } => {
-    const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-    if (endMin <= nowMin)   return { isPlanned: false, isActual: true };   // 全て過去 → 実績
-    if (startMin >= nowMin) return { isPlanned: true,  isActual: false };  // 全て未来 → 予定
-    return { isPlanned: true, isActual: true };                            // またぐ → 両方
-  };
-
   // ── D&C chip selection ─────────────────────────────────────────────────────
   const handleChipSelected = (type: BlockType) => {
     const { startMin, endMin } = confirmChip(type);
