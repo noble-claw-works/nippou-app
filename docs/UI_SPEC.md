@@ -180,18 +180,30 @@ interface TrackingBannerProps {
 
 ### StatusBar (`src/components/today/StatusBar.tsx`)
 
-**役割**: 下部ステータスバー。自動保存表示、ステータスステッパー、提出ボタン。
+**役割**: 下部ステータスバー。自動保存表示、ステータスステッパー、ステータス別アクションボタン。
 
-**行数**: 83行
+**行数**: 100行
 
 **Props**:
 ```typescript
 interface StatusBarProps {
   report: DailyReport;
-  onShowSubmit: () => void;
-  onWithdraw: () => void;
+  onConfirmPlanning: () => void;  // planning → in_progress
+  onShowSubmit: () => void;       // in_progress → submitted
+  onWithdraw: () => void;         // submitted → in_progress（取り下げ・差し戻し共通）
 }
 ```
+
+**ステータス別ボタン表示**:
+
+| ステータス | 表示ボタン |
+|---|---|
+| `planning` | 「▶ 予定を確定する」（indigo） |
+| `in_progress` | 「✅ 提出する」（blue） |
+| `submitted` | 「← 取り下げ」（amber、未承認時のみ） |
+| `confirmed` | 「🔒 承認済み・変更不可」バッジ（green） |
+
+**ステップインジケーター**: 予定入力 → 実績入力 → 提出済み → 承認済み の4ステップを点で可視化。
 
 ---
 

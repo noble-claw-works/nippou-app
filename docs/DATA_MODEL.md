@@ -56,7 +56,7 @@ interface DailyReport {
   id: string;
   userId: string;
   date: string;              // YYYY-MM-DD
-  status: ReportStatus;      // 'draft' | 'submitted' | 'confirmed' | 'sent_back'
+  status: ReportStatus;      // 'planning' | 'in_progress' | 'submitted' | 'confirmed'
 
   // テーマ
   mainTheme: string;
@@ -81,8 +81,6 @@ interface DailyReport {
   // タイムスタンプ
   submittedAt?: string;
   confirmedAt?: string;
-  sentBackAt?: string;
-  sentBackReason?: string;
   confirmedBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -130,6 +128,38 @@ interface Todo {
 
 ---
 
+## ステータス遷移
+
+### 過移図
+
+```
+planning ──[予定を確定する]──→ in_progress ──[提出する]──→ submitted
+                                   ↑                        ↓
+                                   └──[取り下げ / 差し戻し]──┘
+                                                              ↓ 上長承認
+                                                          confirmed
+```
+
+### 入力制限
+
+| 操作 | planning | in_progress | submitted | confirmed |
+|---|---|---|---|---|
+| 予定ブロック 追加/編集/削除 | ✅ | ✅ | ❌ | ❌ |
+| 実績ブロック 追加/編集/削除 | ❌ | ✅ | ❌ | ❌ |
+| 実績化ボタン | ❌ | ✅ | ❌ | ❌ |
+| 取り下げ | — | — | ✅（未承認時のみ） | ❌ |
+
+### Store アクション
+
+| アクション | 遷移 | 条件 |
+|---|---|---|
+| `confirmPlanning(reportId)` | `planning → in_progress` | `planning` 時のみ有効 |
+| `submitReport(reportId)` | `in_progress → submitted` | `in_progress` 時のみ有効 |
+| `withdrawReport(reportId)` | `submitted → in_progress` | `submitted` 時のみ有効（本人取り下げ・上長差し戻し共通） |
+| `confirmReport(reportId)` | `submitted → confirmed` | `submitted` 時のみ有効（上長操作） |
+
+---
+
 ## Store Actions（主要）
 
 ### TimeBlock 操作
@@ -158,10 +188,10 @@ updateBlock(report.id, block.id, {
 
 ```
 ユーザー操作
-  └→ TodayPage (handler)
+  └→ TodayPage (handler + ステータスガード)
        └→ useAppStore (Zustand action)
             └→ set() で reports 配列を immutable 更新
-                 └→ 500ms polling でコンポーネントに反映
+                 └→ useAppStore セレクターで直接購読（ポーリング廃止済み）
 ```
 
 ---

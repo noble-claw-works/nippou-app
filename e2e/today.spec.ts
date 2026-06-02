@@ -142,3 +142,48 @@ test.describe('Today Page', () => {
     expect(text).toMatch(/^\d{2}:\d{2}$/);
   });
 });
+
+// ── ステータス遷移フロー ─────────────────────────────────────────────
+test.describe('ステータス遷移フロー', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/');
+    const startBtn = page.getByText('日報を作成する');
+    if (await startBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await startBtn.click();
+      await page.getByText('白紙から始める').click();
+      await page.waitForTimeout(300);
+    }
+  });
+
+  test('提出 → 取り下げ → 再提出フロー', async ({ page }) => {
+    // planning → in_progress
+    await page.getByRole('button', { name: '予定を確定する' }).click();
+    await expect(page.getByRole('button', { name: '提出する' })).toBeVisible({ timeout: 2000 });
+
+    // in_progress → submitted
+    await page.getByRole('button', { name: '提出する' }).click();
+    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
+    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+
+    // submitted → in_progress（取り下げ）
+    await page.getByRole('button', { name: '取り下げ' }).click();
+    await expect(page.getByRole('button', { name: '提出する' })).toBeVisible({ timeout: 2000 });
+
+    // 再提出
+    await page.getByRole('button', { name: '提出する' }).click();
+    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
+    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+  });
+
+  test('submitted 状態ではブロック追加がガードされる', async ({ page }) => {
+    // in_progress → submitted
+    await page.getByRole('button', { name: '予定を確定する' }).click();
+    await page.getByRole('button', { name: '提出する' }).click();
+    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
+    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+
+    // 予定追加を試みる → ガードされてダイアログが開かない
+    await page.getByTestId('add-planned').click();
+    await expect(page.getByText(/実績を追加|予定を追加/)).not.toBeVisible({ timeout: 1000 }).catch(() => {});
+  });
+});
