@@ -31,6 +31,8 @@ interface BlockModalState {
   open: boolean;
   block: Partial<TimeBlock>;
   isNew: boolean;
+  /** which column opened this dialog — determines isPlanned/isActual */
+  col: 'planned' | 'actual';
   /** when true, auto-focus customer field; when false, focus type chips */
   focusCustomer: boolean;
 }
@@ -57,7 +59,7 @@ export function TodayPage() {
   const [pendingLongBlock, setPendingLongBlock] = useState<{ startMin: number; endMin: number; type?: BlockType } | null>(null);
 
   const [blockModal, setBlockModal] = useState<BlockModalState>({
-    open: false, block: {}, isNew: true, focusCustomer: false,
+    open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false,
   });
   const [continueInput, setContinueInput] = useState(false);
   const customerSelectRef = useRef<HTMLSelectElement>(null);
@@ -172,10 +174,13 @@ export function TodayPage() {
     openDialogFromDrag(startMin, endMin, undefined);
   };
 
-  const openDialogFromDrag = (startMin: number, endMin: number, type?: BlockType) => {
-    const pa = inferPlannedActual(startMin, endMin);
+  const openDialogFromDrag = (startMin: number, endMin: number, type?: BlockType, col: 'planned' | 'actual' = 'actual') => {
+    const pa = col === 'planned'
+      ? { isPlanned: true,  isActual: false }
+      : { isPlanned: false, isActual: true  };
     setBlockModal({
       open: true,
+      col,
       block: {
         type: type ?? 'visit',
         startTime: minutesToTime(startMin),
@@ -197,15 +202,18 @@ export function TodayPage() {
   };
 
   // ── quick chip (existing C route) ──────────────────────────────────────────
-  const handleChipClick = (type: BlockType) => {
+  const handleChipClick = (type: BlockType, col: 'planned' | 'actual' = 'actual') => {
     if (!report) { addToast({ type: 'warning', message: '先に日報を作成してください' }); return; }
     const nowH = new Date().getHours();
     const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
     const startMin = nowH * 60 + nowM;
     const endMin   = Math.min(startMin + 60, DAY_END);
-    const pa = inferPlannedActual(startMin, endMin);
+    const pa = col === 'planned'
+      ? { isPlanned: true,  isActual: false }
+      : { isPlanned: false, isActual: true  };
     setBlockModal({
       open: true,
+      col,
       block: {
         type,
         startTime: minutesToTime(startMin),
@@ -240,17 +248,21 @@ export function TodayPage() {
   };
 
   // ── block modal ────────────────────────────────────────────────────────────
-  const handleOpenBlock = (block?: TimeBlock) => {
+  const handleOpenBlock = (block?: TimeBlock, col: 'planned' | 'actual' = 'actual') => {
     if (block) {
-      setBlockModal({ open: true, block: { ...block }, isNew: false, focusCustomer: false });
+      const c: 'planned' | 'actual' = block.isPlanned ? 'planned' : 'actual';
+      setBlockModal({ open: true, col: c, block: { ...block }, isNew: false, focusCustomer: false });
     } else {
       const nowH = new Date().getHours();
       const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
       const startMin = nowH * 60 + nowM;
       const endMin   = Math.min(startMin + 60, DAY_END);
-      const pa = inferPlannedActual(startMin, endMin);
+      const pa = col === 'planned'
+        ? { isPlanned: true,  isActual: false }
+        : { isPlanned: false, isActual: true  };
       setBlockModal({
         open: true,
+        col,
         block: {
           type: 'visit',
           startTime: minutesToTime(startMin),
@@ -286,10 +298,11 @@ export function TodayPage() {
           title: '', memo: '', isPlanned: false, isActual: true, attachments: [],
         },
         isNew: true,
+        col: blockModal.col,
         focusCustomer: true,
       });
     } else {
-      setBlockModal({ open: false, block: {}, isNew: true, focusCustomer: false });
+      setBlockModal({ open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false });
     }
   };
 
@@ -297,7 +310,7 @@ export function TodayPage() {
     if (!report) return;
     deleteBlock(report.id, blockId);
     addToast({ type: 'info', message: '削除しました', undoFn: () => addToast({ type: 'info', message: '（元に戻す機能はモックです）' }) });
-    setBlockModal({ open: false, block: {}, isNew: true, focusCustomer: false });
+    setBlockModal({ open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false });
   };
 
   const handleStopTracking = () => {
@@ -376,29 +389,27 @@ export function TodayPage() {
                       <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
                       <span className="ml-2 text-xs text-gray-400">← 空白をドラッグして素早く入力</span>
                     </div>
-                    <button onClick={() => handleOpenBlock()}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">
-                      <Plus className="w-3.5 h-3.5" /> 追加
-                    </button>
-                  </div>
-
-                  {/* Quick Chips (C route) */}
-                  <div className="px-4 py-2 border-b border-gray-100 flex gap-2 overflow-x-auto">
-                    {BLOCK_TYPES.map(type => (
-                      <button key={type} onClick={() => handleChipClick(type)}
-                        className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs hover:bg-gray-100 transition-colors">
-                        {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
-                      </button>
-                    ))}
                   </div>
 
                   {/* ── 2列タイムライングリッド ─────────────────────────────── */}
                   {/* 列ヘッダー */}
                   <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '40px 1fr 1px 1fr' }}>
                     <div />
-                    <div className="px-2 py-1.5 text-center text-xs font-semibold text-indigo-600 bg-indigo-50">📋 予定</div>
+                    <div className="px-2 py-1.5 flex items-center justify-between bg-indigo-50">
+                      <span className="text-xs font-semibold text-indigo-600">📋 予定</span>
+                      <button onClick={() => handleOpenBlock(undefined, 'planned')}
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-100 rounded">
+                        <Plus className="w-3 h-3" /> 追加
+                      </button>
+                    </div>
                     <div className="bg-gray-200" />
-                    <div className="px-2 py-1.5 text-center text-xs font-semibold text-emerald-600 bg-emerald-50">✅ 実績</div>
+                    <div className="px-2 py-1.5 flex items-center justify-between bg-emerald-50">
+                      <span className="text-xs font-semibold text-emerald-600">✅ 実績</span>
+                      <button onClick={() => handleOpenBlock(undefined, 'actual')}
+                        className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-emerald-600 hover:bg-emerald-100 rounded">
+                        <Plus className="w-3 h-3" /> 追加
+                      </button>
+                    </div>
                   </div>
 
                   {/* タイムライン本体（時刻軸 + 左=予定列 + 右=実績列） */}
@@ -458,7 +469,7 @@ export function TodayPage() {
                             }}
                             className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md border-dashed ${colorClass}`}
                             onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd); }}
-                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block); }}
+                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block, 'planned'); }}
                           >
                             <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
                               onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd)} />
@@ -537,7 +548,7 @@ export function TodayPage() {
                             }}
                             className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md border-solid ${colorClass}`}
                             onMouseDown={e => { startDrag(e, block.id, 'move', origStart, origEnd, 'actual'); }}
-                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block); }}
+                            onClick={e => { if (isDragging) { e.stopPropagation(); return; } handleOpenBlock(block, 'actual'); }}
                           >
                             <div className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
                               onMouseDown={e => startDrag(e, block.id, 'resizeTop', origStart, origEnd, 'actual')} />
@@ -777,7 +788,10 @@ export function TodayPage() {
 
       {/* Block Modal */}
       <Modal open={blockModal.open} onClose={() => setBlockModal(s => ({ ...s, open: false }))}
-        title={blockModal.isNew ? '時間ブロックを追加' : '時間ブロックを編集'} size="sm"
+        title={blockModal.isNew
+          ? (blockModal.col === 'planned' ? '📋 予定を追加' : '✅ 実績を追加')
+          : (blockModal.col === 'planned' ? '📋 予定を編集' : '✅ 実績を編集')
+        } size="sm"
         footer={
           <>
             {!blockModal.isNew && (
@@ -797,39 +811,6 @@ export function TodayPage() {
           </>
         }>
         <div className="space-y-3">
-          {/* 予定 / 実績 セレクタ */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">種類</label>
-            <div className="flex gap-2">
-              {([
-                { label: '📋 予定のみ',   isPlanned: true,  isActual: false },
-                { label: '✅ 実績のみ',   isPlanned: false, isActual: true  },
-                { label: '📋✅ 予定＋実績', isPlanned: true,  isActual: true  },
-              ] as { label: string; isPlanned: boolean; isActual: boolean }[]).map(opt => {
-                const active =
-                  blockModal.block.isPlanned === opt.isPlanned &&
-                  blockModal.block.isActual  === opt.isActual;
-                return (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    onClick={() => setBlockModal(s => ({ ...s, block: { ...s.block, isPlanned: opt.isPlanned, isActual: opt.isActual } }))}
-                    className={`flex-1 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
-                      active
-                        ? opt.isPlanned && !opt.isActual
-                          ? 'bg-indigo-50 border-indigo-400 text-indigo-700'
-                          : !opt.isPlanned && opt.isActual
-                            ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
-                            : 'bg-blue-50 border-blue-400 text-blue-700'
-                        : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">開始時刻</label>
