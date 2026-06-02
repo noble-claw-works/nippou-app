@@ -7,7 +7,7 @@ import { MOOD_EMOJIS } from '../utils';
 import type { ReportStatus } from '../types';
 
 const STATUS_ICON: Record<ReportStatus, string> = {
-  draft: '✎', submitted: '✓', confirmed: '★', sent_back: '↩',
+  planning: '✎', in_progress: '✍', submitted: '✓', confirmed: '★',
 };
 
 export function CalendarPage() {
@@ -92,7 +92,7 @@ export function CalendarPage() {
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           report.status === 'confirmed' ? 'bg-green-500' :
                           report.status === 'submitted' ? 'bg-blue-500' :
-                          report.status === 'sent_back' ? 'bg-orange-500' : 'bg-gray-400'
+                          'bg-gray-400'
                         }`} />
                       </div>
                       {report.morningMood && (

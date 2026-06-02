@@ -3,7 +3,7 @@
 // =====================================================
 
 export type Role = 'general' | 'manager' | 'executive' | 'admin';
-export type ReportStatus = 'draft' | 'submitted' | 'confirmed' | 'sent_back';
+export type ReportStatus = 'planning' | 'in_progress' | 'submitted' | 'confirmed';
 export type BlockType = 'visit' | 'office' | 'phone' | 'travel' | 'break' | 'meeting' | 'lunch';
 export type CustomerType = 'individual' | 'corporate' | 'prospect';
 export type CustomerStatus = 'active' | 'inactive';

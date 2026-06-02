@@ -79,7 +79,7 @@ function makeComment(id: string, reportId: string, userId: string, text: string,
 // =====================================================
 const makeReport = (
   id: string, userId: string, date: string,
-  status: 'draft' | 'submitted' | 'confirmed' | 'sent_back',
+  status: 'planning' | 'in_progress' | 'submitted' | 'confirmed',
   blocks: TimeBlock[], todos: Todo[], comments: Comment[]
 ): DailyReport => ({
   id,
@@ -99,10 +99,8 @@ const makeReport = (
   selfComment: '',
   comments,
   attachments: [],
-  submittedAt: status !== 'draft' ? `${date}T18:30:00` : undefined,
+  submittedAt: (status === 'submitted' || status === 'confirmed') ? `${date}T18:30:00` : undefined,
   confirmedAt: status === 'confirmed' ? `${date}T19:30:00` : undefined,
-  sentBackAt: status === 'sent_back' ? `${date}T20:00:00` : undefined,
-  sentBackReason: status === 'sent_back' ? '顧客対応の詳細を記入してください' : undefined,
   confirmedBy: status === 'confirmed' ? 'u4' : undefined,
   createdAt: `${date}T08:00:00`,
   updatedAt: `${date}T18:30:00`,
@@ -113,7 +111,7 @@ const buildReports = (): DailyReport[] => {
 
   // 今日の日報（下書き）
   reports.push(makeReport(
-    'r_today_u1', 'u1', today, 'draft',
+    'r_today_u1', 'u1', today, 'planning',
     [
       makeBlock('b1', 'r_today_u1', { type: 'meeting', startTime: '09:00', endTime: '09:30', title: '朝礼', isPlanned: true, isActual: true }),
       makeBlock('b2', 'r_today_u1', { type: 'visit', startTime: '10:00', endTime: '11:30', title: '自動車保険更新手続き', customerId: 'c1', isPlanned: true, isActual: true }),
@@ -128,9 +126,9 @@ const buildReports = (): DailyReport[] => {
   ));
 
   // 過去30日分を生成（u1のみ詳細、u2/u3は簡易）
-  const statuses: Array<'submitted' | 'confirmed' | 'sent_back' | 'draft'> = [
-    'confirmed', 'confirmed', 'submitted', 'confirmed', 'draft',
-    'confirmed', 'confirmed', 'submitted', 'sent_back', 'confirmed',
+  const statuses: Array<'submitted' | 'confirmed' | 'in_progress' | 'planning'> = [
+    'confirmed', 'confirmed', 'submitted', 'confirmed', 'planning',
+    'confirmed', 'confirmed', 'submitted', 'in_progress', 'confirmed',
   ];
 
   for (let i = 1; i <= 30; i++) {
@@ -237,7 +235,7 @@ export const NOTIFICATIONS: Notification[] = [
 // 監査ログ
 // =====================================================
 export const AUDIT_LOGS: AuditLog[] = [
-  { id: 'al1', userId: 'u1', action: '日報を提出', targetType: 'DailyReport', targetId: `r_${d(1)}_u1`, ip: '192.168.1.1', userAgent: 'Chrome/125', result: 'success', diff: { status: { before: 'draft', after: 'submitted' } }, createdAt: `${d(1)}T18:30:00` },
+  { id: 'al1', userId: 'u1', action: '日報を提出', targetType: 'DailyReport', targetId: `r_${d(1)}_u1`, ip: '192.168.1.1', userAgent: 'Chrome/125', result: 'success', diff: { status: { before: 'planning', after: 'submitted' } }, createdAt: `${d(1)}T18:30:00` },
   { id: 'al2', userId: 'u1', action: 'ログイン', targetType: 'User', targetId: 'u1', ip: '192.168.1.1', userAgent: 'Chrome/125', result: 'success', createdAt: `${today}T09:01:00` },
   { id: 'al3', userId: 'u6', action: 'ユーザー権限変更', targetType: 'User', targetId: 'u2', ip: '192.168.1.100', userAgent: 'Chrome/125', result: 'success', diff: { role: { before: 'general', after: 'manager' } }, createdAt: d(3) + 'T10:00:00' },
   { id: 'al4', userId: 'u4', action: '日報を確認済みにした', targetType: 'DailyReport', targetId: `r_${d(2)}_u1`, ip: '192.168.1.2', userAgent: 'Firefox/120', result: 'success', diff: { status: { before: 'submitted', after: 'confirmed' } }, createdAt: `${d(2)}T19:30:00` },

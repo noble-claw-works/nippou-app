@@ -54,10 +54,10 @@ interface AppState {
   getTodayReport: () => DailyReport | undefined;
   createReport: (userId: string, date: string) => DailyReport;
   updateReport: (reportId: string, updates: Partial<DailyReport>) => void;
-  submitReport: (reportId: string) => void;
-  withdrawReport: (reportId: string) => void;
-  confirmReport: (reportId: string) => void;
-  sendBackReport: (reportId: string, reason: string) => void;
+  confirmPlanning: (reportId: string) => void;   // planning → in_progress
+  submitReport: (reportId: string) => void;       // in_progress → submitted
+  withdrawReport: (reportId: string) => void;     // submitted → in_progress（本人取り下げ＋上長差し戻し共通）
+  confirmReport: (reportId: string) => void;      // submitted → confirmed（上長承認）
 
   // Actions: TimeBlock
   addBlock: (reportId: string, block: Omit<TimeBlock, 'id'>) => TimeBlock;
@@ -156,7 +156,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createReport: (userId, date) => {
     const report: DailyReport = {
-      id: uid(), userId, date, status: 'draft',
+      id: uid(), userId, date, status: 'planning',
       mainTheme: '', monthlyTheme: '', dailyTheme: '',
       blocks: [], todos: [], customerVisits: [],
       gratitude: ['', '', ''], morningMood: null, eveningMood: null,
@@ -176,10 +176,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  confirmPlanning: (reportId) => {
+    set(s => ({
+      reports: s.reports.map(r => r.id === reportId && r.status === 'planning'
+        ? { ...r, status: 'in_progress', updatedAt: new Date().toISOString() }
+        : r
+      )
+    }));
+  },
+
   submitReport: (reportId) => {
     const now = new Date().toISOString();
     set(s => ({
-      reports: s.reports.map(r => r.id === reportId
+      reports: s.reports.map(r => r.id === reportId && r.status === 'in_progress'
         ? { ...r, status: 'submitted', submittedAt: now, updatedAt: now }
         : r
       )
@@ -187,9 +196,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   withdrawReport: (reportId) => {
+    // 本人取り下げ・上長差し戻し共通: submitted → in_progress
     set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'draft', submittedAt: undefined, updatedAt: new Date().toISOString() }
+      reports: s.reports.map(r => r.id === reportId && r.status === 'submitted'
+        ? { ...r, status: 'in_progress', submittedAt: undefined, updatedAt: new Date().toISOString() }
         : r
       )
     }));
@@ -198,18 +208,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   confirmReport: (reportId) => {
     const now = new Date().toISOString();
     set(s => ({
-      reports: s.reports.map(r => r.id === reportId
+      reports: s.reports.map(r => r.id === reportId && r.status === 'submitted'
         ? { ...r, status: 'confirmed', confirmedAt: now, confirmedBy: s.currentUserId, updatedAt: now }
-        : r
-      )
-    }));
-  },
-
-  sendBackReport: (reportId, reason) => {
-    const now = new Date().toISOString();
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'sent_back', sentBackAt: now, sentBackReason: reason, updatedAt: now }
         : r
       )
     }));

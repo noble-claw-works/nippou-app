@@ -12,7 +12,7 @@ export function ReportDetailPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const { reports, users, customers, currentRole, currentUserId, currentUserId: uid,
-    addComment, deleteComment, confirmReport, sendBackReport, addToast } = useAppStore();
+    addComment, deleteComment, confirmReport, withdrawReport, addToast } = useAppStore();
 
   const report = reports.find(r => r.date === date && r.userId === (currentRole === 'general' ? uid : r.userId))
     ?? reports.find(r => r.date === date);
@@ -46,7 +46,7 @@ export function ReportDetailPage() {
 
   const handleSendBack = () => {
     if (!sendBackReason.trim()) return;
-    sendBackReport(report.id, sendBackReason);
+    withdrawReport(report.id);
     setShowSendBack(false);
     setSendBackReason('');
     addToast({ type: 'info', message: '日報を差し戻しました' });
@@ -150,10 +150,10 @@ export function ReportDetailPage() {
             </div>
           </div>
 
-          {report.status === 'sent_back' && report.sentBackReason && (
+          {false && (
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
               <h2 className="text-sm font-semibold text-orange-700 mb-1">↩ 差し戻し理由</h2>
-              <p className="text-sm text-orange-800">{report.sentBackReason}</p>
+              <p className="text-sm text-orange-800">{(report as any).sentBackReason}</p>
             </div>
           )}
         </div>

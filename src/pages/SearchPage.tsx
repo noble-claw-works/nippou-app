@@ -13,7 +13,7 @@ export function SearchPage() {
   const [query, setQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(['draft', 'submitted', 'confirmed', 'sent_back']);
+  const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(['planning', 'in_progress', 'submitted', 'confirmed']);
   const [authorId, setAuthorId] = useState('');
   const [searched, setSearched] = useState(false);
 
@@ -52,7 +52,7 @@ export function SearchPage() {
   });
 
   const STATUS_LABELS: Record<ReportStatus, string> = {
-    draft: '下書き', submitted: '提出済み', confirmed: '確認済み', sent_back: '差し戻し',
+    planning: '予定入力中', in_progress: '実績入力中', submitted: '提出済み', confirmed: '承認済み',
   };
 
   return (
@@ -87,7 +87,7 @@ export function SearchPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">
-          {(['draft', 'submitted', 'confirmed', 'sent_back'] as ReportStatus[]).map(s => (
+          {(['planning', 'in_progress', 'submitted', 'confirmed'] as ReportStatus[]).map(s => (
             <button key={s} onClick={() => toggleStatus(s)}
               className={`px-3 py-1 text-xs rounded-full border ${selectedStatuses.includes(s) ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-500'}`}>
               {selectedStatuses.includes(s) ? '☑' : '☐'} {STATUS_LABELS[s]}
@@ -102,7 +102,7 @@ export function SearchPage() {
           </select>
         )}
         <div className="flex justify-end mt-2">
-          <button onClick={() => { setQuery(''); setDateFrom(''); setDateTo(''); setAuthorId(''); setSelectedStatuses(['draft','submitted','confirmed','sent_back']); setSearched(false); }}
+          <button onClick={() => { setQuery(''); setDateFrom(''); setDateTo(''); setAuthorId(''); setSelectedStatuses(['planning','in_progress','submitted','confirmed']); setSearched(false); }}
             className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1">
             <X className="w-3 h-3" /> リセット
           </button>
@@ -114,7 +114,7 @@ export function SearchPage() {
           <p className="text-sm text-gray-500 mb-3">検索結果 ({filteredReports.length} 件)</p>
           {filteredReports.length === 0 ? (
             <EmptyState icon="🔍" title="条件に一致する日報がありません"
-              action={{ label: '条件をリセット', onClick: () => { setSearched(false); setSelectedStatuses(['draft','submitted','confirmed','sent_back']); } }} />
+              action={{ label: '条件をリセット', onClick: () => { setSearched(false); setSelectedStatuses(['planning','in_progress','submitted','confirmed']); } }} />
           ) : (
             <div className="space-y-3">
               {filteredReports.slice(0, 20).map(report => {

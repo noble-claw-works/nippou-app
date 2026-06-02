@@ -215,6 +215,7 @@ export function TimelinePanel({
             <span className="text-xs font-semibold text-indigo-600">📋 予定</span>
             <button
               onClick={() => onOpenBlock(undefined, 'planned')}
+              data-testid="add-planned"
               className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-indigo-600 hover:bg-indigo-100 rounded"
             >
               <Plus className="w-3 h-3" /> 追加
@@ -225,6 +226,7 @@ export function TimelinePanel({
             <span className="text-xs font-semibold text-emerald-600">✅ 実績</span>
             <button
               onClick={() => onOpenBlock(undefined, 'actual')}
+              data-testid="add-actual"
               className="flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] text-emerald-600 hover:bg-emerald-100 rounded"
             >
               <Plus className="w-3 h-3" /> 追加
@@ -291,7 +293,7 @@ export function TimelinePanel({
             {nowTop !== null && (
               <div className="absolute left-0 right-0 pointer-events-none z-30" style={{ top: `${nowTop}px` }}>
                 <div className="relative flex items-center">
-                  <span className="absolute -top-3.5 left-0 text-[9px] font-bold text-red-600 bg-white/90 px-0.5 rounded leading-none whitespace-nowrap">
+                  <span data-testid="now-marker-label" className="absolute -top-3.5 left-0 text-[9px] font-bold text-red-600 bg-white/90 px-0.5 rounded leading-none whitespace-nowrap">
                     {String(Math.floor(nowMin / 60)).padStart(2,'0')}:{String(nowMin % 60).padStart(2,'0')}
                   </span>
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0 shadow-sm" />

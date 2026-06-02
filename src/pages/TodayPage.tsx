@@ -29,7 +29,7 @@ export function TodayPage() {
   const today = format(new Date(), 'yyyy-MM-dd');
   const {
     getTodayReport, createReport, updateReport, updateBlock, deleteBlock, addBlock,
-    addTodo, toggleTodo, deleteTodo, submitReport, withdrawReport,
+    addTodo, toggleTodo, deleteTodo, confirmPlanning, submitReport, withdrawReport,
     customers, currentUserId, addToast,
     trackingSession, startTracking, stopTracking, discardTracking,
   } = useAppStore();
@@ -51,6 +51,11 @@ export function TodayPage() {
   const [trackCustomer, setTrackCustomer]     = useState('');
   const [elapsedSecs, setElapsedSecs]         = useState(0);
   const timerRef = useRef<number | undefined>(undefined);
+
+  // ステータスガード
+  const canEditPlanned  = (r: typeof report) => !!r && (r.status === 'planning' || r.status === 'in_progress');
+  const canEditActual   = (r: typeof report) => !!r && r.status === 'in_progress';
+  const isReadOnly      = (r: typeof report) => !!r && (r.status === 'submitted' || r.status === 'confirmed');
 
   // D&C hooks
   const onReportRequired = useCallback((): boolean => {
@@ -92,6 +97,10 @@ export function TodayPage() {
   const handleActualWithoutType   = ()              => { const { startMin, endMin } = actualDnC.confirmWithoutType();  withLongCheck(startMin, endMin, undefined, 'actual');  };
 
   const handleOpenBlock = (block?: TimeBlock, col: 'planned' | 'actual' = 'actual') => {
+    if (!report) return;
+    // 入力制限ガード
+    if (isReadOnly(report)) { addToast({ type: 'warning', message: '提出済みの日報は変更できません' }); return; }
+    if (col === 'actual' && !canEditActual(report)) { addToast({ type: 'warning', message: '実績の入力は「予定を確定する」後に行えます' }); return; }
     if (block) {
       setBlockModal({ open: true, col: block.isPlanned ? 'planned' : 'actual', block: { ...block }, isNew: false, focusCustomer: false });
     } else {
@@ -104,6 +113,13 @@ export function TodayPage() {
 
   const handleSaveBlock = () => {
     if (!report) return;
+    // ステータス別入力制限
+    if (blockModal.col === 'actual' && !canEditActual(report)) {
+      addToast({ type: 'warning', message: '実績の入力は「実績入力中」のみ可能です' }); return;
+    }
+    if (blockModal.col === 'planned' && !canEditPlanned(report)) {
+      addToast({ type: 'warning', message: '提出済みの日報は変更できません' }); return;
+    }
     const b = blockModal.block;
     if (!b.startTime || !b.endTime || !b.type) return;
     if (blockModal.isNew) { addBlock(report.id, b as Omit<TimeBlock, 'id'>); addToast({ type: 'success', message: '時間ブロックを追加しました' }); }
@@ -118,6 +134,7 @@ export function TodayPage() {
 
   const handleDeleteBlock = (blockId: string) => {
     if (!report) return;
+    if (isReadOnly(report)) { addToast({ type: 'warning', message: '提出済みの日報は変更できません' }); return; }
     deleteBlock(report.id, blockId);
     addToast({ type: 'info', message: '削除しました', undoFn: () => addToast({ type: 'info', message: '（元に戻す機能はモックです）' }) });
     setBlockModal({ open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false });
@@ -125,6 +142,7 @@ export function TodayPage() {
 
   const handleActualize = (block: TimeBlock) => {
     if (!report) return;
+    if (!canEditActual(report)) { addToast({ type: 'warning', message: '実績化は「実績入力中」のみ可能です。「予定を確定する」を押してください' }); return; }
     addBlock(report.id, { reportId: block.reportId, type: block.type, startTime: block.startTime, endTime: block.endTime, title: block.title, memo: block.memo, customerId: block.customerId, isPlanned: false, isActual: true, plannedBlockId: block.id, attachments: block.attachments.map(a => ({ ...a })) });
     addToast({ type: 'success', message: '✅ 実績ブロックを生成しました。ドラッグで時間を調整できます。' });
   };
@@ -198,6 +216,7 @@ export function TodayPage() {
       {report && (
         <StatusBar
           report={report}
+          onConfirmPlanning={() => { confirmPlanning(report.id); addToast({ type: 'success', message: '予定を確定しました。実績の入力を始めてください ✨' }); }}
           onShowSubmit={() => setShowSubmitModal(true)}
           onWithdraw={() => { withdrawReport(report.id); addToast({ type: 'info', message: '日報を取り下げました' }); }}
         />
