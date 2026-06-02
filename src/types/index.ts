@@ -56,6 +56,11 @@ export interface TimeBlock {
   attachments: Attachment[];
   /** 実績化時にスナップショット元の予定ブロック id を保持。予定ブロックは未設定 */
   plannedBlockId?: string;
+  // 訪問結果（visit ブロックのみ使用）
+  collected?: boolean;        // 集金済み
+  nextAppointment?: string;   // 次回AP (YYYY-MM-DD)
+  proposal?: string;          // 提案内容
+  result?: string;            // 対応結果メモ
 }
 
 export interface Todo {
