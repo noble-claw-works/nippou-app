@@ -60,7 +60,7 @@ export function LoginPage() {
           disabled={loading}
           className="w-full mb-5 py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
         >
-          🎮 デモでお試し（ワンクリック）
+          🎮 デモでお試し — サンプルデータで今すぐ体験
         </button>
 
         <div className="relative mb-5">

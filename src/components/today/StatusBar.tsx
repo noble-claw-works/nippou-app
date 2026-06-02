@@ -24,12 +24,12 @@ const STATUS_ORDER: Record<string, number> = {
 export function StatusStepper({ report }: { report: DailyReport }) {
   const currentOrder = STATUS_ORDER[report.status] ?? 0;
   return (
-    <div className="flex items-center justify-center gap-1 py-2 px-4 bg-white border-b border-gray-100">
+    <div className="flex items-center justify-center gap-1 py-1.5 px-3 bg-white border-b border-gray-100">
       {STATUS_STEPS.map((step, i) => {
         const done    = STATUS_ORDER[step.key] < currentOrder;
         const current = step.key === report.status;
         return (
-          <div key={step.key} className="flex items-center gap-1">
+          <div key={step.key} className="flex items-center gap-1 min-h-[44px] sm:min-h-0">
             <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-colors ${
               done    ? 'bg-blue-500' :
               current ? 'bg-blue-600 ring-2 ring-blue-200' :

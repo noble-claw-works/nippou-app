@@ -108,9 +108,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Role Switcher */}
           <div className="relative">
             <button onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm hover:bg-blue-100 transition-colors">
-              <span className="font-medium text-blue-700">{ROLE_LABELS[currentRole]}</span>
-              <span className="text-gray-500 text-xs">{user?.name}</span>
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm hover:bg-blue-100 transition-colors max-w-[200px] sm:max-w-none">
+              <span className="font-medium text-blue-700 truncate">{ROLE_LABELS[currentRole]}</span>
+              <span className="text-gray-500 text-xs truncate hidden sm:inline">{user?.name}</span>
               <ChevronDown className="w-3.5 h-3.5 text-blue-500" />
             </button>
             {menuOpen && (
