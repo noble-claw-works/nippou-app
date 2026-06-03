@@ -23,6 +23,18 @@ export interface Toast {
   undoFn?: () => void;
 }
 
+// =====================================================
+// メールアドレス変更申請
+// =====================================================
+export interface EmailChangeRequest {
+  id: string;
+  userId: string;
+  newEmail: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string;
+  processedAt?: string;
+}
+
 interface AppState {
   // Auth
   currentRole: Role;
@@ -38,6 +50,7 @@ interface AppState {
   notifications: Notification[];
   auditLogs: AuditLog[];
   trackingSession: TrackingSession | null;
+  emailChangeRequests: EmailChangeRequest[];
 
   // UI
   toasts: Toast[];
@@ -110,6 +123,10 @@ interface AppState {
   stopTracking: () => TimeBlock | null;
   discardTracking: () => void;
 
+  // Actions: Email Change Request
+  requestEmailChange: (userId: string, newEmail: string) => void;
+  getEmailChangeRequest: (userId: string) => EmailChangeRequest | undefined;
+
   // Reset
   resetAll: () => void;
 }
@@ -129,6 +146,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   notifications: NOTIFICATIONS,
   auditLogs: AUDIT_LOGS,
   trackingSession: null,
+  emailChangeRequests: [],
   toasts: [],
 
   setRole: (role) => {
@@ -444,11 +462,31 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   discardTracking: () => set({ trackingSession: null }),
 
+  requestEmailChange: (userId, newEmail) => {
+    const req: EmailChangeRequest = {
+      id: uid(),
+      userId,
+      newEmail,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    set(s => ({
+      emailChangeRequests: [
+        ...s.emailChangeRequests.filter(r => r.userId !== userId || r.status !== 'pending'),
+        req
+      ]
+    }));
+  },
+
+  getEmailChangeRequest: (userId) => {
+    return get().emailChangeRequests.find(r => r.userId === userId && r.status === 'pending');
+  },
+
   resetAll: () => set({
     currentRole: 'general', currentUserId: 'u1',
     users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
     templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
     notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
-    trackingSession: null, toasts: [],
+    trackingSession: null, emailChangeRequests: [], toasts: [],
   }),
 }));

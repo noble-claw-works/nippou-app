@@ -1,8 +1,9 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { BLOCK_EMOJIS, BLOCK_LABELS } from '../../utils';
 import type { Customer, TimeBlock } from '../../types';
 import { BLOCK_TYPES } from '../timeline/DragAndChip';
+import { ChevronDown } from 'lucide-react';
 
 // ─── BlockModalState ──────────────────────────────────────────────────────────
 export interface BlockModalState {
@@ -35,6 +36,8 @@ export function BlockModal({
 }: BlockModalProps) {
   const customerSelectRef = useRef<HTMLSelectElement>(null);
   const typeChipRef = useRef<HTMLButtonElement>(null);
+  const [visitResultOpen, setVisitResultOpen] = useState(true);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Auto-focus after open
   useEffect(() => {
@@ -48,6 +51,25 @@ export function BlockModal({
     }, 80);
     return () => clearTimeout(id);
   }, [state.open, state.focusCustomer]);
+
+  // Validation logic
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    if (!state.block.type) newErrors.type = '必須項目です';
+    if (!state.block.startTime) newErrors.startTime = '必須項目です';
+    if (!state.block.endTime) newErrors.endTime = '必須項目です';
+    if (state.block.startTime && state.block.endTime && state.block.endTime <= state.block.startTime) {
+      newErrors.timeRange = '終了時刻は開始時刻より後である必要があります';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = () => {
+    if (validateForm()) {
+      onSave();
+    }
+  };
 
   const isVisit = state.block.type === 'visit';
   const title = state.isNew
@@ -77,7 +99,7 @@ export function BlockModal({
             キャンセル
           </button>
           <button
-            onClick={onSave}
+            onClick={handleSave}
             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
           >
             ✓ 保存
@@ -85,41 +107,54 @@ export function BlockModal({
         </>
       }
     >
-      <div className="space-y-3">
-        {/* Time range */}
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+        {/* Time range - Required */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">開始時刻</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">開始時刻 <span className="text-red-500">*</span></label>
             <input
               type="time"
               value={state.block.startTime ?? ''}
               step={900}
-              onChange={e => onChange(s => ({ ...s, block: { ...s.block, startTime: e.target.value } }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              onChange={e => { onChange(s => ({ ...s, block: { ...s.block, startTime: e.target.value } })); setErrors(e => ({ ...e, startTime: '', timeRange: '' })); }}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                errors.startTime ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.startTime && <p className="text-xs text-red-500 mt-1">{errors.startTime}</p>}
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">終了時刻</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">終了時刻 <span className="text-red-500">*</span></label>
             <input
               type="time"
               value={state.block.endTime ?? ''}
               step={900}
-              onChange={e => onChange(s => ({ ...s, block: { ...s.block, endTime: e.target.value } }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              onChange={e => { onChange(s => ({ ...s, block: { ...s.block, endTime: e.target.value } })); setErrors(e => ({ ...e, endTime: '', timeRange: '' })); }}
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+                errors.endTime ? 'border-red-500' : 'border-gray-300'
+              }`}
             />
+            {errors.endTime && <p className="text-xs text-red-500 mt-1">{errors.endTime}</p>}
           </div>
         </div>
+        {errors.timeRange && (
+          <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-600">{errors.timeRange}</p>
+          </div>
+        )}
 
-        {/* Block type chips */}
+        {/* Block type chips - Required */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">アクティビティ種別</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">アクティビティ種別 <span className="text-red-500">*</span></label>
           <div className="flex flex-wrap gap-2">
             {BLOCK_TYPES.map((type, idx) => (
               <button
                 key={type}
                 ref={idx === 0 && !state.focusCustomer ? typeChipRef : undefined}
-                onClick={() => onChange(s => ({ ...s, block: { ...s.block, type } }))}
+                onClick={() => { onChange(s => ({ ...s, block: { ...s.block, type } })); setErrors(e => ({ ...e, type: '' })); }}
                 className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${
+                  errors.type ? 'border-red-500' : ''
+                } ${
                   state.block.type === type
                     ? 'bg-blue-50 border-blue-400 text-blue-700'
                     : 'border-gray-200 text-gray-600 hover:bg-gray-50'
@@ -129,11 +164,12 @@ export function BlockModal({
               </button>
             ))}
           </div>
+          {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
         </div>
 
-        {/* Customer select */}
+        {/* Customer select - Optional */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">顧客（任意）</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">顧客 <span className="text-gray-400">(任意)</span></label>
           <select
             ref={customerSelectRef}
             value={state.block.customerId ?? ''}
@@ -150,9 +186,9 @@ export function BlockModal({
           </select>
         </div>
 
-        {/* Title */}
+        {/* Title - Optional */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">内容</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">内容 <span className="text-gray-400">(任意)</span></label>
           <input
             type="text"
             value={state.block.title ?? ''}
@@ -162,9 +198,9 @@ export function BlockModal({
           />
         </div>
 
-        {/* Memo */}
+        {/* Memo - Optional */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">メモ</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">メモ <span className="text-gray-400">(任意)</span></label>
           <textarea
             value={state.block.memo ?? ''}
             onChange={e => onChange(s => ({ ...s, block: { ...s.block, memo: e.target.value } }))}
@@ -173,65 +209,77 @@ export function BlockModal({
           />
         </div>
 
-        {/* Visit result fields (only shown for visit type) */}
+        {/* Visit result fields (only shown for visit type) - Accordion */}
         {isVisit && (
-          <div className="border border-blue-100 rounded-xl p-3 bg-blue-50/40 space-y-3">
-            <p className="text-xs font-semibold text-blue-700">🤝 訪問結果</p>
+          <div className="border border-blue-100 rounded-xl bg-blue-50/40">
+            <button
+              type="button"
+              onClick={() => setVisitResultOpen(!visitResultOpen)}
+              className="w-full flex items-center gap-2 p-3 hover:bg-blue-100/30 transition-colors"
+            >
+              <ChevronDown className={`w-4 h-4 text-blue-700 transition-transform ${
+                visitResultOpen ? '' : '-rotate-90'
+              }`} />
+              <p className="text-xs font-semibold text-blue-700">🤝 訪問結果</p>
+            </button>
+            {visitResultOpen && (
+              <div className="px-3 pb-3 space-y-3 border-t border-blue-100">
+                {/* Collected */}
+                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={state.block.collected ?? false}
+                    onChange={e => onChange(s => ({ ...s, block: { ...s.block, collected: e.target.checked } }))}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  <span>✅ 集金済み</span>
+                </label>
 
-            {/* Collected */}
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={state.block.collected ?? false}
-                onChange={e => onChange(s => ({ ...s, block: { ...s.block, collected: e.target.checked } }))}
-                className="rounded border-gray-300 text-blue-600"
-              />
-              <span>✅ 集金済み</span>
-            </label>
+                {/* Next appointment */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">次回アポイント日</label>
+                  <input
+                    type="date"
+                    value={state.block.nextAppointment ?? ''}
+                    onChange={e => onChange(s => ({
+                      ...s,
+                      block: { ...s.block, nextAppointment: e.target.value || undefined },
+                    }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
 
-            {/* Next appointment */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">次回アポイント日</label>
-              <input
-                type="date"
-                value={state.block.nextAppointment ?? ''}
-                onChange={e => onChange(s => ({
-                  ...s,
-                  block: { ...s.block, nextAppointment: e.target.value || undefined },
-                }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
+                {/* Proposal */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">提案内容</label>
+                  <input
+                    type="text"
+                    value={state.block.proposal ?? ''}
+                    onChange={e => onChange(s => ({
+                      ...s,
+                      block: { ...s.block, proposal: e.target.value || undefined },
+                    }))}
+                    placeholder="提案した内容を入力"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
 
-            {/* Proposal */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">提案内容</label>
-              <input
-                type="text"
-                value={state.block.proposal ?? ''}
-                onChange={e => onChange(s => ({
-                  ...s,
-                  block: { ...s.block, proposal: e.target.value || undefined },
-                }))}
-                placeholder="提案した内容を入力"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-
-            {/* Result memo */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">対応結果メモ</label>
-              <textarea
-                value={state.block.result ?? ''}
-                onChange={e => onChange(s => ({
-                  ...s,
-                  block: { ...s.block, result: e.target.value || undefined },
-                }))}
-                rows={2}
-                placeholder="対応の結果・状況を記録"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
-              />
-            </div>
+                {/* Result memo */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">対応結果メモ</label>
+                  <textarea
+                    value={state.block.result ?? ''}
+                    onChange={e => onChange(s => ({
+                      ...s,
+                      block: { ...s.block, result: e.target.value || undefined },
+                    }))}
+                    rows={2}
+                    placeholder="対応の結果・状況を記録"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

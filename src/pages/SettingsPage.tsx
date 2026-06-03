@@ -11,12 +11,15 @@ const BLOCK_EMOJIS: Record<BlockType, string> = {
 };
 
 export function SettingsPage() {
-  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser } = useAppStore();
+  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, getEmailChangeRequest } = useAppStore();
   const user = users.find(u => u.id === currentUserId);
   const myChips = quickChips.filter(c => c.userId === currentUserId || !c.userId);
+  const emailChangeReq = getEmailChangeRequest(currentUserId);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [displayName, setDisplayName] = useState(user?.name ?? '');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
   const [newChipLabel, setNewChipLabel] = useState('');
   const [newChipType, setNewChipType] = useState<BlockType>('visit');
   const [showAddChip, setShowAddChip] = useState(false);
@@ -35,9 +38,9 @@ export function SettingsPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6" style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
         {/* Profile */}
-        {activeTab === 'profile' && (
+        {activeTab === 'profile' && !showEmailModal && (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">プロフィール</h2>
             <div>
@@ -47,9 +50,18 @@ export function SettingsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">メールアドレス</label>
-              <input value={user?.email ?? ''} readOnly
-                className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
-              <p className="text-xs text-gray-400 mt-1">変更には管理者の承認が必要です</p>
+              <div className="flex gap-2">
+                <input value={user?.email ?? ''} readOnly
+                  className="flex-1 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
+                <button onClick={() => { setShowEmailModal(true); setNewEmail(''); }}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                  変更申請
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">メールアドレスの変更は申請制です</p>
+              {emailChangeReq && (
+                <p className="text-xs text-blue-500 mt-1">📋 申請待機中: {emailChangeReq.newEmail}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">言語</label>
@@ -61,6 +73,43 @@ export function SettingsPage() {
               if (user) { updateUser(user.id, { name: displayName }); addToast({ type: 'success', message: '保存しました' }); }
             }}
               className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">保存</button>
+          </div>
+        )}
+
+        {/* Email Change Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowEmailModal(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">メールアドレス変更申請</h3>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">現在のメールアドレス</label>
+                <input value={user?.email ?? ''} readOnly
+                  className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">新しいメールアドレス</label>
+                <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  placeholder="new@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setShowEmailModal(false)}
+                  className="flex-1 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                  キャンセル
+                </button>
+                <button onClick={() => {
+                  if (!newEmail.trim()) { addToast({ type: 'error', message: 'メールアドレスを入力してください' }); return; }
+                  requestEmailChange(currentUserId, newEmail);
+                  addToast({ type: 'success', message: '変更申請を送信しました。管理者の承認をお待ちください。' });
+                  setShowEmailModal(false);
+                  setNewEmail('');
+                }}
+                  className="flex-1 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                  申請する
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
