@@ -69,9 +69,9 @@ export function BlockCard({
           )}
         </div>
       )}
-      {/* notes display */}
-      {block.memo && height >= 40 && (
-        <div className="text-xs text-gray-500 line-clamp-2 mt-1 pointer-events-none leading-tight">
+      {/* memo display - P1-3: 常時表示 */}
+      {block.memo && (
+        <div className="text-xs text-gray-600 line-clamp-2 mt-0.5 pointer-events-none leading-tight bg-yellow-50 bg-opacity-60 px-1 py-0.5 rounded">
           📝 {block.memo}
         </div>
       )}

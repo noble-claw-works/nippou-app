@@ -188,6 +188,45 @@ export function TodayPage() {
           {/* P1-3: ステッパーをヘッダー直下に配置 */}
           {report && <StatusStepper report={report} />}
 
+          {/* P0-1: in_progress 時に上部に「日報を提出する」ボタン表示 */}
+          {report && report.status === 'in_progress' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">実績入力が完了しました</p>
+                  <p className="text-xs text-blue-700 mt-1">確認して上長に提出します</p>
+                </div>
+                <button
+                  onClick={() => setShowSubmitModal(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm whitespace-nowrap"
+                >
+                  📤 日報を提出する
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 提出済み時のバッジ表示 */}
+          {report && report.status === 'submitted' && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">提出済み</p>
+                    <p className="text-xs text-green-700 mt-0.5">上長からのフィードバックをお待ちしています</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { withdrawReport(report.id); addToast({ type: 'info', message: '日報を取り下げました' }); }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 whitespace-nowrap"
+                >
+                  ← 取り下げ
+                </button>
+              </div>
+            </div>
+          )}
+
           {!report ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <div className="text-4xl mb-3">📝</div>

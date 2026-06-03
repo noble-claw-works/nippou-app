@@ -12,7 +12,8 @@ export function ReportDetailPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const { reports, users, customers, currentRole, currentUserId, currentUserId: uid,
-    addComment, deleteComment, confirmReport, withdrawReport, addToast } = useAppStore();
+    addComment, deleteComment, confirmReport, withdrawReport, addToast,
+    managerComments, addManagerComment, deleteManagerComment } = useAppStore();
 
   const report = reports.find(r => r.date === date && r.userId === (currentRole === 'general' ? uid : r.userId))
     ?? reports.find(r => r.date === date);
@@ -20,6 +21,9 @@ export function ReportDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [showSendBack, setShowSendBack] = useState(false);
   const [sendBackReason, setSendBackReason] = useState('');
+  
+  // ManagerComment store からこの日報のコメント一覧を取得
+  const dayComments = managerComments.filter(c => c.dayKey === date);
 
   if (!report) {
     return (
@@ -37,12 +41,7 @@ export function ReportDetailPage() {
   const canConfirm = (currentRole === 'manager' || currentRole === 'executive') && report.status === 'submitted';
   const canSendBack = (currentRole === 'manager' || currentRole === 'executive') && ['submitted', 'confirmed'].includes(report.status);
 
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    addComment(report.id, currentUserId, newComment);
-    setNewComment('');
-    addToast({ type: 'success', message: 'コメントを追加しました' });
-  };
+  // 旧 handleAddComment は削除（ManagerComment 統合で inline に変更）
 
   const handleSendBack = () => {
     if (!sendBackReason.trim()) return;
@@ -159,17 +158,17 @@ export function ReportDetailPage() {
         </div>
       </div>
 
-      {/* Comments */}
+      {/* Comments - ManagerComment store と統合 */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <MessageCircle className="w-4 h-4" /> コメント ({report.comments.length})
+          <MessageCircle className="w-4 h-4" /> 上長コメント ({dayComments.length})
         </h2>
-        {report.comments.length === 0 && (
+        {dayComments.length === 0 && (
           <p className="text-sm text-gray-400 mb-3">コメントがありません</p>
         )}
         <div className="space-y-3 mb-4">
-          {report.comments.map(comment => {
-            const commentUser = users.find(u => u.id === comment.userId);
+          {dayComments.map(comment => {
+            const commentUser = users.find(u => u.id === comment.authorUserId);
             return (
               <div key={comment.id} className="flex gap-3">
                 <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-700 flex-shrink-0">
@@ -180,8 +179,32 @@ export function ReportDetailPage() {
                     <span className="text-xs font-medium text-gray-700">{commentUser?.name}</span>
                     <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
                   </div>
-                  <p className="text-sm text-gray-800">{comment.text}</p>
+                  <p className="text-sm text-gray-800">{comment.body}</p>
+                  {/* 返答表示 */}
+                  {comment.replies.length > 0 && (
+                    <div className="mt-2 space-y-1 pt-2 border-t border-gray-200 text-xs text-gray-600">
+                      {comment.replies.map(reply => {
+                        const replyUser = users.find(u => u.id === reply.userId);
+                        const replyTime = new Date(reply.repliedAt).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={reply.userId}>
+                            <span className="font-medium">{replyUser?.name}:</span>
+                            <span className="ml-1">{reply.choice === 'yes' ? '✅ YES' : '❌ NO'}({replyTime})</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+                {canComment && (
+                  <button
+                    onClick={() => deleteManagerComment(comment.id)}
+                    className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700"
+                    title="削除"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             );
           })}
@@ -190,11 +213,12 @@ export function ReportDetailPage() {
           <div className="flex gap-2">
             <input
               type="text" value={newComment} onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+              onKeyDown={e => e.key === 'Enter' && (() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } })()}
               placeholder="コメントを追加..."
               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button onClick={handleAddComment}
+            <button
+              onClick={() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } }}
               className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send className="w-4 h-4" />
             </button>

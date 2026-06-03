@@ -292,11 +292,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleTodo: (reportId, todoId) => {
+    // 3段階巡回: todo → doing → done → todo
+    const nextStatus = (current: 'todo' | 'doing' | 'done'): 'todo' | 'doing' | 'done' => {
+      if (current === 'todo') return 'doing';
+      if (current === 'doing') return 'done';
+      return 'todo';
+    };
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? {
             ...r,
-            todos: r.todos.map(t => t.id === todoId ? { ...t, completed: !t.completed, status: !t.completed ? 'done' : 'todo' } : t),
+            todos: r.todos.map(t => {
+              if (t.id === todoId) {
+                const newStatus = nextStatus(t.status ?? 'todo');
+                return { ...t, status: newStatus, completed: newStatus === 'done' };
+              }
+              return t;
+            }),
             updatedAt: new Date().toISOString()
           }
         : r
