@@ -80,9 +80,23 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 - **部下の返答**: `reply-to-comment` ボタンで ✅YES（了承）/ ❌NO（要相談）を選択
 - **返答の永続性**: 一度返答すると、返答ステータス + 日時が表示され、ボタンは非活性化
 
+## 上長ビュー特定ルーティング (NAV-1/MGR-1/EMP-2)
+
+| 現在ページ | currentRole | 動作 |
+|---|---|---|
+| TodayPage | manager/executive | `/dashboard` へ自動 redirect (replace=true) |
+| ReportDetailPage | general | 自分の日報のみ前後ナビ |
+| ReportDetailPage | manager/executive | 範囲内各日報の前後ナビ + 未確認循環ナビ |
+| DashboardPage | (all) | 上長以上のみアクセス可能 |
+
+**上長ビューの未確認循環ナビ**:
+- 初料粗い結果一覧 (status='submitted' のみ) を出力。unconfirmedReports を数える
+- 現在インデックスを基礎に前/次を決定し、循環可能 (一覧を貴すよう会綬の下)
+
 ---
 
 ## 改修履歴
 
+- **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件 を反映 (前後ナビ・上長リダイレクト・未確認フィルタ・前後日付・ヒートマップbutton化・氏名強調)
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
 - **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加

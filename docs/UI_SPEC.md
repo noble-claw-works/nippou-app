@@ -30,13 +30,39 @@ TodayPage (src/pages/TodayPage.tsx)
 
 ---
 
+## ページ詳細
+
+### DashboardPage (`src/pages/DashboardPage.tsx`)
+
+**役割**: 上長向けダッシュボード。未確認数、ヒートマップ、チーム進捗を表示。
+
+**行数**: 110行（EMP-2/MGR-2 反映後）
+
+**主要セクション**:
+
+#### 未確認カード (MGR-2)
+- **リンク先**: `/search?status=submitted&auto=1` に変更
+  - SearchPage 側で `useSearchParams` を読み、`status=submitted` で初期 selectedStatuses を上書き
+  - `auto=1` フラグで自動検索を実行（searched=true を初期値に）
+
+#### ヒートマップ (EMP-2)
+- **セル UI 改善**: `<span>` → `<button>` 化
+  - 型: `type="button"`
+  - スタイル: `hover:bg-blue-50 rounded-full w-7 h-7 inline-flex items-center justify-center transition-colors`
+  - `title` 属性: `${formatDate(dateStr)} の日報を開く`
+  - `aria-label`: `${user.name} ${dateStr} の日報`
+- **遷移先**: `/reports/${dateStr}?user=${userId}` に変更（user param 追加）
+- **内容**: 気分絵文字 or 📄 プレースホルダ
+
+---
+
 ## コンポーネント詳細
 
 ### TodayPage (`src/pages/TodayPage.tsx`)
 
 **役割**: オーケストレーター。State管理、hooks、ハンドラー関数を保持。
 
-**行数**: 261行
+**行数**: 291行（EMP-1/MGR-1 反映後）
 
 **State**:
 - `report`: 今日の DailyReport
@@ -49,6 +75,43 @@ TodayPage (src/pages/TodayPage.tsx)
 - `useDragAndChip` × 2 (予定列・実績列)
 - `useBlockDrag` (ブロック移動・リサイズ)
 - `useIsMobile` (レスポンシブ判定)
+- `useNavigate` (ページ遷移)
+
+**ナビゲーション** (EMP-1, MGR-1):
+- **MGR-1**: useEffect で `currentRole === 'manager' || 'executive'` ならば `/dashboard` へ自動 redirect（replace=true）
+- **EMP-1**: ヘッダー日付の左右に前日・翌日ナビボタン追加
+  - 左ボタン: クリックで `/reports/<前日 YYYY-MM-DD>` へ navigate（subDays from date-fns）
+  - 右ボタン: クリックで `/reports/<翌日 YYYY-MM-DD>` へ navigate（addDays from date-fns）
+  - UI: ArrowLeft/ArrowRight icon, px-1.5 py-1, text-gray-500 hover:text-gray-800 rounded
+
+---
+
+### ReportDetailPage (`src/pages/ReportDetailPage.tsx`)
+
+**役割**: 特定日付の日報を詳細試譣、上長を認可対象。
+
+**行数**: 198行（NAV-1 反映後）
+
+**ナビゲーション** (NAV-1):
+- **位置**: ヘッダー下、未確認カード上に上部位置したナビゲーションエリア（bg-blue-50 border border-blue-100 rounded-lg）
+- **一般ユーザービュー** (自分のみ)
+  - 「← 前の日報」ボタン (ArrowLeft + 日付)
+  - 「次の日報 →」ボタン (ArrowRight + 日付)
+  - 前/次がなければ disabled, opacity-40
+  - クリックで `/reports/${target.date}` へ navigate
+- **上長ビュー** (currentRole === 'manager' || 'executive')
+  - 上記に加えて「⚠ 未確認」セクションを右側に追加（status='submitted' のみ）
+  - 「← 前の未確認」ボタン (ArrowLeft, bg-orange-100 text-orange-700)
+  - 「次の未確認 →」ボタン (ArrowRight, bg-orange-100 text-orange-700)
+  - 前/次未確認がなければ disabled
+  - **皶环**: 未確認一覧を皶环状に充子（一照は起点）
+  - クリックで `/reports/${target.date}?user=${target.userId}` へ navigate
+- **スコープ制御**:
+  - sortedAccessibleReports: currentRole と憤限範囲からフィルタ
+    - general: 自分のみ
+    - manager: 自賊主任 + 同一チーム上長の部下
+    - executive: 全会社
+  - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、皶环可能
 
 ---
 
@@ -84,6 +147,29 @@ interface TimelinePanelProps {
 - D&C による新規ブロック作成（ドラッグ後に ChipPopover を表示）
 - visit ブロックに集金済み・次回AP バッジ表示
 - 予定列ブロックにホバーで「✅ 実績化」ボタン表示
+
+---
+
+### SearchPage (`src/pages/SearchPage.tsx`)
+
+**役割**: 日報検索インターフェース。フィルタ × 検索結果誊例。
+
+**行数**: 190行（MGR-2/LIST-1 反映後）
+
+**クエリパラメタ機能** (MGR-2):
+- `useSearchParams()` で日偈の URL クエリを読み込み
+  - `status` を解析し、`parseStatusFilter()` で selectedStatuses 别一値を override
+  - `auto=1` を検索し、初期 searched=true を設定し複数検索自動実行
+- `parseStatusFilter(raw)` 関数:
+  - ヌル or 空文字列 → ALL_STATUSES (中緘)
+  - カンマ区切り文字列 → 構成要素を取り出し、有効 ReportStatus のみ抽出
+
+**検索結果カード** (LIST-1):
+- **氏名表示位置**: 結果カード先頻に移動 (mb-1.5)
+- **表示条件**: currentRole !== 'general' の穵に、author.name を誆8帳
+- **スタイル**: `text-base font-bold text-gray-900`（大きく粗い）
+- **日付セクション**: 氏名下へ (font-medium ダウン）
+- 日付下位置の StatusBadge は変わらず
 
 ---
 
@@ -344,4 +430,11 @@ interface StatusBarProps {
 
 ## 改修履歴
 
-- **2026-06-03**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映
+- **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件を反映
+  - **NAV-1**: ReportDetailPage に日報前後ナビゲーション追加 (上長ビュー時は未確認循環値も)
+  - **MGR-1**: TodayPage で上長ロール自動 redirect を `/dashboard` へ
+  - **MGR-2**: Dashboard 未確認カードリンク先を `/search?status=submitted&auto=1` に変更、SearchPage で初期検索自動実行
+  - **EMP-1**: TodayPage ヘッダー日付左右に前・翌日ナビボタン追加
+  - **EMP-2**: Dashboard ヒートマップセル button 化、hover 状態改善、user param 付与
+  - **LIST-1**: SearchPage 検索結果で author.name を先頭強調表示（上長以上のみ）
+- **2026-06-03 以前**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映
