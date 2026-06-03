@@ -85,6 +85,13 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 | `submitReport()` | `in_progress` → `submitted` | `false` → `true` | セット（現在時刻） |
 | `withdrawReport()` | `submitted` → `in_progress` | `true` → `false` | クリア |
 | `confirmReport()` | `submitted` → `confirmed` | 変化なし（true 維持） | 変化なし |
+| `bulkConfirmReports(reportIds[])` | 複数ε`submitted` → `confirmed` | 変化なし（true 維持） | 変化なし |
+
+**一括確認の実装** (MGR-4):
+- Store action `bulkConfirmReports(reportIds: string[]): number`
+- 入力: status='submitted' の日報 ID 配列
+- 処理: 各 ID に対し `confirmReport()` を内体的に実行
+- 戻り値: 実際に confirmed 状態にさせた件数（丢要値は不追加）
 
 **重要**: `submitted` フラグと `status='submitted'` は常に同期している。
 実装の都合上、いずれかで「提出済みか」を判定できる。

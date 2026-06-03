@@ -232,7 +232,7 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
 
 ---
 
-### CustomersPage (件数表示・ソート)
+### CustomersPage (件数表示・ソート・削除機能)
 
 **CUS-1 顧客一覧**:
 
@@ -288,6 +288,25 @@ const sorted = [...filtered].sort((a, b) => {
 - **スタイル**: px-2.5 py-1 text-xs text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50
 - **クリック動作**: `/customers/{id}#history` へ navigate
 - **aria-label**: `${customer.name} の対応履歴を見る`
+
+**CUS-3 顧客削除機能**:
+
+#### 削除ボタン
+- **位置**: アクション列（編集・履歴ボタン同列、右端）
+- **ラベル**: 🗑 削除
+- **表示条件**: currentRole が manager/executive/admin の場合のみ表示
+- **スタイル**: px-2.5 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50
+- **クリック動作**: ConfirmDialog を表示（削除確認）
+
+#### 削除確認ダイアログ
+- **タイトル**: `${customer.name} を削除しますか？`
+- **警告メッセージ**: 「⚠️ この操作は取り消せません。過去の日報から削除対象顧客の参照は無効化されます。」（赤テキスト）
+- **推奨テキスト**: 「無効化（deactivateCustomer）の使用を推奨します」（灰色小文字）
+- **ボタン**: 「キャンセル」「削除」（削除は red-600 background）
+- **実行**: 確定時 `deleteCustomer(customerId)` を呼び出し、一覧から即座に削除
+- **権限制御**:
+  - `canDelete = currentRole === 'admin' || currentRole === 'executive'`
+  - 上記のロール以外は削除ボタン表示なし
 
 ### CustomerDetailPage (`src/pages/CustomerDetailPage.tsx`)
 
@@ -402,33 +421,165 @@ TodayPage (src/pages/TodayPage.tsx)
 
 ### DashboardPage (`src/pages/DashboardPage.tsx`)
 
-**役割**: 上長向けダッシュボード。未確認数、ヒートマップ、チーム進捗を表示。
+**役割**: 上長向けダッシュボード。未確認数、ヒートマップ、メンバー進捗、サマリーレポートを表示。
 
-**行数**: 110行（EMP-2/MGR-2 反映後）
+**主要セクション** (MGR-3/MGR-4/MGR-5/MGR-6):
 
-**主要セクション**:
+#### MGR-3: メンバー別提出率・確認状況集計テーブル
 
-#### 未確認カード (MGR-2)
-- **リンク先**: `/search?status=submitted&auto=1` に変更
-  - SearchPage 側で `useSearchParams` を読み、`status=submitted` で初期 selectedStatuses を上書き
-  - `auto=1` フラグで自動検索を実行（searched=true を初期値に）
+**コンポーネント**: `src/components/dashboard/SubmissionStatsTable.tsx`
 
-#### ヒートマップ (EMP-2)
-- **セル UI 改善**: `<span>` → `<button>` 化
-  - 型: `type="button"`
-  - スタイル: `hover:bg-blue-50 rounded-full w-7 h-7 inline-flex items-center justify-center transition-colors`
-  - `title` 属性: `${formatDate(dateStr)} の日報を開く`
-  - `aria-label`: `${user.name} ${dateStr} の日報`
-- **遷移先**: `/reports/${dateStr}?user=${userId}` に変更（user param 追加）
-- **内容**: 気分絵文字 or 📄 プレースホルダ
+**目的**: 当月営業日基準で、メンバー別の提出件数 / 提出率 / 確認件数 / 確認率を一覧表示。
 
----
+**レイアウト**: テーブル (thead + tbody)
 
-#### 自分の日報作成ボタン (MGR-5)
-- **位置**: Dashboard 右上（「未確認カード」の上右）
-- **スタイル**: `inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700`
-- **ラベル**: ✍️ 自分の日報を書く
-- **動作**: onClick で `/today?self=1` へ navigate
+**ヘッダー行**:
+- メンバー | 提出 / 営業日 | 提出率 | 確認 / 提出 | 確認率 | アクション
+
+**各行** (メンバー単位):
+- **メンバー名**: ユーザーアバター + 名前
+- **提出件数**: N / M 形式 (例: 18/20)
+- **提出率**:
+  - 数値: XX.X% で表示
+  - 色分けバッジ: ≥90% → bg-green-100 text-green-700 / ≥70% → bg-blue-100 text-blue-700 / ≥50% → bg-amber-100 text-amber-700 / <50% → bg-red-100 text-red-700
+- **確認件数**: X / Y 形式
+- **確認率**: 同様に色分けバッジ
+- **アクション**: 「詳細 →」リンク (text-blue-600) で `/search?user={userId}&status=submitted,confirmed` へナビゲート
+
+**フッター行** (チーム平均):
+- "チーム平均" セル
+- チーム全体の提出率 / 確認率を計算し、同じバッジで表示
+
+**営業日計算**:
+- 当月 1 日 ~ 末日の日数（土日祝を除く）を M とする
+- 各メンバーの月内提出済日報件数（status='submitted' or 'confirmed'）を N とする
+
+#### MGR-4: 未確認日報の一括確認
+
+**コンポーネント**: `src/components/dashboard/BulkConfirmPanel.tsx`
+
+**目的**: 提出済日報（status='submitted'）を複数選択し、一括で confirmed 状態に変更。
+
+**表示条件**: status='submitted' のレポートが存在する場合のみ表示
+
+**レイアウト**:
+- ヘッダー: 「✅ 未確認日報の一括確認」+ 件数
+- リスト（status='submitted' を date 昇順でソート）
+
+**各行**:
+- チェックボックス（左）
+- 日付 (YYYY-MM-DD) + 担当者名
+- StatusBadge (submitted)
+- 削除時刻（submittedAt を formatDistanceToNow で表示、例: "3時間前"）
+
+**フッター操作**:
+- 「☑ すべて選択」チェックボックス (全 submitted を一括選択)
+- 「N 件を一括確認」ボタン (bg-blue-600 text-white)
+- ConfirmDialog で確認: 「N 件の日報を確認済みにしますか？」
+- 実行: `bulkConfirmReports(reportIds[]): number` を呼び出し
+- 成功通知: `addToast({ type: 'success', message: 'N 件の日報を一括確認しました' })`
+
+**空状態**: 「未確認の日報はありません 🎉」
+
+#### MGR-5: 部下別 TODO 進捗・件数表示
+
+**コンポーネント**: `src/components/dashboard/TodoProgressPanel.tsx`
+
+**目的**: チーム内メンバーごとの TODO ステータス分布と期限情報を可視化。
+
+**各メンバーセクション**:
+- **名前**: ユーザーアバター + 名前
+- **進捗バー**: 3段の積み上げバー
+  - 幅 100% → ✅完了 / 🔄進行中 / 📌未着手 の割合を色分け
+  - 色: 完了=green-500 / 進行中=blue-500 / 未着手=gray-300
+  - 高さ: h-2
+- **メトリクス**: "完了: 12 / 進行中: 3 / 未着手: 2"
+- **進捗率**: "70% 完了"
+  - 計算: 完了件数 / (完了 + 進行中 + 未着手) × 100
+  - 色分け: ≥80% → text-green-600 / ≥50% → text-blue-600 / ≥25% → text-amber-600 / <25% → text-red-600
+
+**特殊セクション**:
+- **⏰ 今日が期限**: bg-amber-50 border-l-4 border-l-amber-400
+  - 当日期限の未完了 TODO を 1 行に 1 件表示
+  - "[メンバー名] - TODO内容"形式
+  - 完了: done / 進行中: doing のみ表示（todo 状態は未対象）
+
+- **🚨 期限切れ**: bg-red-50 border-l-4 border-l-red-400
+  - 期限を過ぎた未完了 TODO
+  - 赤バッジ「⚠ 期限切れ」を各行に表示
+  - "[メンバー名] - TODO内容 (期限: YYYY-MM-DD)"形式
+  - クリックで `/reports/{reportDate}?user={userId}` へナビゲート
+
+**期限判定**:
+```typescript
+const isOverdue = (todo: Todo): boolean => {
+  if (todo.completed || todo.status === 'done') return false;
+  if (!todo.dueDate) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(todo.dueDate) < today;
+};
+
+const isDueToday = (todo: Todo): boolean => {
+  if (todo.completed || todo.status === 'done') return false;
+  if (!todo.dueDate) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(todo.dueDate).getTime() === today.getTime();
+};
+```
+
+#### MGR-6: 週次・月次サマリーレポート
+
+**コンポーネント**: `src/components/dashboard/SummaryReportPanel.tsx`
+
+**目的**: チーム全体のメトリクスを週単位または月単位で集計し、ダッシュボード上に簡潔に表示。
+
+**期間切替**:
+- ボタンセット: 【週】【月】(bg-gray-100 rounded-lg p-1)
+- 状態管理: `period: 'week' | 'month'`
+
+**ナビゲーション**:
+- 左右矢印ボタン (ChevronLeft / ChevronRight icon)
+  - 週: `subWeeks(date, 1)` / `addWeeks(date, 1)`
+  - 月: `subMonths(date, 1)` / `addMonths(date, 1)`
+- 「今週」/ 「今月」ボタン (bg-blue-50 text-blue-700)
+- ラベル表示: "M/d – M/d" (週) or "yyyy年M月" (月)
+
+**4 メトリクスカード** (各 1 カードで横並び):
+
+1. **提出率**
+   - テキスト: "XX.X%"
+   - 計算: 営業日数ベースで当期提出済日報数 / 営業日数
+   - 色: ≥90% → bg-green-50 text-green-700 / ≥70% → bg-blue-50 text-blue-700 / ≥50% → bg-amber-50 text-amber-700 / <50% → bg-red-50 text-red-700
+
+2. **確認率**
+   - テキスト: "XX.X%"
+   - 計算: 確認済 / 提出済
+   - 色: 提出率と同じ
+
+3. **活動メンバー**
+   - テキスト: "N 人 / M 人"
+   - 計算: 当期に最低 1 件以上提出済のメンバー数 / 全アクティブメンバー数
+
+4. **TODO 完了率**
+   - テキスト: "XX.X%"
+   - 計算: 当期内の全 TODO のうち status='done' の割合
+   - 色: メトリクスカード 1-2 と同じ
+
+**アクティビティ分布グラフ**:
+- **ブロック種別 % グラフ**: 棒グラフまたはドーナツグラフ
+- 凡例: visit / office / phone / travel / break / meeting / lunch
+- データソース: 当期の全 timeblock から type 別にカウント
+- テキスト表示: "visit 40% · office 25% · phone 20% · ..."形式
+
+**ランキングセクション** (2つの TOP 5 ラベル):
+
+1. **訪問顧客数 TOP 5**
+   - 当期内の visit ブロックから customerId を抽出し、顧客ごとにカウント
+   - top 5 を降順で表示: "1. 顧客名 (8件) · 2. 顧客名 (6件) · ..."
+
+2. **提出件数 TOP 5**
+   - 当期内のメンバー別提出件数
+   - top 5 を降順で表示: "1. メンバー名 (20件) · 2. メンバー名 (18件) · ..."
 
 ---
 
@@ -640,7 +791,6 @@ interface TimelinePanelProps {
 
 ---
 
-**未動作 UI 修正** (DEAD-1):
 
 *NotificationsPage*:
 - **handleClick 関数**: relatedReportId から report を検索し、有効なら `/reports/{date}?user={userId}` へ遷移

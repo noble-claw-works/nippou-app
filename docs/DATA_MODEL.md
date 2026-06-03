@@ -436,6 +436,24 @@ updateBlock(report.id, block.id, {
 | `toggleTodo(reportId, todoId)` | completed フラグ反転（status も自動更新） |
 | `deleteTodo(reportId, todoId)` | 削除 |
 
+### 日報提出管理
+
+| アクション | 説明 |
+|---|---|
+| `submitReport(reportId)` | 提出 (status: in_progress → submitted) |
+| `withdrawReport(reportId)` | 取り下げ (status: submitted → in_progress) |
+| `confirmReport(reportId)` | 確認 (status: submitted → confirmed) |
+| `bulkConfirmReports(reportIds[])` | 一括確認（submittedReports のみ対象、成功件数を返し） |
+
+### 顧客操作
+
+| アクション | 説明 |
+|---|---|
+| `addCustomer(customer)` | 顧客追加 |
+| `updateCustomer(customerId, updates)` | 顧客更新 |
+| `deleteCustomer(customerId)` | 顧客完全削除 (CUS-3: 管理者/控糠者のみ実行可) |
+| `deactivateCustomer(customerId)` | 顧客無効化 (status: active → inactive) |
+
 ### ManagerComment 操作
 
 | アクション | 説明 |
