@@ -7,7 +7,81 @@ nippou-app は LocalStorage ベースの Zustand Store でデータを管理し�
 
 ---
 
+## 認証・セッション
+
+### AuthSession
+
+ログイン中のセッション情報。localStorage に暗号化せず JSON で保存。
+
+```typescript
+interface AuthSession {
+  userId: string;      // ログイン中のユーザー ID
+  email: string;       // ユーザーメール
+  loginAt: string;     // ログイン日時（ISO 8601）
+  expiresAt: string;   // セッション失効日時（ISO 8601）
+}
+```
+
+**定数**:
+- `AUTH_STORAGE_KEY = 'nippou.auth.v1'` — localStorage キー
+- `AUTH_SESSION_TTL_MS = 30 * 60 * 1000` — セッション有効期限（30分無操作で失効）
+- `DEFAULT_DEMO_PASSWORD = 'demo'` — 全ユーザー共通デモパスワード
+
+**ヘルパー関数**:
+- `loadAuthSession(): AuthSession | null` — localStorage から復元（期限切れなら null）
+- `persistAuthSession(s: AuthSession | null)` — localStorage に保存 or 削除
+
+**セッション管理フロー**:
+1. ログイン → `AuthSession` 生成、localStorage 保存
+2. 操作 → 30秒ごとに失効チェック、`expiresAt` に到達なら自動 logout
+3. ユーザー操作 (`click`/`keydown`/`mousemove`/`touchstart`) → `touchSession()` で `expiresAt` を +30分延長
+4. ログアウト → localStorage 削除、`authSession = null`
+
+---
+
 ## コアエンティティ
+
+### AppState: 認証プロパティ
+
+Zustand store の AppState に以下のプロパティを追加:
+
+```typescript
+interface AppState {
+  // 既存
+  currentRole: Role;      // 'general' | 'manager' | 'executive' | 'admin'
+  currentUserId: string;  // ログイン中のユーザー ID
+
+  // AUTH-1: 認証セッション・パスワード管理
+  authSession: AuthSession | null;      // ログイン中のセッション（null なら未認証）
+  passwords: Record<string, string>;    // userId → password マップ（デモ用、全員デフォルト 'demo'）
+
+  // AUTH: Action
+  login(email: string, password: string): { ok: true; user: User } | { ok: false; error: string };
+  loginAsUser(userId: string): void;    // デモ・ロール切替用
+  logout(): void;
+  isAuthenticated(): boolean;            // 失効チェック付き
+  touchSession(): void;                  // 最終操作を記録、expiresAt を延長
+  changePassword(userId: string, current: string, next: string): { ok: true } | { ok: false; error: string };
+}
+```
+
+**login() の動作**:
+- メールアドレスを大文字小文字無視で検索
+- status='active' のユーザーのみ対象
+- passwords マップから照合、一致なら `loginAsUser()` を呼び出し
+- 失敗なら error メッセージを返す
+
+**loginAsUser() の動作**:
+- 指定ユーザーの AuthSession を生成・localStorage に保存
+- users[userId].lastLogin を現在日時に更新
+- currentRole/currentUserId を自動セット
+
+**changePassword() の動作**:
+- current パスワード照合
+- next が 4文字以上かつ current と異なるかチェック
+- 検証成功なら passwords マップを更新
+
+---
 
 ### TimeBlock
 
@@ -339,5 +413,7 @@ updateBlock(report.id, block.id, {
 
 ## 改修履歴
 
+- **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
+- **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
 - **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）

@@ -8,6 +8,222 @@ nippou-app の Today ページは以下のコンポーネントに分割され�
 
 ## ページ構成
 
+### LoginPage (`src/pages/LoginPage.tsx`)
+
+**役割**: 認証。未認証ユーザーのログイン画面。
+
+**AUTH-3 LoginPage UI**:
+- 🎮 デモでお試しボタン: `loginAsUser('u1')` で一般社員ログイン
+- 「役割で選んでログイン」展開: active ユーザー一覧から選んで loginAsUser。アバターイニシャルス + 名前 + メールアドレス + 役割表示
+- メール+パスワードフォーム: `login(email, password)` 呼び出し、失敗は失敗カウンタ切り上げ、5回以上でアカウントロック
+- 既にログイン済みなら useEffect で /today へリダイレクト
+- トースト作成: `addToast({ type: 'success', message: '〜さんとしてログインしました' })`
+
+**UI**:
+- 一番上: デモバナー (データ不保存警告)
+- 中央: 三段ボタン + 展開ユーザー一覧 + メールフォーム
+- 下部: デモパスワード説明
+
+### App.tsx (認証ガード)
+
+**AUTH-1/AUTH-2**:
+
+```tsx
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isAuthenticated = useAppStore(s => s.authSession !== null);
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+  return <>{children}</>;
+}
+
+function SessionWatcher() {
+  useEffect(() => {
+    // 操作イベントで expiresAt を伸ばす
+    const onActivity = () => {
+      if (useAppStore.getState().authSession) touchSession();
+    };
+    ['click', 'keydown', 'mousemove', 'touchstart'].forEach(e =>
+      document.addEventListener(e, onActivity, { passive: true })
+    );
+    
+    // 30秒おきに失効チェック
+    const interval = setInterval(() => {
+      const s = useAppStore.getState().authSession;
+      if (s && new Date(s.expiresAt).getTime() < Date.now()) {
+        logout();
+        addToast({ type: 'warning', message: 'セッションが切れました。再度ログインしてください' });
+      }
+    }, 30_000);
+    // cleanup...
+  }, [touchSession, logout, addToast]);
+  return null;
+}
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <SessionWatcher />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/*" element={<RequireAuth><AppLayout /></RequireAuth>} />
+      </Routes>
+      <ToastContainer />
+    </BrowserRouter>
+  );
+}
+```
+
+---
+
+### AppShell (ログアウト)
+
+**AUTH-4 AppShell ログアウト**:
+- ロールメニュー内にログイン中ユーザー情報（name + email）表示
+- ログアウトボタン: `logout()` + `/login` へ navigate
+- デモリセットも `/login` にリダイレクト
+
+```tsx
+const handleLogout = () => {
+  logout();
+  addToast({ type: 'info', message: 'ログアウトしました' });
+  setMenuOpen(false);
+  navigate('/login', { replace: true });
+};
+```
+
+---
+
+### SettingsPage (パスワード変更)
+
+**AUTH-5 SettingsPage パスワード変更**:
+- パスワードタブを mock toast から `changePassword(currentUserId, current, next)` 実装に置換
+- 現在/新しい/確認の3フィールド、確認一致チェック、ストア結果のエラーメッセージ表示
+- バリデーション: 4文字以上、現在と異なる
+
+```tsx
+const handleChangePassword = async () => {
+  setPwError('');
+  if (!pwCurrent || !pwNext || !pwConfirm) {
+    setPwError('すべての項目を入力してください');
+    return;
+  }
+  if (pwNext !== pwConfirm) {
+    setPwError('新しいパスワードと確認が一致しません');
+    return;
+  }
+  const result = changePassword(currentUserId, pwCurrent, pwNext);
+  if (!result.ok) {
+    setPwError(result.error);
+    return;
+  }
+  setPwCurrent(''); setPwNext(''); setPwConfirm('');
+  addToast({ type: 'success', message: 'パスワードを変更しました' });
+};
+```
+
+---
+
+### CalendarPage (視認性改善)
+
+**CAL-1 カレンダー視認性**:
+
+#### 状態別背景色塗り分け
+```typescript
+const STATUS_ICON: Record<ReportStatus, string> = {
+  planning: '✎', in_progress: '✍', submitted: '✅', confirmed: '⭐',
+};
+
+const STATUS_BG: Record<ReportStatus, string> = {
+  planning: 'bg-gray-50 border-gray-200',
+  in_progress: 'bg-yellow-50 border-yellow-200',
+  submitted: 'bg-blue-50 border-blue-300',
+  confirmed: 'bg-green-50 border-green-300',
+};
+
+const STATUS_LABEL: Record<ReportStatus, string> = {
+  planning: '予定入力中', in_progress: '実績入力中', submitted: '提出済', confirmed: '確認済',
+};
+```
+
+#### セル要素を `<div>` → `<button>` 化
+- クリック可能に
+- `aria-label="{YYYY年M月d日}{ステータス名}"`
+- `aria-current="date"` for 今日
+- 「今日」はボーダー左 blue-600 4px で視覚差別化
+- 「選択日」は ring-2 ring-blue-500 で表示
+
+#### 月移動ボタン大型化
+- border-2 + min-h-[44px]
+- テキストラベル: 「前月」「翌月」
+- ホバー: border-blue-500 へ
+
+#### 「今日」ボタン追加
+- bg-blue-50 text-blue-700 border border-blue-200 rounded-lg
+- クリック: setCurrentMonth(new Date()), setSelectedDate(new Date())
+
+#### 凡例をチップで再構成
+```tsx
+<div className="flex flex-wrap gap-2">
+  <span className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 border border-gray-200 rounded">✎ 下書き</span>
+  <span className="flex items-center gap-1.5 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded">✍ 入力中</span>
+  <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-300 rounded font-medium">✅ 提出済</span>
+  <span className="flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-300 rounded font-medium">⭐ 確認済</span>
+  <span className="flex items-center gap-1.5 px-2 py-1 border-l-4 border-blue-600 border-y border-r border-gray-200 rounded">今日</span>
+  <span className="flex items-center gap-1.5 px-2 py-1 ring-2 ring-blue-500 ring-inset rounded">選択中</span>
+</div>
+```
+
+---
+
+### CustomersPage (件数表示・ソート)
+
+**CUS-1 顧客一覧**:
+
+#### 件数表示
+- 「全 N 件（全顧客 M 件中）」+ 条件クリアボタン
+- 検索またはフィルタ時に表示
+
+#### ソート機能 5 種
+```typescript
+type SortKey = 'name_asc' | 'name_desc' | 'lastContact_desc' | 'nextAppt_asc' | 'created_desc';
+
+const sorted = [...filtered].sort((a, b) => {
+  switch (sortKey) {
+    case 'name_asc':
+      return a.name.localeCompare(b.name, 'ja');
+    case 'name_desc':
+      return b.name.localeCompare(a.name, 'ja');
+    case 'lastContact_desc': {
+      const av = a.lastContactDate ?? '';
+      const bv = b.lastContactDate ?? '';
+      if (av === bv) return a.name.localeCompare(b.name, 'ja');
+      return bv.localeCompare(av); // 新しい順
+    }
+    case 'nextAppt_asc': {
+      const av = a.nextAppointment ?? '9999-12-31';
+      const bv = b.nextAppointment ?? '9999-12-31';
+      if (av === bv) return a.name.localeCompare(b.name, 'ja');
+      return av.localeCompare(bv); // 近い順
+    }
+    case 'created_desc':
+      return (b.id ?? '').localeCompare(a.id ?? '');
+    default:
+      return 0;
+  }
+});
+```
+
+#### ソート選択 UI
+- セレクトボックス: 【氏名昇↑】【氏名降↓】【最終接触新順】【次回AP近順】【登録新順】
+- 状態: `[sortKey, setSortKey]`
+- 結果に即座に反映
+
+---
+
+## 既存ページ詳細
+
 ```
 TodayPage (src/pages/TodayPage.tsx)
 ├── TrackingBanner        （タイムトラッキング中バナー）
@@ -29,8 +245,6 @@ TodayPage (src/pages/TodayPage.tsx)
 ```
 
 ---
-
-## ページ詳細
 
 ### DashboardPage (`src/pages/DashboardPage.tsx`)
 
@@ -55,8 +269,6 @@ TodayPage (src/pages/TodayPage.tsx)
 - **内容**: 気分絵文字 or 📄 プレースホルダ
 
 ---
-
-## コンポーネント詳細
 
 ### TodayPage (`src/pages/TodayPage.tsx`)
 
@@ -88,7 +300,7 @@ TodayPage (src/pages/TodayPage.tsx)
 
 ### ReportDetailPage (`src/pages/ReportDetailPage.tsx`)
 
-**役割**: 特定日付の日報を詳細試譣、上長を認可対象。
+**役割**: 特定日付の日報を詳細表示、上長を認可対象。
 
 **行数**: 198行（NAV-1 反映後）
 
@@ -104,14 +316,14 @@ TodayPage (src/pages/TodayPage.tsx)
   - 「← 前の未確認」ボタン (ArrowLeft, bg-orange-100 text-orange-700)
   - 「次の未確認 →」ボタン (ArrowRight, bg-orange-100 text-orange-700)
   - 前/次未確認がなければ disabled
-  - **皶环**: 未確認一覧を皶环状に充子（一照は起点）
+  - **循環**: 未確認一覧を循環状に充当（一番最後は起点）
   - クリックで `/reports/${target.date}?user=${target.userId}` へ navigate
 - **スコープ制御**:
-  - sortedAccessibleReports: currentRole と憤限範囲からフィルタ
+  - sortedAccessibleReports: currentRole と権限範囲からフィルタ
     - general: 自分のみ
-    - manager: 自賊主任 + 同一チーム上長の部下
+    - manager: 自部下 + 同一チーム上長の部下
     - executive: 全会社
-  - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、皶环可能
+  - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、循環可能
 
 ---
 
@@ -152,21 +364,21 @@ interface TimelinePanelProps {
 
 ### SearchPage (`src/pages/SearchPage.tsx`)
 
-**役割**: 日報検索インターフェース。フィルタ × 検索結果誊例。
+**役割**: 日報検索インターフェース。フィルタ × 検索結果表示。
 
 **行数**: 190行（MGR-2/LIST-1 反映後）
 
 **クエリパラメタ機能** (MGR-2):
-- `useSearchParams()` で日偈の URL クエリを読み込み
-  - `status` を解析し、`parseStatusFilter()` で selectedStatuses 别一値を override
+- `useSearchParams()` で日中の URL クエリを読み込み
+  - `status` を解析し、`parseStatusFilter()` で selectedStatuses 初期値を override
   - `auto=1` を検索し、初期 searched=true を設定し複数検索自動実行
 - `parseStatusFilter(raw)` 関数:
-  - ヌル or 空文字列 → ALL_STATUSES (中緘)
+  - ヌル or 空文字列 → ALL_STATUSES (中立)
   - カンマ区切り文字列 → 構成要素を取り出し、有効 ReportStatus のみ抽出
 
 **検索結果カード** (LIST-1):
-- **氏名表示位置**: 結果カード先頻に移動 (mb-1.5)
-- **表示条件**: currentRole !== 'general' の穵に、author.name を誆8帳
+- **氏名表示位置**: 結果カード先頭に移動 (mb-1.5)
+- **表示条件**: currentRole !== 'general' の時に、author.name を強調
 - **スタイル**: `text-base font-bold text-gray-900`（大きく粗い）
 - **日付セクション**: 氏名下へ (font-medium ダウン）
 - 日付下位置の StatusBadge は変わらず
@@ -198,197 +410,7 @@ interface TimelinePanelProps {
 
 **Props**:
 ```typescript
-interface BlockModalProps {
-  state: BlockModalState;
-  customers: Customer[];
-  continueInput: boolean;
-  setContinueInput: (v: boolean) => void;
-  onSave: () => void;
-  onDelete: (blockId: string) => void;
-  onClose: () => void;
-  onChange: (updater: (prev: BlockModalState) => BlockModalState) => void;
-}
 ```
-
-**バリデーション機能** (M-2 UX修正):
-- 必須項目: 「種別 *」「開始時刻 *」「終了時刻 *」に赤マーカー
-- 種別未選択時の保存: ボタン群に赤枠 + 「必須項目です」インラインエラー、モーダルは閉じない
-- 時刻逆転時: 「終了時刻は開始時刻より後である必要があります」エラー
-- 種別選択時にエラー自動クリア
-
-**訪問結果セクション** (W-2 UX修正):
-- visit 選択時のみ、アコーディオン「🤝 訪問結果」を展開可能
-- ChevronDown/ChevronRight で開閉
-- 内部フィールド:
-  - 集金済みチェックボックス
-  - 次回アポイント日入力
-  - 提案内容入力
-  - 対応結果メモ入力
-- モーダル全体に `max-h-[60vh] overflow-y-auto` を適用
-
-**その他**:
-- 保存して続けて入力チェックボックス
-
----
-
-### SidePanelCards (`src/components/today/SidePanelCards.tsx`)
-
-**役割**: 右サイドパネルの全カードをまとめるコンテナ。
-
-**行数**: 281行
-
-**Props**:
-```typescript
-interface SidePanelCardsProps {
-  report: DailyReport;
-  customers: Customer[];
-  onUpdateReport: (updates: Partial<DailyReport>) => void;
-  onAddTodo: (text: string, priority?: 'high' | 'medium' | 'low') => void;
-  onToggleTodo: (todoId: string) => void;
-  onDeleteTodo: (todoId: string) => void;
-}
-```
-
-**内部コンポーネント**:
-
-#### TodoCard
-- TODO リスト表示・追加・完了トグル・削除
-- **ステータス機能** (P1-2 実装):
-  - 左ステータスアイコン: `todo=☐` / `doing=◐` / `done=☑`
-  - クリックで `todo → doing → done → todo` 巡回
-  - 中央: 本文（done は打消線）
-  - 右: 優先度バッジ + 期限表示
-- **優先度バッジ**: 
-  - `high=🔥赤` / `medium=⭐黄` / `low=💧青`
-  - テキストラベルで表示
-- **期限表示**: 
-  - `〜MM/DD` 形式
-  - 超過時は赤文字 (isOverdue)
-  - 当日は amber, 通常は gray
-- **完了済み TODO**: `<details>/<summary>` で折りたたみ表示「完了済み N件」
-- **インライン追加**: +ボタンで入力欄展開、priority/dueDate も同時設定可能
-
-#### CustomerSummaryCard
-- visit ブロックから訪問結果を集約して表示
-- 集金バッジ、次回APバッジ、提案内容バッジ
-- 非 visit の顧客対応も下部に表示
-
-#### ReflectionCard
-- 朝/夜の気分（☀️ 🌤️ ☁️ 🌧️）
-- 上長への合図（💬 相談・👂 聞いて・👍 大丈夫）
-
-#### ThemeCard (P1-1 実装)
-- **3段レイアウト**:
-  - 📌 メインテーマ（中長期）
-  - 今日のテーマ（本日）
-  - 今月のテーマ（月間）
-- 各フィールドはテキスト入力
-- 入力状況で「✓ 入力済」/ 「未入力」ステータス表示
-
-#### ComplimentsCard (P0-2 実装)
-- 新規コンポーネント: `src/components/today/ComplimentsCard.tsx` (111行)
-- SidePanelCards.tsx 行379 で配置
-- **表示**:
-  - dayKey（YYYY-MM-DD）でフィルタリング
-  - 各エントリ: 区分（📝 お褒め / 💡 要望）+ 顧客名 + 本文
-- **入力**（提出前のみ有効）:
-  - 顧客セレクト（プルダウン or 自由入力）
-  - 区分選択（お褒め/要望 ラジオ）
-  - 本文テキスト
-  - 「+追加」ボタン
-- **削除**: 非 readOnly 時のみ可能
-- 提出後は読取専用
-
-#### GratitudeCard
-- 感謝3件 テキスト入力
-
----
-
-### ManagerCommentSection (`src/components/today/ManagerCommentSection.tsx`)
-
-**役割**: 上長コメント・返答の表示・管理。
-
-**行数**: 67行
-
-**Props**:
-```typescript
-interface Props {
-  dayKey: string;           // YYYY-MM-DD
-  submitted: boolean;       // report.submitted フラグ
-}
-```
-
-**機能** (P0-1 実装):
-- **表示条件**: `dayKey` 指定の日報で、`submitted=true` または `report.status='confirmed'` の場合のみ表示
-- **部下向け表示**: 未提出時は「上長コメント欄を有効にするには日報を提出してください」プレースホルダ表示
-- **上長向け機能**: `isManager` && `submitted` 時に、コメント入力テキストエリア + 送信ボタン表示
-- **既存コメント一覧**: ManagerCommentCard で描画
-
----
-
-### ManagerCommentCard (`src/components/today/ManagerCommentCard.tsx`)
-
-**役割**: 個別コメント表示 + 返答ボタン。
-
-**行数**: 63行
-
-**機能** (P2 YES/NO 返答 UI 改善):
-- **コメント本体**: 作成者（上長名） + 日時（MM-DD HH:MM） + 本文
-- **返答ボタン** (部下向け、未返答時のみ表示):
-  - ✅ YES（了承）: `green-500 hover:green-600` ボタン
-  - ❌ NO（要相談）: `orange-500 hover:orange-600` ボタン
-- **返答後の表示** (P2 実装):
-  - 自約の返答: 「📌 あなたの返答: ✅ YES / ❌ NO (HH:mm)」を blue-50 背景で表示、ボタンは非表示
-  - 他ユーザーの返答: 「●●さん: ✅ YES (HH:mm)」形式で之並で表示
-- **削除** (上長のみ): 🗑 アイコン、Trash2 icon
-
----
-
-### TrackingBanner (`src/components/today/TrackingBanner.tsx`)
-
-**役割**: タイムトラッキング中に上部に表示するバナー。
-
-**行数**: 36行
-
-**Props**:
-```typescript
-interface TrackingBannerProps {
-  session: TrackingSession;
-  customers: Customer[];
-  elapsed: number;        // 経過秒数
-  onStop: () => void;
-  onDiscard: () => void;
-}
-```
-
----
-
-### StatusBar (`src/components/today/StatusBar.tsx`)
-
-**役割**: 下部ステータスバー。自動保存表示、ステータスステッパー、ステータス別アクションボタン。
-
-**行数**: 100行
-
-**Props**:
-```typescript
-interface StatusBarProps {
-  report: DailyReport;
-  onConfirmPlanning: () => void;  // planning → in_progress
-  onShowSubmit: () => void;       // in_progress → submitted
-  onWithdraw: () => void;         // submitted → in_progress（取り下げ・差し戻し共通）
-}
-```
-
-**ステータス別ボタン表示**:
-
-| ステータス | 表示ボタン |
-|---|---|
-| `planning` | 「▶ 予定を確定する」（indigo） |
-| `in_progress` | 「✅ 提出する」（blue） |
-| `submitted` | 「← 取り下げ」（amber、未承認時のみ） |
-| `confirmed` | 「🔒 承認済み・変更不可」バッジ（green） |
-
-**ステップインジケーター**: 予定入力 → 実績入力 → 提出済み → 承認済み の4ステップを点で可視化。
 
 ---
 
@@ -430,6 +452,8 @@ interface StatusBarProps {
 
 ## 改修履歴
 
+- **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
+- **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件を反映
   - **NAV-1**: ReportDetailPage に日報前後ナビゲーション追加 (上長ビュー時は未確認循環値も)
   - **MGR-1**: TodayPage で上長ロール自動 redirect を `/dashboard` へ

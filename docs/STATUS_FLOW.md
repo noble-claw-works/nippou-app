@@ -1,5 +1,48 @@
 # 日報ステータス遷移仕様
 
+---
+
+## 認証セッションフロー（AUTH-1/AUTH-2）
+
+### 認証状態遷移図
+
+```
+未認証
+  ↓ ユーザーアクセス → /login
+  ↓ login() / loginAsUser()、localStorage 保存
+  ↓ authSession 設定 →【認証済み】
+  ↓ /today へナビゲート
+認証済み
+  ↓ ユーザー操作 (30秒毎) → touchSession: expiresAt +30分延長
+  ├ 30秒無操作 → expiresAt に到達
+  ↓ logout()→【未認証】
+  ↓ /login へナビゲート、トースト「セッションが切れました」
+```
+
+### 認証アクション
+
+| アクション | 設置項目 | 条件/戻り値 |
+|---|---|---|
+| `login(email, password)` | authSession, currentRole, currentUserId, users[].lastLogin | ✅ ok: true, user \| ❌ ok: false, error |
+| `loginAsUser(userId)` | authSession, currentRole, currentUserId, users[].lastLogin, localStorage | ユーザー ID 存在時に実行 |
+| `logout()` | authSession=null, localStorage 削除 | — |
+| `isAuthenticated()` | 判定ロジック | ✅/❌。expiresAt チェック付き。期限切れなら自動 logout() |
+| `touchSession()` | expiresAt = now + 30分 | authSession 存在時 |
+| `changePassword(userId, current, next)` | passwords[userId] = next | ✅ ok: true \| ❌ ok: false, error (4文字以上、current と異なる) |
+
+### localStorage 保持管理
+
+**キー**: `'nippou.auth.v1'`
+
+**保持内容**:
+- ログイン時 `loginAt`, `expiresAt` を ISO 8601 文字列で格納（暗号化不要）
+- 起動時（モジュール初期化）に `loadAuthSession()` を呼び出し、有効なら認証済み状態でブート
+- logout() 時に削除
+
+**セッション有効期限**: 30 分無操作で失効。操作イベント（click/keydown/mousemove/touchstart）で touchSession() を呼び、expiresAt を延長
+
+---
+
 ## ステータス一覧
 
 | ステータス | 表示名 | 説明 |
@@ -97,6 +140,7 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 
 ## 改修履歴
 
+- **2026-06-03 319e32c**: AUTH-1/AUTH-2 認証セッション・ガード実装 — ログイン認証・30分無操作失効・パスワード変更
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件 を反映 (前後ナビ・上長リダイレクト・未確認フィルタ・前後日付・ヒートマップbutton化・氏名強調)
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
 - **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加
