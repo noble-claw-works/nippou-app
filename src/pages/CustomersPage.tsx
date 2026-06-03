@@ -85,7 +85,18 @@ function CustomerForm({ initial, onSave, onCancel }: {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, users, addCustomer, updateCustomer, deactivateCustomer, currentRole, currentUserId, addToast } = useAppStore();
+  const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, currentRole, currentUserId, addToast } = useAppStore();
+
+  // 顧客 ID → 対応履歴件数 マップを一度だけ計算
+  const historyCountByCustomer = (() => {
+    const map = new Map<string, number>();
+    for (const r of reports) {
+      for (const b of r.blocks) {
+        if (b.customerId) map.set(b.customerId, (map.get(b.customerId) ?? 0) + 1);
+      }
+    }
+    return map;
+  })();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   // CUS-1: ソート順
@@ -216,6 +227,11 @@ export function CustomersPage() {
                       {primaryUser && <span>担当: {primaryUser.name}</span>}
                       {customer.lastContactDate && <span>最終接触: {customer.lastContactDate}</span>}
                       {customer.nextAppointment && <span className="text-blue-600">次回AP: {customer.nextAppointment}</span>}
+                      {(historyCountByCustomer.get(customer.id) ?? 0) > 0 && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-full">
+                          📅 履歴{historyCountByCustomer.get(customer.id)}件
+                        </span>
+                      )}
                     </div>
                     {customer.tags.length > 0 && (
                       <div className="flex gap-1 mt-1.5 flex-wrap">
@@ -228,6 +244,13 @@ export function CustomersPage() {
                     )}
                   </div>
                   <div className="flex gap-1 ml-2" onClick={e => e.stopPropagation()}>
+                    {(historyCountByCustomer.get(customer.id) ?? 0) > 0 && (
+                      <button onClick={() => navigate(`/customers/${customer.id}#history`)}
+                        className="px-2.5 py-1 text-xs text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50"
+                        aria-label={`${customer.name} の対応履歴を見る`}>
+                        📅 履歴
+                      </button>
+                    )}
                     {canEdit && customer.status === 'active' && (
                       <button onClick={() => setEditId(customer.id)}
                         className="px-2.5 py-1 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">
