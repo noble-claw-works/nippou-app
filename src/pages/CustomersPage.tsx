@@ -85,7 +85,8 @@ function CustomerForm({ initial, onSave, onCancel }: {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, currentRole, currentUserId, addToast } = useAppStore();
+  const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, deleteCustomer, currentRole, currentUserId, addToast } = useAppStore();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // 顧客 ID → 対応履歴件数 マップを一度だけ計算
   const historyCountByCustomer = (() => {
@@ -106,9 +107,11 @@ export function CustomersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
 
-  const canAdd = currentRole === 'manager' || currentRole === 'admin';
-  const canEdit = currentRole === 'manager' || currentRole === 'admin';
-  const canDeactivate = currentRole === 'admin';
+  // CUS-3: 全ロールで CRUD 可能とする (主上ご下命 - 鳳凰検証 2026-06-04 反映)
+  const canAdd = currentRole !== undefined;
+  const canEdit = currentRole !== undefined;
+  const canDeactivate = currentRole === 'manager' || currentRole === 'executive' || currentRole === 'admin';
+  const canDelete = currentRole === 'admin' || currentRole === 'executive';
 
   const filtered = customers.filter(c => {
     if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.area.toLowerCase().includes(query.toLowerCase())) return false;
@@ -259,8 +262,16 @@ export function CustomersPage() {
                     )}
                     {canDeactivate && customer.status === 'active' && (
                       <button onClick={() => setDeactivateId(customer.id)}
-                        className="px-2.5 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
-                        無効化
+                        className="px-2.5 py-1 text-xs text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-50"
+                        aria-label={`${customer.name} を無効化`}>
+                        🚫 無効化
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button onClick={() => setDeleteId(customer.id)}
+                        className="px-2.5 py-1 text-xs text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
+                        aria-label={`${customer.name} を削除`}>
+                        🗑 削除
                       </button>
                     )}
                   </div>
@@ -314,6 +325,26 @@ export function CustomersPage() {
           </div>
         }
         confirmLabel="無効化する"
+      />
+
+      {/* CUS-3: Delete Confirm (完全削除) */}
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          deleteCustomer(deleteId!);
+          addToast({ type: 'success', message: '顧客を削除しました' });
+          setDeleteId(null);
+        }}
+        title="顧客を完全に削除しますか？"
+        message={
+          <div className="space-y-2">
+            <p>「{customers.find(c => c.id === deleteId)?.name}」を削除します。</p>
+            <p className="text-sm text-red-600">❌ この操作は取り消しできません。過去の日報では顧客名が「不明」と表示されます。</p>
+            <p className="text-xs text-gray-500">手順保全が要な場合は「無効化」を推奨します。</p>
+          </div>
+        }
+        confirmLabel="削除する"
       />
     </div>
   );

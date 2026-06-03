@@ -188,14 +188,25 @@ export function ReportDetailPage() {
               <p className="text-xs text-gray-400">TODOがありません</p>
             ) : (
               <div className="space-y-1.5">
-                {report.todos.map(todo => (
-                  <div key={todo.id} className="flex items-center gap-2">
-                    <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                      {todo.completed && <Check className="w-3 h-3 text-white" />}
-                    </span>
-                    <span className={`text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{todo.text}</span>
-                  </div>
-                ))}
+                {report.todos.map(todo => {
+                  // DEAD-1: 期限切れ判定 (dueDate あり、未完了、今日より過去)
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  const isOverdue = !todo.completed && todo.status !== 'done' && !!todo.dueDate
+                    && new Date(todo.dueDate) < today;
+                  return (
+                    <div key={todo.id} className={`flex items-center gap-2 ${isOverdue ? 'bg-red-50 -mx-2 px-2 py-1 rounded' : ''}`}>
+                      <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-400' : 'border-gray-300'}`}>
+                        {todo.completed && <Check className="w-3 h-3 text-white" />}
+                      </span>
+                      <span className={`text-sm flex-1 ${todo.completed ? 'line-through text-gray-400' : isOverdue ? 'text-red-900 font-medium' : 'text-gray-700'}`}>{todo.text}</span>
+                      {isOverdue && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex-shrink-0" aria-label="期限切れ" title={`期限: ${todo.dueDate}`}>
+                          ⚠ 期限切れ
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

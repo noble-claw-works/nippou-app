@@ -96,6 +96,7 @@ interface AppState {
   submitReport: (reportId: string) => void;       // in_progress → submitted
   withdrawReport: (reportId: string) => void;     // submitted → in_progress（本人取り下げ＋上長差し戻し共通）
   confirmReport: (reportId: string) => void;      // submitted → confirmed（上長承認）
+  bulkConfirmReports: (reportIds: string[]) => number; // MGR-4: 一括確認 / 返り値 = 処理成功件数
 
   // Actions: TimeBlock
   addBlock: (reportId: string, block: Omit<TimeBlock, 'id'>) => TimeBlock;
@@ -117,6 +118,7 @@ interface AppState {
   addCustomer: (customer: Omit<Customer, 'id'>) => Customer;
   updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
   deactivateCustomer: (customerId: string, reason?: string) => void;
+  deleteCustomer: (customerId: string) => void;
 
   // Actions: User
   addUser: (user: Omit<User, 'id'>) => User;
@@ -363,6 +365,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  // MGR-4: 未確認日報の一括確認 - submitted のみを confirmed に遷移
+  bulkConfirmReports: (reportIds) => {
+    const now = new Date().toISOString();
+    let confirmed = 0;
+    set(s => {
+      const next = s.reports.map(r => {
+        if (reportIds.includes(r.id) && r.status === 'submitted') {
+          confirmed += 1;
+          return { ...r, status: 'confirmed' as const, confirmedAt: now, confirmedBy: s.currentUserId, updatedAt: now };
+        }
+        return r;
+      });
+      return { reports: next };
+    });
+    return confirmed;
+  },
+
   addBlock: (reportId, block) => {
     const newBlock: TimeBlock = { ...block, id: uid() };
     set(s => ({
@@ -528,6 +547,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateCustomer: (customerId, updates) => {
     set(s => ({ customers: s.customers.map(c => c.id === customerId ? { ...c, ...updates } : c) }));
+  },
+
+  deleteCustomer: (customerId) => {
+    // CUS-3: 完全削除。過去日報からの参照は customerId が dangling になるが、UI 側で fallback 表示する
+    set(s => ({ customers: s.customers.filter(c => c.id !== customerId) }));
   },
 
   deactivateCustomer: (customerId) => {

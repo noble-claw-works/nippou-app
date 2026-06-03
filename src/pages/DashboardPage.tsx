@@ -3,6 +3,10 @@ import { useAppStore } from '../store';
 import { ForbiddenState } from '../components/ui/EmptyState';
 import { MOOD_EMOJIS, formatDate } from '../utils';
 import { format, subDays } from 'date-fns';
+import { SubmissionStatsTable } from '../components/dashboard/SubmissionStatsTable';
+import { BulkConfirmPanel } from '../components/dashboard/BulkConfirmPanel';
+import { TodoProgressPanel } from '../components/dashboard/TodoProgressPanel';
+import { SummaryReportPanel } from '../components/dashboard/SummaryReportPanel';
 
 export function DashboardPage() {
   const { currentRole, reports, users, addToast } = useAppStore();
@@ -110,6 +114,26 @@ export function DashboardPage() {
           </table>
         </div>
       </div>
+
+      {/* MGR-4: 未確認日報の一括確認 */}
+      <BulkConfirmPanel reports={reports} users={users} />
+
+      {/* MGR-3: メンバー別提出率・確認状況集計 */}
+      <SubmissionStatsTable
+        reports={reports}
+        users={users}
+        onOpenUser={(userId) => navigate(`/search?user=${userId}&auto=1`)}
+      />
+
+      {/* MGR-5 + DEAD-1: 部下別 TODO 進捗・期限切れ警告 */}
+      <TodoProgressPanel
+        reports={reports}
+        users={users}
+        onOpenUserReport={(userId, date) => navigate(`/reports/${date}?user=${userId}`)}
+      />
+
+      {/* MGR-6: 週次・月次サマリーレポート */}
+      <SummaryReportPanel reports={reports} users={users} />
     </div>
   );
 }
