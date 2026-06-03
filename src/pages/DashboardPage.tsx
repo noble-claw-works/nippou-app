@@ -30,7 +30,7 @@ export function DashboardPage() {
         <div className="bg-white rounded-xl border border-orange-200 p-4">
           <p className="text-xs text-orange-600 font-medium mb-1">⚠ 未確認</p>
           <p className="text-2xl font-bold text-orange-700">{unconfirmedCount} 件</p>
-          <button onClick={() => navigate('/search')}
+          <button onClick={() => navigate('/search?status=submitted&auto=1')}
             className="text-xs text-orange-600 hover:underline mt-1">一覧を開く →</button>
         </div>
         <div className="bg-white rounded-xl border border-blue-200 p-4">
@@ -79,10 +79,15 @@ export function DashboardPage() {
                     return (
                       <td key={i} className="px-1 py-2 text-center">
                         {report ? (
-                          <span className="text-base cursor-pointer" title={formatDate(dateStr)}
-                            onClick={() => navigate(`/reports/${dateStr}`)}>
+                          <button
+                            type="button"
+                            className="text-base cursor-pointer hover:bg-blue-50 rounded-full w-7 h-7 inline-flex items-center justify-center transition-colors"
+                            title={`${formatDate(dateStr)} の日報を開く`}
+                            aria-label={`${user.name} ${dateStr} の日報`}
+                            onClick={() => navigate(`/reports/${dateStr}?user=${user.id}`)}
+                          >
                             {report.eveningMood ? MOOD_EMOJIS[report.eveningMood] : '📄'}
-                          </span>
+                          </button>
                         ) : (
                           <span className="text-gray-200">—</span>
                         )}

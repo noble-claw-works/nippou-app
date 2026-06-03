@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { format } from 'date-fns';
-import { Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { format, subDays, addDays } from 'date-fns';
+import { Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
@@ -27,13 +28,21 @@ function useIsMobile(): boolean {
 }
 
 export function TodayPage() {
+  const navigate = useNavigate();
   const today = format(new Date(), 'yyyy-MM-dd');
   const {
     getTodayReport, createReport, updateReport, updateBlock, deleteBlock, addBlock,
     addTodo, toggleTodo, deleteTodo, confirmPlanning, submitReport, withdrawReport,
-    customers, currentUserId, addToast,
+    customers, currentUserId, currentRole, addToast,
     trackingSession, startTracking, stopTracking, discardTracking,
   } = useAppStore();
+
+  // MGR-1: 上長ビューは Today を表示せず /dashboard に遷移
+  useEffect(() => {
+    if (currentRole === 'manager' || currentRole === 'executive') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [currentRole, navigate]);
 
   const isMobile      = useIsMobile();
   const timelineRef   = useRef<HTMLDivElement>(null);
@@ -176,8 +185,28 @@ export function TodayPage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-4">
           {/* M-1: ヘッダーを圧縮しタイムラインをファーストビューに */}
           <div className="flex items-center justify-between mb-1.5 gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+              {/* EMP-1: 前日ナビ */}
+              <button
+                type="button"
+                onClick={() => navigate(`/reports/${format(subDays(new Date(today), 1), 'yyyy-MM-dd')}`)}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded"
+                aria-label="昨日の日報"
+                title="昨日の日報"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
               <h1 className="text-sm sm:text-lg font-bold text-gray-900 truncate">{formatDate(today)}</h1>
+              {/* EMP-1: 翌日ナビ */}
+              <button
+                type="button"
+                onClick={() => navigate(`/reports/${format(addDays(new Date(today), 1), 'yyyy-MM-dd')}`)}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded"
+                aria-label="翌日の日報"
+                title="翌日の日報"
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
               {report && <StatusBadge status={report.status} />}
             </div>
             <button onClick={() => setShowTrackModal(true)} className="flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] sm:min-h-[32px]">

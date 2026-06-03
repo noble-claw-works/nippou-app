@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -7,15 +7,34 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { BLOCK_EMOJIS, formatDate } from '../utils';
 import type { ReportStatus } from '../types';
 
+const ALL_STATUSES: ReportStatus[] = ['planning', 'in_progress', 'submitted', 'confirmed'];
+
+function parseStatusFilter(raw: string | null): ReportStatus[] {
+  if (!raw) return ALL_STATUSES;
+  const parts = raw.split(',').map(s => s.trim()).filter((s): s is ReportStatus =>
+    ALL_STATUSES.includes(s as ReportStatus));
+  return parts.length > 0 ? parts : ALL_STATUSES;
+}
+
 export function SearchPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialStatuses = parseStatusFilter(searchParams.get('status'));
+  const autoSearch = searchParams.get('auto') === '1';
   const { reports, users, customers, currentRole, currentUserId } = useAppStore();
   const [query, setQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(['planning', 'in_progress', 'submitted', 'confirmed']);
+  const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(initialStatuses);
   const [authorId, setAuthorId] = useState('');
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched] = useState(autoSearch);
+
+  // MGR-2: URL クエリで ?status=submitted&auto=1 が渡されたら初期検索を実行して一覧を表示
+  useEffect(() => {
+    if (autoSearch) {
+      setSearched(true);
+    }
+  }, [autoSearch]);
 
   const toggleStatus = (s: ReportStatus) => {
     setSelectedStatuses(prev =>
@@ -127,11 +146,14 @@ export function SearchPage() {
                   <div key={report.id}
                     onClick={() => navigate(`/reports/${report.date}`)}
                     className="bg-white rounded-xl border border-gray-200 p-4 cursor-pointer hover:shadow-sm hover:border-blue-200 transition-all">
+                    {/* LIST-1: 氏名を先頭・大きく強調 */}
+                    {author && currentRole !== 'general' && (
+                      <p className="text-base font-bold text-gray-900 mb-1.5">{author.name}</p>
+                    )}
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800">{formatDate(report.date)}</span>
+                        <span className="text-sm font-medium text-gray-700">{formatDate(report.date)}</span>
                         <StatusBadge status={report.status} />
-                        {author && <span className="text-xs text-gray-500">{author.name}</span>}
                       </div>
                       <span className="text-xs text-blue-600 hover:underline">開く</span>
                     </div>

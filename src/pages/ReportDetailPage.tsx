@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Check, RotateCcw, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MessageCircle, Check, RotateCcw, Send } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
@@ -38,6 +38,45 @@ export function ReportDetailPage() {
 
   const reportUser = users.find(u => u.id === report.userId);
   const canComment = currentRole === 'manager' || currentRole === 'executive';
+  const isManagerView = currentRole === 'manager' || currentRole === 'executive';
+
+  // 前後ナビゲーション計算
+  const sortedAccessibleReports = (() => {
+    let scope = reports;
+    if (currentRole === 'general') {
+      scope = reports.filter(r => r.userId === uid);
+    } else if (currentRole === 'manager') {
+      const viewer = users.find(u => u.id === uid);
+      scope = reports.filter(r => {
+        const author = users.find(u => u.id === r.userId);
+        if (!viewer || !author) return false;
+        return viewer.teamIds.some(tid => author.teamIds.includes(tid)) || r.userId === uid;
+      });
+    }
+    return [...scope].sort((a, b) => a.date.localeCompare(b.date) || a.userId.localeCompare(b.userId));
+  })();
+  const currentIdx = sortedAccessibleReports.findIndex(r => r.id === report.id);
+  const prevReport = currentIdx > 0 ? sortedAccessibleReports[currentIdx - 1] : null;
+  const nextReport = currentIdx >= 0 && currentIdx < sortedAccessibleReports.length - 1
+    ? sortedAccessibleReports[currentIdx + 1] : null;
+
+  // 上長ビュー: 未確認（submitted）のみで前後
+  const unconfirmedReports = isManagerView
+    ? sortedAccessibleReports.filter(r => r.status === 'submitted')
+    : [];
+  const unconfirmedCurrentIdx = unconfirmedReports.findIndex(r => r.id === report.id);
+  const prevUnconfirmed = isManagerView && unconfirmedReports.length > 0
+    ? (unconfirmedCurrentIdx > 0 ? unconfirmedReports[unconfirmedCurrentIdx - 1] : unconfirmedReports[unconfirmedReports.length - 1])
+    : null;
+  const nextUnconfirmed = isManagerView && unconfirmedReports.length > 0
+    ? (unconfirmedCurrentIdx >= 0 && unconfirmedCurrentIdx < unconfirmedReports.length - 1
+        ? unconfirmedReports[unconfirmedCurrentIdx + 1]
+        : (unconfirmedCurrentIdx === -1 ? unconfirmedReports[0] : unconfirmedReports[0]))
+    : null;
+
+  const goToReport = (target: typeof report) => {
+    navigate(`/reports/${target.date}${target.userId !== uid ? `?user=${target.userId}` : ''}`);
+  };
   const canConfirm = (currentRole === 'manager' || currentRole === 'executive') && report.status === 'submitted';
   const canSendBack = (currentRole === 'manager' || currentRole === 'executive') && ['submitted', 'confirmed'].includes(report.status);
 
@@ -55,7 +94,7 @@ export function ReportDetailPage() {
     <div className="max-w-5xl mx-auto px-4 py-4">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100" aria-label="戻る">
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div className="flex-1">
@@ -80,6 +119,55 @@ export function ReportDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 前後ナビゲーション */}
+      <nav aria-label="日報ナビゲーション" className="flex flex-wrap items-center justify-between gap-2 mb-4 px-2 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => prevReport && goToReport(prevReport)}
+            disabled={!prevReport}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="前の日報"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> 前の日報
+            {prevReport && <span className="text-xs text-gray-500 ml-1">({formatDate(prevReport.date)})</span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => nextReport && goToReport(nextReport)}
+            disabled={!nextReport}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="翌日の日報"
+          >
+            次の日報 <ArrowRight className="w-3.5 h-3.5" />
+            {nextReport && <span className="text-xs text-gray-500 ml-1">({formatDate(nextReport.date)})</span>}
+          </button>
+        </div>
+        {isManagerView && unconfirmedReports.length > 0 && (
+          <div className="flex items-center gap-2" aria-label="未確認ナビゲーション">
+            <span className="text-xs text-orange-700 font-medium">⚠ 未確認 {unconfirmedReports.length} 件</span>
+            <button
+              type="button"
+              onClick={() => prevUnconfirmed && goToReport(prevUnconfirmed)}
+              disabled={!prevUnconfirmed || prevUnconfirmed.id === report.id}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="前の未確認"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> 前の未確認
+            </button>
+            <button
+              type="button"
+              onClick={() => nextUnconfirmed && goToReport(nextUnconfirmed)}
+              disabled={!nextUnconfirmed || nextUnconfirmed.id === report.id}
+              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="次の未確認"
+            >
+              次の未確認 <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Timeline */}
