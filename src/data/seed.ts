@@ -66,8 +66,8 @@ function makeBlock(id: string, reportId: string, opts: Partial<TimeBlock>): Time
   };
 }
 
-function makeTodo(id: string, reportId: string, text: string, completed = false): Todo {
-  return { id, reportId, text, completed, status: completed ? 'done' : 'todo', rolledOver: false, priority: 'medium' };
+function makeTodo(id: string, reportId: string, text: string, completed = false, dueDate?: string, priority: 'high' | 'medium' | 'low' = 'medium'): Todo {
+  return { id, reportId, text, completed, status: completed ? 'done' : 'todo', rolledOver: false, priority, dueDate };
 }
 
 function makeComment(id: string, reportId: string, userId: string, text: string, createdAt: string): Comment {
@@ -119,9 +119,11 @@ const buildReports = (): DailyReport[] => {
       makeBlock('b3', 'r_today_u1', { type: 'office', startTime: '13:00', endTime: '14:00', title: '見積書作成', isPlanned: true, isActual: false }),
     ],
     [
-      makeTodo('td1', 'r_today_u1', '法人アポ取り'),
-      makeTodo('td2', 'r_today_u1', '見積作成 (KOORO GILSON)'),
+      // DEAD-1: 期限切れ検証用 × 2 + 今日期限 × 1 + 未期限 × 1
+      makeTodo('td1', 'r_today_u1', '法人アポ取り (月末期限)', false, d(3), 'high'),
+      makeTodo('td2', 'r_today_u1', '見積作成 (KOORO GILSON) ⚠ 付け完了', false, d(7), 'high'),
       makeTodo('td3', 'r_today_u1', '山田工業フォロー'),
+      makeTodo('td4', 'r_today_u1', '今日期限のタスク', false, today, 'medium'),
     ],
     []
   ));
@@ -152,8 +154,12 @@ const buildReports = (): DailyReport[] => {
         makeBlock(`b_${rid}_4`, rid, { type: 'office', startTime: '14:00', endTime: '17:00', title: '事務作業' }),
       ],
       [
-        makeTodo(`td_${rid}_1`, rid, '顧客フォロー', i % 3 === 0),
-        makeTodo(`td_${rid}_2`, rid, '見積提出', i % 2 === 0),
+        makeTodo(`td_${rid}_1`, rid, '顧客フォロー', i % 3 === 0, undefined, 'medium'),
+        makeTodo(`td_${rid}_2`, rid, '見積提出', i % 2 === 0, undefined, 'medium'),
+        // DEAD-1: 一部の過去日報に未完了・期限切れ TODO を仕込み (進捗パネル・赤バッジ検証用)
+        ...(i === 5 || i === 10 ? [
+          makeTodo(`td_${rid}_3`, rid, '期限切れの重要 TODO', false, d(i + 7), 'high'),
+        ] : []),
       ],
       comments
     ));

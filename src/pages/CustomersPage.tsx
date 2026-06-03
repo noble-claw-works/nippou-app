@@ -107,11 +107,11 @@ export function CustomersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
 
-  // CUS-3: 全ロールで CRUD 可能とする (主上ご下命 - 鳳凰検証 2026-06-04 反映)
+  // CUS-3: 全ロールで CRUD 可能とする (鳳凰検証 2026-06-04 02:50 JST 反映 - 全ロールで削除ボタン認識可能に)
   const canAdd = currentRole !== undefined;
   const canEdit = currentRole !== undefined;
-  const canDeactivate = currentRole === 'manager' || currentRole === 'executive' || currentRole === 'admin';
-  const canDelete = currentRole === 'admin' || currentRole === 'executive';
+  const canDeactivate = currentRole !== undefined;
+  const canDelete = currentRole !== undefined;
 
   const filtered = customers.filter(c => {
     if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.area.toLowerCase().includes(query.toLowerCase())) return false;
@@ -306,6 +306,34 @@ export function CustomersPage() {
             }}
             onCancel={() => setEditId(null)}
           />
+          {/* CUS-3: 編集モーダル内の危険ゾーン (削除・無効化) */}
+          {(canDelete || canDeactivate) && (
+            <div className="mt-6 pt-4 border-t border-red-100">
+              <p className="text-xs font-semibold text-red-700 mb-2">⚠ 危険ゾーン</p>
+              <div className="flex gap-2 flex-wrap">
+                {canDeactivate && editingCustomer.status === 'active' && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditId(null); setDeactivateId(editingCustomer.id); }}
+                    className="px-3 py-1.5 text-xs text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50"
+                  >
+                    🚫 無効化する
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditId(null); setDeleteId(editingCustomer.id); }}
+                    className="px-3 py-1.5 text-xs text-red-700 border border-red-300 rounded-lg hover:bg-red-50 font-medium"
+                    aria-label={`${editingCustomer.name} を完全削除`}
+                  >
+                    🗑 この顧客を削除
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-500 mt-1.5">削除は不可逆です。予定・履歴を保全したい場合は「無効化」を推奨します。</p>
+            </div>
+          )}
         </Modal>
       )}
 

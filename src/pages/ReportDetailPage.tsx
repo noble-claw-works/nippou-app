@@ -189,19 +189,34 @@ export function ReportDetailPage() {
             ) : (
               <div className="space-y-1.5">
                 {report.todos.map(todo => {
-                  // DEAD-1: 期限切れ判定 (dueDate あり、未完了、今日より過去)
+                  // DEAD-1: 期限切れ判定
+                  //   dueDate あり、未完了、今日より過去 → 期限切れ
+                  //   dueDate あり、未完了、今日 → 今日期限
                   const today = new Date(); today.setHours(0,0,0,0);
-                  const isOverdue = !todo.completed && todo.status !== 'done' && !!todo.dueDate
-                    && new Date(todo.dueDate) < today;
+                  const due = todo.dueDate ? new Date(todo.dueDate) : null;
+                  if (due) due?.setHours(0,0,0,0);
+                  const notDone = !todo.completed && todo.status !== 'done';
+                  const isOverdue = notDone && !!due && due < today;
+                  const isDueToday = notDone && !!due && due.getTime() === today.getTime();
                   return (
-                    <div key={todo.id} className={`flex items-center gap-2 ${isOverdue ? 'bg-red-50 -mx-2 px-2 py-1 rounded' : ''}`}>
-                      <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-400' : 'border-gray-300'}`}>
+                    <div key={todo.id} className={`flex items-center gap-2 ${isOverdue ? 'bg-red-50 -mx-2 px-2 py-1 rounded' : isDueToday ? 'bg-amber-50 -mx-2 px-2 py-1 rounded' : ''}`}>
+                      <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-400' : isDueToday ? 'border-amber-400' : 'border-gray-300'}`}>
                         {todo.completed && <Check className="w-3 h-3 text-white" />}
                       </span>
-                      <span className={`text-sm flex-1 ${todo.completed ? 'line-through text-gray-400' : isOverdue ? 'text-red-900 font-medium' : 'text-gray-700'}`}>{todo.text}</span>
+                      <span className={`text-sm flex-1 ${todo.completed ? 'line-through text-gray-400' : isOverdue ? 'text-red-900 font-medium' : isDueToday ? 'text-amber-900' : 'text-gray-700'}`}>{todo.text}</span>
+                      {todo.dueDate && !todo.completed && (
+                        <span className="text-[10px] text-gray-500 tabular-nums flex-shrink-0" title={`期限: ${todo.dueDate}`}>
+                          {todo.dueDate.slice(5)}
+                        </span>
+                      )}
                       {isOverdue && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex-shrink-0" aria-label="期限切れ" title={`期限: ${todo.dueDate}`}>
                           ⚠ 期限切れ
+                        </span>
+                      )}
+                      {isDueToday && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-bold flex-shrink-0" aria-label="今日期限">
+                          ⏰ 今日期限
                         </span>
                       )}
                     </div>
