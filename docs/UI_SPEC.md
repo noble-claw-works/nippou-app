@@ -393,7 +393,7 @@ TodayPage (src/pages/TodayPage.tsx)
 
 **役割**: 特定日付の日報を詳細表示、上長を認可対象。
 
-**行数**: 198行（NAV-1 反映後）
+**行数**: 230行（NAV-1 + GAP-1 反映後）
 
 **ナビゲーション** (NAV-1):
 - **位置**: ヘッダー下、未確認カード上に上部位置したナビゲーションエリア（bg-blue-50 border border-blue-100 rounded-lg）
@@ -415,6 +415,33 @@ TodayPage (src/pages/TodayPage.tsx)
     - manager: 自部下 + 同一チーム上長の部下
     - executive: 全会社
   - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、循環可能
+
+**タイムラインセクション** (GAP-1):
+- **位置**: メインコンテンツ左側（lg:col-span-2）、ナビゲーション下
+- **見出し**: 📅 タイムライン
+- **スキマ時間サマリ**: 見出し右に「スキマ計 N時間M分」を表示（gap の総時間が 0 分の場合は非表示）
+- **空状態**: `report.blocks.length === 0` の場合、テキスト「記録がありません」（text-sm text-gray-400）
+
+**ブロック行の構成**:
+- **レイアウト**: flex gap-3 p-3 rounded-xl border
+- **アイコン**: BLOCK_EMOJIS[type] （text-lg）
+- **メタ情報**: startTime–endTime （text-xs text-gray-500）+ block.title （text-sm font-medium）
+- **顧客表示**: block.customerId が存在する場合、「顧客: {customer.name}」を 2 行目に表示（text-xs text-gray-600 mt-0.5）
+- **スタイル**: BLOCK_COLORS[type] で型別カラーリング
+
+**スキマ時間（gap）行の構成** (GAP-1):
+- **レイアウト**: flex items-center gap-3 px-3 py-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/60
+- **role**: `note`
+- **aria-label**: `スキマ時間 {startTime}から{endTime} {formatGapDuration(durationMin)}`
+- **アイコン**: ⏳ （text-base, aria-hidden=true）
+- **テキスト**: `{startTime}–{endTime}` （text-amber-700, tabular-nums）+ 「スキマ時間」（text-amber-800 font-medium）+ `({formatGapDuration(durationMin)})` （text-amber-700）
+- **並び順**: startTime 昇順（自動整列）
+
+**buildTimelineWithGaps の動作**:
+1. `report.blocks` を startTime 昇順にソート
+2. 隣り合うブロック間の endTime → 次ブロック startTime の差が ≥5分（minGapMin デフォルト）の場合、gap を挿入
+3. ブロック・gap が時刻順に混在した配列を返す
+4. map で i.kind === 'gap' ? gap行 : block行 を分岐レンダリング
 
 ---
 

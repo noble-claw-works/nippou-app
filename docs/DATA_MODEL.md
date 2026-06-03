@@ -175,6 +175,57 @@ interface DailyReport {
 
 ---
 
+### TimelineGap, TimelineBlockRef, TimelineItem (派生型・UI専用)
+
+**分類**: LocalStorage に永続化されない、UI 計算専用の派生型。
+
+**用途**: ReportDetailPage タイムラインでブロック間の「スキマ時間」を可視化するため、実装コード内で `buildTimelineWithGaps()` により動的生成される。
+
+```typescript
+/** タイムラインのスキマ時間（gap）を表す要素。ブロック並びを走査して生成。 */
+export interface TimelineGap {
+  kind: 'gap';
+  startTime: string;  // HH:MM
+  endTime: string;    // HH:MM
+  durationMin: number; // 分単位の継続時間
+}
+
+/** ブロックへの参照ラッパー。TimelineItem 型統合用。 */
+export interface TimelineBlockRef<T> {
+  kind: 'block';
+  block: T;           // TimeBlock など
+}
+
+/** タイムライン上の要素。ブロック | スキマ時間のユニオン型。 */
+export type TimelineItem<T> = TimelineBlockRef<T> | TimelineGap;
+```
+
+**生成ロジック** (`buildTimelineWithGaps` 関数):
+```typescript
+export function buildTimelineWithGaps<T extends { startTime: string; endTime: string }>(
+  blocks: T[],
+  minGapMin = 5,  // gap として表示する最小分（既定 5 分）
+): TimelineItem<T>[] {
+  // 1. blocks を startTime 昇順にソート
+  // 2. 隣り合うブロック間の endTime → 次の startTime の差を計算
+  // 3. 差が minGapMin 以上なら TimelineGap を挿入
+  // 4. ブロック・gap が時刻順に混在した配列を返す
+}
+```
+
+**フォーマット** (`formatGapDuration` 関数):
+```typescript
+export function formatGapDuration(mins: number): string {
+  // 60分未満: "30分"
+  // 60分以上: "1時間" or "1時間30分"
+}
+```
+
+**表示例**:
+- 09:00–09:30 (block) → 09:30–10:00 (gap: 30分) → 10:00–11:00 (block)
+
+---
+
 ### Customer
 
 顧客マスタ。
