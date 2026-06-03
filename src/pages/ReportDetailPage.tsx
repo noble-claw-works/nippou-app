@@ -5,7 +5,7 @@ import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
-import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS, formatDate, formatRelativeTime } from '../utils';
+import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS, formatDate, formatRelativeTime, buildTimelineWithGaps, formatGapDuration } from '../utils';
 import { format } from 'date-fns';
 
 export function ReportDetailPage() {
@@ -172,29 +172,60 @@ export function ReportDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Timeline */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">📅 タイムライン</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-700">📅 タイムライン</h2>
+            {report.blocks.length > 0 && (() => {
+              const gaps = buildTimelineWithGaps(report.blocks).filter(i => i.kind === 'gap');
+              const totalGap = gaps.reduce((s, g) => s + (g.kind === 'gap' ? g.durationMin : 0), 0);
+              return totalGap > 0 ? (
+                <span className="text-xs text-gray-500" aria-label="スキマ時間合計">
+                  スキマ計 <span className="font-medium text-amber-700">{formatGapDuration(totalGap)}</span>
+                </span>
+              ) : null;
+            })()}
+          </div>
           {report.blocks.length === 0 ? (
             <p className="text-sm text-gray-400">記録がありません</p>
           ) : (
             <div className="space-y-2">
-              {[...report.blocks].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(block => (
-                <div key={block.id} className={`flex gap-3 p-3 rounded-xl border ${BLOCK_COLORS[block.type]}`}>
-                  <div className="flex-shrink-0">
-                    <span className="text-lg">{BLOCK_EMOJIS[block.type]}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">{block.startTime}–{block.endTime}</span>
-                      <span className="text-sm font-medium truncate">{block.title || BLOCK_LABELS[block.type]}</span>
+              {buildTimelineWithGaps(report.blocks).map(item => {
+                if (item.kind === 'gap') {
+                  return (
+                    <div
+                      key={`gap-${item.startTime}-${item.endTime}`}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/60"
+                      role="note"
+                      aria-label={`スキマ時間 ${item.startTime}から${item.endTime} ${formatGapDuration(item.durationMin)}`}
+                    >
+                      <span className="text-base flex-shrink-0" aria-hidden="true">⏳</span>
+                      <div className="flex-1 min-w-0 flex items-center gap-2 text-xs">
+                        <span className="text-amber-700 tabular-nums">{item.startTime}–{item.endTime}</span>
+                        <span className="text-amber-800 font-medium">スキマ時間</span>
+                        <span className="text-amber-700">({formatGapDuration(item.durationMin)})</span>
+                      </div>
                     </div>
-                    {block.customerId && (
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        顧客: {customers.find(c => c.id === block.customerId)?.name}
-                      </p>
-                    )}
+                  );
+                }
+                const block = item.block;
+                return (
+                  <div key={block.id} className={`flex gap-3 p-3 rounded-xl border ${BLOCK_COLORS[block.type]}`}>
+                    <div className="flex-shrink-0">
+                      <span className="text-lg">{BLOCK_EMOJIS[block.type]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">{block.startTime}–{block.endTime}</span>
+                        <span className="text-sm font-medium truncate">{block.title || BLOCK_LABELS[block.type]}</span>
+                      </div>
+                      {block.customerId && (
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          顧客: {customers.find(c => c.id === block.customerId)?.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

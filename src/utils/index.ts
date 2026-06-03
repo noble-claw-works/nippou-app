@@ -59,6 +59,64 @@ export function formatRelativeTime(isoStr: string): string {
   return formatDate(isoStr.split('T')[0]);
 }
 
+/** タイムラインのスキマ時間（gap）を表す要素。1 日のブロック並びを timeline 順に走査して生成。 */
+export interface TimelineGap {
+  kind: 'gap';
+  startTime: string;  // HH:MM
+  endTime: string;    // HH:MM
+  durationMin: number;
+}
+
+export interface TimelineBlockRef<T> {
+  kind: 'block';
+  block: T;
+}
+
+export type TimelineItem<T> = TimelineBlockRef<T> | TimelineGap;
+
+/**
+ * ブロック列を startTime 昇順に並べ、隣り合うブロック間に minGapMin 分以上の空白が
+ * あれば gap を挿入した混在配列を返す。
+ *
+ * @param blocks startTime/endTime (HH:MM) を持つブロック
+ * @param minGapMin gap として表示する最小分（既定 5 分。これ未満は誤差扱いで無視）
+ */
+export function buildTimelineWithGaps<T extends { startTime: string; endTime: string }>(
+  blocks: T[],
+  minGapMin = 5,
+): TimelineItem<T>[] {
+  const sorted = [...blocks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const result: TimelineItem<T>[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const cur = sorted[i];
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      const prevEnd = timeToMinutes(prev.endTime);
+      const curStart = timeToMinutes(cur.startTime);
+      const diff = curStart - prevEnd;
+      if (diff >= minGapMin) {
+        result.push({
+          kind: 'gap',
+          startTime: prev.endTime,
+          endTime: cur.startTime,
+          durationMin: diff,
+        });
+      }
+    }
+    result.push({ kind: 'block', block: cur });
+  }
+  return result;
+}
+
+/** 分数を「1時間30分」「45分」形式に整形 */
+export function formatGapDuration(mins: number): string {
+  if (mins < 60) return `${mins}分`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
+
 export function canViewReport(viewerRole: Role, viewerUserId: string, reportUserId: string, viewerTeamIds: string[], reportUserTeamIds: string[]): boolean {
   if (viewerRole === 'admin') return false;
   if (viewerRole === 'executive') return true;
