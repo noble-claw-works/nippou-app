@@ -7,6 +7,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  preview: {
+    host: true,
+    allowedHosts: ['.loca.lt'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,
