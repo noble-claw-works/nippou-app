@@ -4,7 +4,7 @@ import { Search, X } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { EmptyState } from '../components/ui/EmptyState';
-import { BLOCK_EMOJIS, formatDate } from '../utils';
+import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, calcMiniTimelineSegments, formatDate } from '../utils';
 import type { ReportStatus } from '../types';
 
 const ALL_STATUSES: ReportStatus[] = ['planning', 'in_progress', 'submitted', 'confirmed'];
@@ -142,6 +142,9 @@ export function SearchPage() {
                   .filter(b => b.customerId)
                   .map(b => customers.find(c => c.id === b.customerId)?.name)
                   .filter(Boolean);
+                // ミニタイムライン (MGR-3): 08:00〜20:00 を 100% にして block を帯形式で描画
+                const sortedBlocks = [...report.blocks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+                const segs = calcMiniTimelineSegments(sortedBlocks); // 1:1 対応保証
                 return (
                   <div key={report.id}
                     onClick={() => navigate(`/reports/${report.date}`)}
@@ -157,13 +160,41 @@ export function SearchPage() {
                       </div>
                       <span className="text-xs text-blue-600 hover:underline">開く</span>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {report.blocks.slice(0, 4).map(b => (
-                        <span key={b.id} className="text-xs text-gray-500">{BLOCK_EMOJIS[b.type]} {b.title || ''}</span>
-                      ))}
-                    </div>
+
+                    {/* ミニタイムライン帯 */}
+                    {sortedBlocks.length > 0 ? (
+                      <div className="mt-2">
+                        <div
+                          className="relative h-7 bg-gray-50 rounded-md overflow-hidden"
+                          role="img"
+                          aria-label={`タイムライン ${sortedBlocks.length}ブロック`}
+                        >
+                          {sortedBlocks.map((b, i) => {
+                            const seg = segs[i];
+                            if (seg.hidden) return null;
+                            const color = BLOCK_COLORS[b.type].split(' ').find(c => c.startsWith('bg-')) ?? 'bg-blue-100';
+                            return (
+                              <div
+                                key={b.id}
+                                className={`absolute top-0 bottom-0 ${color} border-r border-white/60 flex items-center justify-center text-[10px] overflow-hidden`}
+                                style={{ left: `${seg.leftPct}%`, width: `${Math.max(seg.widthPct, 1.5)}%` }}
+                                title={`${b.startTime}–${b.endTime} ${b.title || BLOCK_LABELS[b.type]}`}
+                              >
+                                <span className="truncate" aria-hidden="true">{BLOCK_EMOJIS[b.type]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-400 mt-0.5 tabular-nums">
+                          <span>8:00</span><span>12:00</span><span>16:00</span><span>20:00</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-2">ブロック未記録</p>
+                    )}
+
                     {visitedCustomers.length > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">👥 {visitedCustomers.join(', ')}</p>
+                      <p className="text-xs text-gray-500 mt-2">👥 {visitedCustomers.join(', ')}</p>
                     )}
                   </div>
                 );

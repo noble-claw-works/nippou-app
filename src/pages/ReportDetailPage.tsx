@@ -38,6 +38,9 @@ export function ReportDetailPage() {
 
   const reportUser = users.find(u => u.id === report.userId);
   const canComment = currentRole === 'manager' || currentRole === 'executive';
+  // MGR-4: 担当者（general）も自身の日報にコメントを追加できるようにする
+  const canCommentAsAuthor = currentRole === 'general' && report.userId === uid;
+  const canPostComment = canComment || canCommentAsAuthor;
   const isManagerView = currentRole === 'manager' || currentRole === 'executive';
 
   // 前後ナビゲーション計算
@@ -315,7 +318,7 @@ export function ReportDetailPage() {
                     </div>
                   )}
                 </div>
-                {canComment && (
+                {(canComment || (canCommentAsAuthor && comment.authorUserId === uid)) && (
                   <button
                     onClick={() => deleteManagerComment(comment.id)}
                     className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700"
@@ -328,12 +331,12 @@ export function ReportDetailPage() {
             );
           })}
         </div>
-        {canComment && (
+        {canPostComment && (
           <div className="flex gap-2">
             <input
               type="text" value={newComment} onChange={e => setNewComment(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } })()}
-              placeholder="コメントを追加..."
+              placeholder={canCommentAsAuthor ? '上長への返信・補足を入力...' : 'コメントを追加...'}
               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button

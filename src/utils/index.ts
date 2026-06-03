@@ -125,3 +125,41 @@ export function canViewReport(viewerRole: Role, viewerUserId: string, reportUser
   }
   return viewerUserId === reportUserId;
 }
+
+/**
+ * MGR-3: ミニタイムライン帯を (left%, width%) で表す。
+ * dayStartMin〜dayEndMin を 0ー100% にマッピングし、レンジ外はクリップ。
+ * 上長確認カード上で 1 日のブロック配置を一望させるための出力・テスト用。
+ */
+export interface MiniTimelineSegment {
+  startTime: string;
+  endTime: string;
+  leftPct: number;
+  widthPct: number;
+  /** 表示対象外（範囲クリップで width 0 以下）の場合 true */
+  hidden: boolean;
+}
+/**
+ * ミニタイムライン帯を (left%, width%) で表す。
+ * 入力順を保ち、範囲外は hidden=true として返す（1:1 対応を保証）。
+ */
+export function calcMiniTimelineSegments(
+  blocks: Array<{ startTime: string; endTime: string }>,
+  dayStartMin = 8 * 60,
+  dayEndMin = 20 * 60,
+): MiniTimelineSegment[] {
+  const span = dayEndMin - dayStartMin;
+  if (span <= 0) return blocks.map(b => ({ startTime: b.startTime, endTime: b.endTime, leftPct: 0, widthPct: 0, hidden: true }));
+  return blocks.map(b => {
+    const s = Math.max(timeToMinutes(b.startTime) - dayStartMin, 0);
+    const e = Math.min(timeToMinutes(b.endTime) - dayStartMin, span);
+    const hidden = e <= 0 || s >= span || e <= s;
+    return {
+      startTime: b.startTime,
+      endTime: b.endTime,
+      leftPct: hidden ? 0 : (s / span) * 100,
+      widthPct: hidden ? 0 : ((e - s) / span) * 100,
+      hidden,
+    };
+  });
+}

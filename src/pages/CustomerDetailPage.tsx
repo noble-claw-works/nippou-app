@@ -128,9 +128,9 @@ export function CustomerDetailPage() {
         )}
       </div>
 
-      {/* 対応履歴 */}
+      {/* 対応履歴 — タイムライン型カードレイアウト (CUS-3) */}
       <section id="history" className="bg-white rounded-xl border border-gray-200 p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-700">📅 対応履歴 ({historyEntries.length}件)</h2>
           {historyEntries.length > 0 && (
             <span className="text-xs text-gray-400">新しい順</span>
@@ -139,86 +139,113 @@ export function CustomerDetailPage() {
         {historyEntries.length === 0 ? (
           <p className="text-sm text-gray-400 py-6 text-center">対応履歴がありません</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
-            {historyEntries.map(({ reportId, reportDate, reportUserId, block }) => {
-              const handler = users.find(u => u.id === reportUserId);
-              const hasResult = !!(block.result || block.proposal || block.collected || block.nextAppointment);
-              return (
-                <li key={block.id}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/reports/${reportDate}`)}
-                    className="w-full text-left py-3 px-2 -mx-2 hover:bg-blue-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label={`${reportDate} ${block.startTime}〜${block.endTime} ${BLOCK_LABELS[block.type]} の日報を開く`}
-                  >
-                    {/* 1 行目: 日付 ・ 時刻 ・ 種別バッジ ・ 担当者 */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-                      <span className="inline-flex items-center gap-1 font-medium text-gray-700">
-                        <CalendarIcon className="w-3.5 h-3.5" />
-                        {reportDate}
-                      </span>
-                      <span className="inline-flex items-center gap-1 tabular-nums">
-                        <Clock className="w-3.5 h-3.5" />
-                        {block.startTime || '--:--'} 〜 {block.endTime || '--:--'}
-                      </span>
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gray-100 rounded-full text-gray-700">
-                        {BLOCK_EMOJIS[block.type]} {BLOCK_LABELS[block.type]}
-                      </span>
-                      {handler && (
-                        <span className="inline-flex items-center gap-1 text-gray-500">
-                          <UserIcon className="w-3.5 h-3.5" />
-                          {handler.name}
+          <div className="relative pl-6">
+            {/* 垂直タイムライン軸 */}
+            <div className="absolute left-2 top-2 bottom-2 w-px bg-gradient-to-b from-blue-200 via-blue-100 to-transparent" aria-hidden="true" />
+            <ul className="space-y-3">
+              {historyEntries.map(({ reportDate, reportUserId, block }) => {
+                const handler = users.find(u => u.id === reportUserId);
+                const hasResult = !!(block.result || block.proposal || block.collected || block.nextAppointment);
+                const typeAccent: Record<string, string> = {
+                  visit: 'border-l-blue-400 bg-blue-50/30',
+                  office: 'border-l-gray-400 bg-gray-50/30',
+                  phone: 'border-l-amber-400 bg-amber-50/30',
+                  travel: 'border-l-emerald-400 bg-emerald-50/30',
+                  break: 'border-l-pink-300 bg-pink-50/30',
+                  meeting: 'border-l-purple-400 bg-purple-50/30',
+                  lunch: 'border-l-orange-400 bg-orange-50/30',
+                };
+                return (
+                  <li key={block.id} className="relative">
+                    {/* タイムライン軸上のドット */}
+                    <span
+                      className="absolute -left-[18px] top-3 w-3 h-3 rounded-full bg-white border-2 border-blue-400 shadow-sm"
+                      aria-hidden="true"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/reports/${reportDate}`)}
+                      className={`block w-full text-left rounded-lg border border-gray-200 border-l-4 ${typeAccent[block.type] ?? 'border-l-gray-300 bg-gray-50/30'} p-3 hover:shadow-md hover:border-blue-300 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      aria-label={`${reportDate} ${block.startTime}〜${block.endTime} ${BLOCK_LABELS[block.type]} の日報を開く`}
+                    >
+                      {/* ヘッダー: 日付と時刻を主要要素として並べる */}
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-1.5">
+                        <span className="text-sm font-semibold text-gray-900 inline-flex items-center gap-1">
+                          <CalendarIcon className="w-3.5 h-3.5 text-gray-400" />
+                          {reportDate}
                         </span>
+                        <span className="text-xs text-gray-600 tabular-nums inline-flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          {block.startTime || '--:--'} 〜 {block.endTime || '--:--'}
+                        </span>
+                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded-full text-xs text-gray-700">
+                          {BLOCK_EMOJIS[block.type]} {BLOCK_LABELS[block.type]}
+                        </span>
+                      </div>
+
+                      {/* タイトル */}
+                      {block.title && (
+                        <p className="text-sm font-medium text-gray-900 mb-1">{block.title}</p>
                       )}
-                      {!block.isActual && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">予定</span>
+
+                      {/* メモ */}
+                      {block.memo && (
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap break-words mb-2 leading-relaxed">{block.memo}</p>
                       )}
-                    </div>
 
-                    {/* 2 行目: タイトル */}
-                    {block.title && (
-                      <p className="mt-1 text-sm font-medium text-gray-900">{block.title}</p>
-                    )}
-
-                    {/* 3 行目: メモ */}
-                    {block.memo && (
-                      <p className="mt-1 text-sm text-gray-700 whitespace-pre-wrap break-words">{block.memo}</p>
-                    )}
-
-                    {/* 4 行目以降: 訪問結果詳細 */}
-                    {hasResult && (
-                      <div className="mt-2 space-y-1 text-xs">
-                        {block.result && (
-                          <div className="flex items-start gap-1.5">
-                            <FileText className="w-3.5 h-3.5 mt-0.5 text-blue-500 flex-shrink-0" />
-                            <span className="text-gray-700"><span className="text-gray-500">結果: </span>{block.result}</span>
-                          </div>
-                        )}
-                        {block.proposal && (
-                          <div className="flex items-start gap-1.5">
-                            <span className="text-purple-600 flex-shrink-0">💡</span>
-                            <span className="text-gray-700"><span className="text-gray-500">提案: </span>{block.proposal}</span>
-                          </div>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          {block.collected && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px]">
-                              <CheckCircle2 className="w-3 h-3" /> 集金済
-                            </span>
+                      {/* 訪問結果グリッド */}
+                      {hasResult && (
+                        <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                          {block.result && (
+                            <div className="flex items-start gap-1.5 bg-white rounded px-2 py-1.5 border border-gray-100">
+                              <FileText className="w-3.5 h-3.5 mt-0.5 text-blue-500 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <span className="block text-[10px] text-gray-500 uppercase tracking-wide">結果</span>
+                                <span className="text-gray-800">{block.result}</span>
+                              </div>
+                            </div>
                           )}
-                          {block.nextAppointment && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">
-                              📆 次回: {block.nextAppointment}
-                            </span>
+                          {block.proposal && (
+                            <div className="flex items-start gap-1.5 bg-white rounded px-2 py-1.5 border border-gray-100">
+                              <span className="text-purple-600 flex-shrink-0">💡</span>
+                              <div className="min-w-0">
+                                <span className="block text-[10px] text-gray-500 uppercase tracking-wide">提案</span>
+                                <span className="text-gray-800">{block.proposal}</span>
+                              </div>
+                            </div>
                           )}
                         </div>
+                      )}
+
+                      {/* フッター: 担当者 ・ バッジ類 */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+                        {handler && (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-600">
+                            <UserIcon className="w-3 h-3 text-gray-400" />
+                            {handler.name}
+                          </span>
+                        )}
+                        {!block.isActual && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">予定</span>
+                        )}
+                        {block.collected && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px]">
+                            <CheckCircle2 className="w-3 h-3" /> 集金済
+                          </span>
+                        )}
+                        {block.nextAppointment && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">
+                            📆 次回: {block.nextAppointment}
+                          </span>
+                        )}
+                        <span className="ml-auto text-[10px] text-blue-600 hover:underline">日報を開く →</span>
                       </div>
-                    )}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </section>
 

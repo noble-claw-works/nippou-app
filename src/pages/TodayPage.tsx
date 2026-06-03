@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, subDays, addDays } from 'date-fns';
 import { Clock, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -37,12 +37,14 @@ export function TodayPage() {
     trackingSession, startTracking, stopTracking, discardTracking,
   } = useAppStore();
 
-  // MGR-1: 上長ビューは Today を表示せず /dashboard に遷移
+    // MGR-1 + MGR-5: 上長ビューは原則 /dashboard へだが、`?self=1` 付きなら自身の日報作成を許可
+  const [searchParams] = useSearchParams();
+  const selfMode = searchParams.get('self') === '1';
   useEffect(() => {
-    if (currentRole === 'manager' || currentRole === 'executive') {
+    if ((currentRole === 'manager' || currentRole === 'executive') && !selfMode) {
       navigate('/dashboard', { replace: true });
     }
-  }, [currentRole, navigate]);
+  }, [currentRole, navigate, selfMode]);
 
   const isMobile      = useIsMobile();
   const timelineRef   = useRef<HTMLDivElement>(null);

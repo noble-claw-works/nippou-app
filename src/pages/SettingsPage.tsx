@@ -32,6 +32,11 @@ export function SettingsPage() {
   const [pwError, setPwError] = useState('');
   const [pwSaving, setPwSaving] = useState(false);
 
+  // DEAD-1: 通知・表示設定を controlled 化（モック内で state を保持）
+  const [notifPrefs, setNotifPrefs] = useState<boolean[]>([true, true, true, false]);
+  const [displayPrefs, setDisplayPrefs] = useState<boolean[]>([true, true]);
+  const [snapUnit, setSnapUnit] = useState<'15' | '30' | '60'>('30');
+
   const handleChangePassword = async () => {
     setPwError('');
     if (!pwCurrent || !pwNext || !pwConfirm) {
@@ -268,7 +273,12 @@ export function SettingsPage() {
                 '確認済みになったらメール通知',
               ].map((label, i) => (
                 <label key={i} className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked={i < 3} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                  <input
+                    type="checkbox"
+                    checked={notifPrefs[i]}
+                    onChange={e => setNotifPrefs(p => p.map((v, j) => j === i ? e.target.checked : v))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
@@ -285,16 +295,25 @@ export function SettingsPage() {
             <div className="space-y-3">
               {['起動時にToday画面を開く', '「日報のはじめ方」モーダルを次回も表示'].map((label, i) => (
                 <label key={i} className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                  <input
+                    type="checkbox"
+                    checked={displayPrefs[i]}
+                    onChange={e => setDisplayPrefs(p => p.map((v, j) => j === i ? e.target.checked : v))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">タイムラインのスナップ単位</label>
-                <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-                  <option>15分</option>
-                  <option>30分</option>
-                  <option>1時間</option>
+                <select
+                  value={snapUnit}
+                  onChange={e => setSnapUnit(e.target.value as '15' | '30' | '60')}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="15">15分</option>
+                  <option value="30">30分</option>
+                  <option value="60">1時間</option>
                 </select>
               </div>
             </div>

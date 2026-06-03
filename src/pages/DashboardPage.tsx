@@ -23,7 +23,17 @@ export function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-4">
-      <h1 className="text-lg font-bold text-gray-900 mb-4">📊 ダッシュボード</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-lg font-bold text-gray-900">📊 ダッシュボード</h1>
+        {/* MGR-5: 上長自身も自分の日報を作れるよう導線を設ける */}
+        <button
+          onClick={() => navigate('/today?self=1')}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          aria-label="自分の日報を書く"
+        >
+          ✍️ 自分の日報を書く
+        </button>
+      </div>
 
       {/* Alert Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
