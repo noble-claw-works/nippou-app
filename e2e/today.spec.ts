@@ -61,9 +61,13 @@ test.describe('Today Page', () => {
   });
 
   // ── 4: ブロック保存 → タイムラインに表示 ──
+  // 注：M-2 修正より「追加」ボタン起動時の type は undefined になったため、
+  // 保存前に必ず種別（「訪問」等）を選択しておく必要がある。
   test('ブロック追加・保存 → タイムラインに表示される', async ({ page }) => {
     await page.getByTestId('add-planned').click();
     await expect(page.getByText(/予定を追加/)).toBeVisible({ timeout: 3000 });
+    // M-2: 種別チップ（「🤝 訪問」等）をダイアログ内で選択
+    await page.getByRole('dialog').locator('button').filter({ hasText: /^🤝 訪問$/ }).first().click();
     await page.getByPlaceholder(/活動内容|タイトル/).fill('E2Eテスト予定');
     await page.getByRole('button', { name: /保存/ }).click();
     await expect(page.getByText('E2Eテスト予定')).toBeVisible({ timeout: 3000 });
@@ -100,9 +104,12 @@ test.describe('Today Page', () => {
   // ── 8: 実績化（in_progress 後）──
   test('予定確定後: 予定ブロックの実績化 → トースト表示', async ({ page }) => {
     await page.getByTestId('add-planned').click();
+    await expect(page.getByText(/予定を追加/)).toBeVisible({ timeout: 3000 });
+    // M-2: 種別を選択
+    await page.getByRole('dialog').locator('button').filter({ hasText: /^🤝 訪問$/ }).first().click();
     await page.getByPlaceholder(/活動内容|タイトル/).fill('実績化テスト');
     await page.getByRole('button', { name: /保存/ }).click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
     await advanceToInProgress(page);
     await page.locator('[class*="border-dashed"]').first().hover();
     const btn = page.getByRole('button', { name: /実績化/ });
@@ -122,9 +129,10 @@ test.describe('Today Page', () => {
     const planningStep = page.locator('[class*="text-blue-700"]').filter({ hasText: '予定入力' });
     await expect(planningStep.first()).toBeVisible({ timeout: 2000 });
 
-    // 確定後: 「提出する」ボタンと「実績入力」ステップが表示
+    // 確定後: 「提出する」ボタン（StatusBar 下部 or 新規ヘッダー）と「実績入力」ステップが表示
     await advanceToInProgress(page);
-    await expect(page.getByRole('button', { name: '提出する' })).toBeVisible({ timeout: 2000 });
+    // 注: P0-1 対応で TodayPage 上部にも「📤 日報を提出する」ヘッダーカードが追加され、StatusBar 下部の「提出する」と並存（仕様）
+    await expect(page.getByRole('button', { name: /提出する/ }).first()).toBeVisible({ timeout: 2000 });
     const inProgressStep = page.locator('[class*="text-blue-700"]').filter({ hasText: '実績入力' });
     await expect(inProgressStep.first()).toBeVisible({ timeout: 2000 });
   });
@@ -155,32 +163,36 @@ test.describe('ステータス遷移フロー', () => {
     }
   });
 
+  // 注: P0-1 対応により TodayPage 上部に「📤 日報を提出する」ヘッダーカードが追加された。
+  // 同時に StatusBar 下部にも「提出する」ボタンが残っており、両者が並存する（仕様）。
+  // テストでは .first() を使うか、name の正規表現でどちらかにマッチさせる方式に統一する。
+
   test('提出 → 取り下げ → 再提出フロー', async ({ page }) => {
     // planning → in_progress
     await page.getByRole('button', { name: '予定を確定する' }).click();
-    await expect(page.getByRole('button', { name: '提出する' })).toBeVisible({ timeout: 2000 });
+    await expect(page.getByRole('button', { name: /提出する/ }).first()).toBeVisible({ timeout: 2000 });
 
-    // in_progress → submitted
-    await page.getByRole('button', { name: '提出する' }).click();
-    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
-    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+    // in_progress → submitted（上部ヘッダーの「📤 日報を提出する」をクリック）
+    await page.getByRole('button', { name: /📤 日報を提出する/ }).click();
+    await page.getByRole('button', { name: /✓ 提出する/ }).click();
+    await expect(page.getByRole('button', { name: '← 取り下げ' }).first()).toBeVisible({ timeout: 3000 });
 
     // submitted → in_progress（取り下げ）
-    await page.getByRole('button', { name: '取り下げ' }).click();
-    await expect(page.getByRole('button', { name: '提出する' })).toBeVisible({ timeout: 2000 });
+    await page.getByRole('button', { name: '← 取り下げ' }).first().click();
+    await expect(page.getByRole('button', { name: /提出する/ }).first()).toBeVisible({ timeout: 2000 });
 
     // 再提出
-    await page.getByRole('button', { name: '提出する' }).click();
-    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
-    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: /📤 日報を提出する/ }).click();
+    await page.getByRole('button', { name: /✓ 提出する/ }).click();
+    await expect(page.getByRole('button', { name: '← 取り下げ' }).first()).toBeVisible({ timeout: 3000 });
   });
 
   test('submitted 状態ではブロック追加がガードされる', async ({ page }) => {
     // in_progress → submitted
     await page.getByRole('button', { name: '予定を確定する' }).click();
-    await page.getByRole('button', { name: '提出する' }).click();
-    await page.getByRole('button', { name: /✓ 提出する|提出する/ }).last().click();
-    await expect(page.getByRole('button', { name: '取り下げ' })).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: /📤 日報を提出する/ }).click();
+    await page.getByRole('button', { name: /✓ 提出する/ }).click();
+    await expect(page.getByRole('button', { name: '← 取り下げ' }).first()).toBeVisible({ timeout: 3000 });
 
     // 予定追加を試みる → ガードされてダイアログが開かない
     await page.getByTestId('add-planned').click();
