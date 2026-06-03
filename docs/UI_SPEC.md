@@ -238,12 +238,12 @@ const sorted = [...filtered].sort((a, b) => {
 
 **役割**: 顧客詳細表示、対応履歴を一覧表示。
 
-**CUS-2 顧客対応履歴セクション**:
+**CUS-3 顧客対応履歴をタイムライン型カードレイアウトに刷新**:
 
 #### レイアウト
 - **セクション ID**: `id="history"` → URL ハッシュ `#history` で scrollIntoView
 - **トリガー**: 1. URL ハッシュ `#history` で useEffect が `el.scrollIntoView({ behavior: 'smooth', block: 'start' })`
-- **構成**: `<section id="history">` + ヘッダー（「📅 対応履歴」+ 件数 + "新しい順" ラベル）+ リスト
+- **構成**: `<section id="history">` + ヘッダー（「📅 対応履歴」+ 件数 + "新しい順" ラベル）+ 垂直タイムラインコンテナ
 
 #### 空状態
 - テキスト: 「対応履歴がありません」
@@ -253,63 +253,60 @@ const sorted = [...filtered].sort((a, b) => {
 - **単位**: 1 行 = 1 TimeBlock（従来の report 単位ではない）
 - **並び順**: reportDate 降順 → 同日 startTime 降順
 - **ソース**: historyEntries = 全 reports を走査 → 該当 customerId を含む block を平める → ソート
+- **レイアウト**: `<div className="relative pl-6">` + 垂直タイムライン軸（`absolute left-2 w-px bg-gradient-to-b`）+ `<ul className="space-y-3">`
 
-#### 各エントリの構成
+#### タイムラインビジュアル
+- **垂直軸**: `absolute left-2 top-2 bottom-2 w-px bg-gradient-to-b from-blue-200 via-blue-100 to-transparent` （グラデーション）
+- **各エントリのドット**: `absolute -left-[18px] top-3 w-3 h-3 rounded-full bg-white border-2 border-blue-400 shadow-sm`
+- **パッドモード**: `relative pl-6` でエントリを右にシフト
 
-**1 行目: メタ情報バー**
-```
-📅 YYYY-MM-DD  🕐 HH:MM 〜 HH:MM  [種別バッジ]  👤 担当者名  [「予定」バッジ（isActual=false時）]
-```
-- `📅`: Calendar icon
-- 日付: reportDate
-- `🕐`: Clock icon
-- 時刻: block.startTime 〜 block.endTime（不在なら "--:--"）
-- **種別バッジ**: bg-gray-100 rounded-full → `${BLOCK_EMOJIS[type]} ${BLOCK_LABELS[type]}`
-- **担当者**: User icon + handler.name（報告者）
-- **「予定」バッジ**: isActual=false 時のみ → bg-amber-50 text-amber-700 rounded text-[10px]
-- **flex items-center gap-x-3 gap-y-1 text-xs text-gray-500**
+#### カード型スタイル
+- **ボーダー**: `border border-gray-200 border-l-4`
+- **左ボーダー色**（種別別）:
+  - `visit`: border-l-blue-400 bg-blue-50/30
+  - `office`: border-l-gray-400 bg-gray-50/30
+  - `phone`: border-l-amber-400 bg-amber-50/30
+  - `travel`: border-l-emerald-400 bg-emerald-50/30
+  - `break`: border-l-pink-300 bg-pink-50/30
+  - `meeting`: border-l-purple-400 bg-purple-50/30
+  - `lunch`: border-l-orange-400 bg-orange-50/30
+  - デフォルト: border-l-gray-300 bg-gray-50/30
+- **ホバー**: `hover:shadow-md hover:border-blue-300 transition-all`
+- **パディング**: `p-3`
+- **ボタンレイアウト**: `block w-full text-left rounded-lg`
 
-**2 行目: タイトル**
+#### ヘッダー行（日付・時刻・種別）
+- **レイアウト**: `flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-1.5`
+- **日付**: `text-sm font-semibold text-gray-900 inline-flex items-center gap-1`（メイン要素）
+- **時刻**: `text-xs text-gray-600 tabular-nums inline-flex items-center gap-1`（副要素）
+- **種別バッジ**: `ml-auto inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-gray-200 rounded-full text-xs text-gray-700`（右寄せ）
+
+#### タイトル
 - block.title が存在する場合のみ表示
-- mt-1 text-sm font-medium text-gray-900
+- `text-sm font-medium text-gray-900 mb-1`
 
-**3 行目: メモ**
+#### メモ
 - block.memo が存在する場合のみ表示
-- mt-1 text-sm text-gray-700 whitespace-pre-wrap break-words（改行・空白を保持）
+- `text-sm text-gray-700 whitespace-pre-wrap break-words mb-2 leading-relaxed`
 
-**4 行目以降: 訪問結果詳細**
+#### 訪問結果グリッド
 - **表示条件**: result || proposal || collected || nextAppointment のいずれかが存在する場合
-- mt-2 space-y-1 text-xs
+- **レイアウト**: `mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs`（2列グリッド、モバイルで1列）
+- **結果・提案セル**: `flex items-start gap-1.5 bg-white rounded px-2 py-1.5 border border-gray-100`（子要素: アイコン + [ラベル+値を縦]）
 
-```
-📄 結果: {block.result}        ← FileText icon, text-blue-500
-💡 提案: {block.proposal}      ← emoji, text-purple-600
-✅ 集金済                       ← CheckCircle2 icon, green-50/green-700
-📆 次回: {block.nextAppointment} ← emoji, blue-50/blue-700
-```
+#### フッター行（メタ情報・バッジ）
+- **レイアウト**: `flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-gray-100`
+- **担当者**: `inline-flex items-center gap-1 text-xs text-gray-600`（User icon + name）
+- **「予定」バッジ**: `isActual=false` 時のみ → `inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]`
+- **「集金済」バッジ**: `collected=true` 時のみ → `inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[10px]` + CheckCircle2 icon
+- **「次回AP」バッジ**: `nextAppointment` が存在時 → `inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]`（📆 emoji + 日付）
+- **右端**: `ml-auto text-[10px] text-blue-600 hover:underline` (「日報を開く →」テキスト)
 
 #### クリック動作
-- **要素**: 各エントリ li 内の button
+- **要素**: button（各カード全体）
 - **`onClick`**: `/reports/{reportDate}` へ navigate
-- **`aria-label`**: `${reportDate} ${startTime}〜${endTime} ${typeLabel} の日報を開く`
-- **ホバー**: bg-blue-50 rounded-lg transition-colors
+- **`aria-label`**: `${reportDate} ${startTime}〜${endTime} ${BLOCK_LABELS[type]} の日報を開く`
 - **フォーカス**: focus:outline-none focus:ring-2 focus:ring-blue-500
-
-#### 列のスタイル
-```tsx
-<ul className="divide-y divide-gray-100">
-  {historyEntries.map(({ block, ... }) => (
-    <li key={block.id}>
-      <button className="w-full text-left py-3 px-2 -mx-2 hover:bg-blue-50 rounded-lg ...">
-        {/* メタ情報バー */}
-        {/* タイトル */}
-        {/* メモ */}
-        {/* 訪問結果 */}
-      </button>
-    </li>
-  ))}
-</ul>
-```
 
 ---
 
@@ -334,6 +331,17 @@ TodayPage (src/pages/TodayPage.tsx)
 ├── StatusBar             （下部ステータスバー）
 └── BlockModal            （ブロック追加・編集モーダル）
 ```
+**上長コメント機能** (MGR-4):
+- **権限**: 上長 (currentRole !== 'general') のみがコメント投稿可
+- **担当者返信**: 一般社員 (general) は自身の報告書に返信・補足をコメント可 (canCommentAsAuthor = currentRole === 'general' && report.userId === currentUserId)
+- **表示条件**: canPostComment = canComment || canCommentAsAuthor が真であれば、コメント入力欄を表示
+- **削除権**: 担当者はランダムな自投稿のみ削除可 (削除ボタンは comment.authorUserId === currentUserId の時のみ表示)
+- **Placeholder 区別**: 
+  - canCommentAsAuthor が真: 「上長への返信・補足を入力...」
+  - それ以外: 「コメントを追加...」
+- **表示順**: 上長氏名値 ➜ 日時 ➜ コメント本文
+
+---
 
 ---
 
@@ -361,6 +369,14 @@ TodayPage (src/pages/TodayPage.tsx)
 
 ---
 
+#### 自分の日報作成ボタン (MGR-5)
+- **位置**: Dashboard 右上（「未確認カード」の上右）
+- **スタイル**: `inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700`
+- **ラベル**: ✍️ 自分の日報を書く
+- **動作**: onClick で `/today?self=1` へ navigate
+
+---
+
 ### TodayPage (`src/pages/TodayPage.tsx`)
 
 **役割**: オーケストレーター。State管理、hooks、ハンドラー関数を保持。
@@ -380,8 +396,9 @@ TodayPage (src/pages/TodayPage.tsx)
 - `useIsMobile` (レスポンシブ判定)
 - `useNavigate` (ページ遷移)
 
-**ナビゲーション** (EMP-1, MGR-1):
+**ナビゲーション** (EMP-1, MGR-1, MGR-5):
 - **MGR-1**: useEffect で `currentRole === 'manager' || 'executive'` ならば `/dashboard` へ自動 redirect（replace=true）
+  - **MGR-5 バイパス**: `searchParams.get('self') === '1'` の時を割り夫て許可 (上長自身の日報作成不可を応助)
 - **EMP-1**: ヘッダー日付の左右に前日・翌日ナビボタン追加
   - 左ボタン: クリックで `/reports/<前日 YYYY-MM-DD>` へ navigate（subDays from date-fns）
   - 右ボタン: クリックで `/reports/<翌日 YYYY-MM-DD>` へ navigate（addDays from date-fns）
@@ -484,7 +501,7 @@ interface TimelinePanelProps {
 
 **役割**: 日報検索インターフェース。フィルタ × 検索結果表示。
 
-**行数**: 190行（MGR-2/LIST-1 反映後）
+**行数**: 210行（MGR-2/MGR-3/LIST-1 反映後）
 
 **クエリパラメタ機能** (MGR-2):
 - `useSearchParams()` で日中の URL クエリを読み込み
@@ -501,11 +518,21 @@ interface TimelinePanelProps {
 - **日付セクション**: 氏名下へ (font-medium ダウン）
 - 日付下位置の StatusBadge は変わらず
 
----
+**ミニタイムライン** (MGR-3):
+- **目的**: 1日の時間配分を帯を 100% に正規化し、帯形式で描画
+- **位置**: 検索結果カード内、氏名 → StatusBadge 下 (mt-2)
+- **正規化範囲**: 08:00 〜 20:00 を 100% に画一 (dayStartMin=480, dayEndMin=1200 が日時)
+- **帯セグメント**: `calcMiniTimelineSegments()` から算出した (leftPct, widthPct) を提用
+  - 素材: `<div class="absolute bg-{color} border-r border-white/60" style="left: {leftPct}%, width: {widthPct}%">` を直含
+  - 絵を emoji（`text-[10px]`）で表示
+  - title 属性: `${startTime}–${endTime} ${title || BLOCK_LABELS[type]}`
+- **コンテナ**: `h-7 bg-gray-50 rounded-md overflow-hidden` (aria-label 付賦)
+- **目盛り**: 下部に目盛り (「8:00 / 12:00 / 16:00 / 20:00」を text-[10px] text-gray-400 tabular-nums で表示)
+- **空状態**: ブロックなし は 「ブロック未記録」 テキスト (text-xs text-gray-400 mt-2)
 
-### BlockCard (`src/components/today/BlockCard.tsx`)
-
-**役割**: タイムラインに表示される個別ブロック。ドラッグ対応、メモ表示。
+**索引機能**:
+- `calcMiniTimelineSegments<T>(blocks, dayStartMin?, dayEndMin?)` 関数: `MiniTimelineSegment[]` を輸出
+  - 入力と出力の 1:1 対応を保証 (並び順を維持)
 
 **行数**: 96行
 
@@ -544,6 +571,29 @@ interface TimelinePanelProps {
 
 ---
 
+**未動作 UI 修正** (DEAD-1):
+
+*NotificationsPage*:
+- **handleClick 関数**: relatedReportId から report を検索し、有効なら `/reports/{date}?user={userId}` へ遷移
+- **type 分岐**: reminder 型は `/today` へ、その他は `/calendar` へフォールバック
+- **関数シグネチャ**: `const handleClick = (n: typeof userNotifs[number]) => { markNotificationRead(n.id); ... }`
+
+*SettingsPage 通知設定*:
+- **Controlled 化**: `notifPrefs: boolean[]` state を導入、デフォルト `[true, true, true, false]`
+- **Checkbox**: `checked={notifPrefs[i]}` + `onChange` で state 更新
+- **ラベル**: 4項目（「確認済みになったらメール通知」など）
+
+*SettingsPage 表示設定*:
+- **Controlled 化**: `displayPrefs: boolean[]` state を導入、デフォルト `[true, true]`
+- **Checkbox**: `checked={displayPrefs[i]}` + `onChange` で state 更新
+- **ラベル**: 2項目（「起動時に Today 画面を開く」「『日報のはじめ方』モーダルを次回も表示」）
+
+*SettingsPage スナップ単位 Select*:
+- **Controlled 化**: `snapUnit: '15' | '30' | '60'` state を導入、デフォルト `'30'`
+- **Option**: value に `'15'/'30'/'60'` を明示、テキスト表示は「15分」「30分」「1時間」
+- **onChange**: `e => setSnapUnit(e.target.value as '15' | '30' | '60')`
+
+
 ## デザイントークン
 
 | 用途 | カラー |
@@ -580,4 +630,11 @@ interface TimelinePanelProps {
   - **EMP-1**: TodayPage ヘッダー日付左右に前・翌日ナビボタン追加
   - **EMP-2**: Dashboard ヒートマップセル button 化、hover 状態改善、user param 付与
   - **LIST-1**: SearchPage 検索結果で author.name を先頭強調表示（上長以上のみ）
+- **2026-06-04 694684f**: 主上ご下命 6 件 (CUS-3/MGR-3/MGR-4/MGR-5/MGR-6/DEAD-1) を反映
+  - **CUS-3**: CustomerDetailPage 顧客対応履歴をタイムライン型カードレイアウトに刷新 (垂直軸ドット + 種別欄側 + 2列グリッド訪問結果)
+  - **MGR-3**: SearchPage 一覧カードにミニタイムライン追加 (08:00〜20:00 を 100% 正規化した帯形式)
+  - **MGR-4**: ReportDetailPage 上長コメントを担当者 (general) も返信可能に (canCommentAsAuthor 手柄)
+  - **MGR-5**: Dashboard に「✍ 自分の日報を書く」ボタン追加, TodayPage は `?self=1` で上長迂回不可をバイパス
+  - **MGR-6**: executive が manager の日報を確認可能 (撤変了、既存実装で要件充足)
+  - **DEAD-1**: NotificationsPage handleClick を導入, SettingsPage の、通知・表示・スナップ select を controlled 化
 - **2026-06-03 以前**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映

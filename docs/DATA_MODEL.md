@@ -175,6 +175,41 @@ interface DailyReport {
 
 ---
 
+### MiniTimelineSegment (派生型・UI専用)
+
+**分類**: LocalStorage に永続化されない、UI 計算専用の派生型。
+
+**用途**: SearchPage 一覧カードに各日報の時間帯を視覚化する帯形式タイムラインを描画するため、実装コード内で `calcMiniTimelineSegments()` により動的生成される。
+
+```typescript
+export interface MiniTimelineSegment {
+  startTime: string;
+  endTime: string;
+  leftPct: number;      // 帯内の左端オフセット (%)
+  widthPct: number;     // 帯内の幅 (%)
+  /** 表示対象外（範囲クリップで width 0 以下）の場合 true */
+  hidden: boolean;
+}
+```
+
+**生成ロジック** (`calcMiniTimelineSegments<T>(blocks, dayStartMin?, dayEndMin?)` 関数):
+- 入力: `blocks` 配列（`{ startTime: string, endTime: string }` を満たす任意型）
+- 出力: 同長の `MiniTimelineSegment[]`（入力と 1:1 対応、並び順を維持）
+- パラメタ:
+  - `dayStartMin` (既定 480) — 1 日の開始分（08:00）
+  - `dayEndMin` (既定 1200) — 1 日の終了分（20:00）
+- 動作:
+  1. 各ブロックの startTime / endTime を分単位に変換
+  2. dayStartMin ~ dayEndMin の範囲内でクリップ（範囲外は hidden=true）
+  3. leftPct, widthPct を計算 (dayEndMin - dayStartMin が分母)
+
+**表示例**:
+- ブロック: 12:00–13:00、dayStartMin=480 (08:00)、dayEndMin=1200 (20:00)
+- span = 720分
+- leftPct = (720 - 480) / 720 × 100 = 33.33%
+- widthPct = (780 - 720) / 720 × 100 = 8.33%
+
+---
 ### TimelineGap, TimelineBlockRef, TimelineItem (派生型・UI専用)
 
 **分類**: LocalStorage に永続化されない、UI 計算専用の派生型。
