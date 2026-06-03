@@ -35,10 +35,25 @@ export interface EmailChangeRequest {
   processedAt?: string;
 }
 
+// 認証セッション関連は src/store/auth.ts に分離
+import {
+  AUTH_SESSION_TTL_MS,
+  DEFAULT_DEMO_PASSWORD,
+  loadAuthSession,
+  persistAuthSession,
+  type AuthSession,
+} from './auth';
+
+// 再エクスポート (既存の import パス互換用)
+export { AUTH_STORAGE_KEY, AUTH_SESSION_TTL_MS, DEFAULT_DEMO_PASSWORD } from './auth';
+export type { AuthSession } from './auth';
+
 interface AppState {
   // Auth
   currentRole: Role;
   currentUserId: string;
+  authSession: AuthSession | null;          // ログイン中のセッション。null なら未認証
+  passwords: Record<string, string>;        // userId → password マップ。初期値は全員 'demo'
 
   // Data
   users: User[];
@@ -59,6 +74,14 @@ interface AppState {
 
   // Actions: Role
   setRole: (role: Role) => void;
+
+  // Actions: Auth
+  login: (email: string, password: string) => { ok: true; user: User } | { ok: false; error: string };
+  loginAsUser: (userId: string) => void;        // デモ/ロール切替用
+  logout: () => void;
+  isAuthenticated: () => boolean;
+  touchSession: () => void;                     // 最終操作時刻を更新し expiresAt を延長
+  changePassword: (userId: string, current: string, next: string) => { ok: true } | { ok: false; error: string };
 
   // Actions: Toast
   addToast: (toast: Omit<Toast, 'id'>) => void;
@@ -146,9 +169,17 @@ interface AppState {
 let idCounter = 10000;
 const uid = () => `id_${++idCounter}_${Date.now()}`;
 
+// ストア初期化時に、以前のセッションを localStorage から復元
+const _initialAuthSession = loadAuthSession();
+const _initialUser = _initialAuthSession
+  ? USERS.find(u => u.id === _initialAuthSession.userId)
+  : undefined;
+
 export const useAppStore = create<AppState>((set, get) => ({
-  currentRole: 'general',
-  currentUserId: 'u1',
+  currentRole: _initialUser?.role ?? 'general',
+  currentUserId: _initialUser?.id ?? 'u1',
+  authSession: _initialUser ? _initialAuthSession : null,
+  passwords: Object.fromEntries(USERS.map(u => [u.id, DEFAULT_DEMO_PASSWORD])),
   users: USERS,
   teams: TEAMS,
   customers: CUSTOMERS,
@@ -171,6 +202,90 @@ export const useAppStore = create<AppState>((set, get) => ({
       admin: 'u6',
     };
     set({ currentRole: role, currentUserId: roleUserMap[role] });
+  },
+
+  // ----------------------------------------------------
+  // Auth
+  // ----------------------------------------------------
+  login: (email, password) => {
+    const normalized = (email ?? '').trim().toLowerCase();
+    const user = get().users.find(u => u.email.toLowerCase() === normalized);
+    if (!user) {
+      return { ok: false, error: 'メールアドレスまたはパスワードが正しくありません' };
+    }
+    if (user.status === 'inactive') {
+      return { ok: false, error: 'このアカウントは無効化されています' };
+    }
+    const expected = get().passwords[user.id] ?? DEFAULT_DEMO_PASSWORD;
+    if (password !== expected) {
+      return { ok: false, error: 'メールアドレスまたはパスワードが正しくありません' };
+    }
+    get().loginAsUser(user.id);
+    return { ok: true, user };
+  },
+
+  loginAsUser: (userId) => {
+    const user = get().users.find(u => u.id === userId);
+    if (!user) return;
+    const now = new Date();
+    const session: AuthSession = {
+      userId: user.id,
+      email: user.email,
+      loginAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + AUTH_SESSION_TTL_MS).toISOString(),
+    };
+    persistAuthSession(session);
+    set(s => ({
+      authSession: session,
+      currentRole: user.role,
+      currentUserId: user.id,
+      // 最終ログインを users に反映
+      users: s.users.map(u => u.id === user.id ? { ...u, lastLogin: session.loginAt } : u),
+    }));
+  },
+
+  logout: () => {
+    persistAuthSession(null);
+    set({ authSession: null });
+  },
+
+  isAuthenticated: () => {
+    const s = get().authSession;
+    if (!s) return false;
+    if (new Date(s.expiresAt).getTime() < Date.now()) {
+      // 期限切れ
+      persistAuthSession(null);
+      set({ authSession: null });
+      return false;
+    }
+    return true;
+  },
+
+  touchSession: () => {
+    const s = get().authSession;
+    if (!s) return;
+    const next: AuthSession = {
+      ...s,
+      expiresAt: new Date(Date.now() + AUTH_SESSION_TTL_MS).toISOString(),
+    };
+    persistAuthSession(next);
+    set({ authSession: next });
+  },
+
+  changePassword: (userId, current, next) => {
+    const passwords = get().passwords;
+    const expected = passwords[userId] ?? DEFAULT_DEMO_PASSWORD;
+    if (current !== expected) {
+      return { ok: false, error: '現在のパスワードが正しくありません' };
+    }
+    if (!next || next.length < 4) {
+      return { ok: false, error: '新しいパスワードは 4 文字以上で設定してください' };
+    }
+    if (next === current) {
+      return { ok: false, error: '新しいパスワードは現在のものと異なる必要があります' };
+    }
+    set({ passwords: { ...passwords, [userId]: next } });
+    return { ok: true };
   },
 
   addToast: (toast) => {
@@ -555,11 +670,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     return get().emailChangeRequests.find(r => r.userId === userId && r.status === 'pending');
   },
 
-  resetAll: () => set({
-    currentRole: 'general', currentUserId: 'u1',
-    users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
-    templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
-    notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
-    trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [], toasts: [],
-  }),
+  resetAll: () => {
+    persistAuthSession(null);
+    set({
+      currentRole: 'general', currentUserId: 'u1',
+      authSession: null,
+      passwords: Object.fromEntries(USERS.map(u => [u.id, DEFAULT_DEMO_PASSWORD])),
+      users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
+      templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
+      notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
+      trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [], toasts: [],
+    });
+  },
 }));

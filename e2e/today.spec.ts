@@ -1,5 +1,19 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// AUTH-1 以降、/ は /login へリダイレクトされるため、
+// 事前に localStorage に認証セッションを仕込んでおく。
+async function loginAsDemo(page: Page) {
+  await page.addInitScript(() => {
+    const session = {
+      userId: 'u1',
+      email: 'hakuta@example.com',
+      loginAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    };
+    window.localStorage.setItem('nippou.auth.v1', JSON.stringify(session));
+  });
+}
+
 async function ensureReport(page: Page) {
   const startBtn = page.getByText('日報を作成する');
   if (await startBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
@@ -31,6 +45,7 @@ async function dragInColumn(page: Page, colClass: string, fromRatio = 0.25, toRa
 
 test.describe('Today Page', () => {
   test.beforeEach(async ({ page }) => {
+    await loginAsDemo(page);
     await page.goto('/');
     await ensureReport(page);
   });

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home, Calendar, Search, BarChart3, Users, FileText,
   Settings, ShieldCheck, Bell, ChevronDown, RefreshCw,
-  Menu, X as XIcon
+  Menu, X as XIcon, LogOut
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ROLE_LABELS, ROLE_DEMO_USERS } from '../../utils';
@@ -24,12 +24,19 @@ const NAV_ITEMS = [
 const ROLES: Role[] = ['general', 'manager', 'executive', 'admin'];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { currentRole, currentUserId, setRole, addToast, resetAll, notifications } = useAppStore();
+  const { currentRole, currentUserId, setRole, addToast, resetAll, notifications, logout } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
   const user = useAppStore(s => s.users.find(u => u.id === s.currentUserId));
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleLogout = () => {
+    logout();
+    addToast({ type: 'info', message: 'ログアウトしました' });
+    setMenuOpen(false);
+    navigate('/login', { replace: true });
+  };
 
   const handleRoleChange = (role: Role) => {
     setRole(role);
@@ -122,9 +129,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 ))}
                 <hr className="my-1 border-gray-100" />
-                <button onClick={() => { resetAll(); addToast({ type: 'info', message: 'デモをリセットしました' }); setMenuOpen(false); navigate('/today'); }}
+                {user && (
+                  <div className="px-4 py-2 text-xs text-gray-500">
+                    <span className="block">ログイン中:</span>
+                    <span className="block font-medium text-gray-800 truncate">{user.name}</span>
+                    <span className="block text-[10px] truncate">{user.email}</span>
+                  </div>
+                )}
+                <button onClick={() => { resetAll(); addToast({ type: 'info', message: 'デモをリセットしました' }); setMenuOpen(false); navigate('/login', { replace: true }); }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
                   <RefreshCw className="w-3.5 h-3.5" /> デモをリセット
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> ログアウト
                 </button>
               </div>
             )}

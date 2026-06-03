@@ -1,6 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 test('debug: DOM structure after report creation', async ({ page }) => {
+  // AUTH-1 以降、/ は /login へリダイレクトされるためセッションを仕込む
+  await page.addInitScript(() => {
+    const session = {
+      userId: 'u1',
+      email: 'hakuta@example.com',
+      loginAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    };
+    window.localStorage.setItem('nippou.auth.v1', JSON.stringify(session));
+  });
   await page.goto('/');
 
   // 日報作成

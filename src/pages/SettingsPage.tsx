@@ -11,7 +11,7 @@ const BLOCK_EMOJIS: Record<BlockType, string> = {
 };
 
 export function SettingsPage() {
-  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, getEmailChangeRequest } = useAppStore();
+  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, changePassword } = useAppStore();
   const user = users.find(u => u.id === currentUserId);
   const myChips = quickChips.filter(c => c.userId === currentUserId || !c.userId);
   // Use store selector to ensure real-time updates
@@ -24,6 +24,35 @@ export function SettingsPage() {
   const [newChipLabel, setNewChipLabel] = useState('');
   const [newChipType, setNewChipType] = useState<BlockType>('visit');
   const [showAddChip, setShowAddChip] = useState(false);
+
+  // パスワード変更用 state
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNext, setPwNext] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+
+  const handleChangePassword = async () => {
+    setPwError('');
+    if (!pwCurrent || !pwNext || !pwConfirm) {
+      setPwError('すべての項目を入力してください');
+      return;
+    }
+    if (pwNext !== pwConfirm) {
+      setPwError('新しいパスワードと確認が一致しません');
+      return;
+    }
+    setPwSaving(true);
+    await new Promise(r => setTimeout(r, 300));
+    const result = changePassword(currentUserId, pwCurrent, pwNext);
+    setPwSaving(false);
+    if (!result.ok) {
+      setPwError(result.error);
+      return;
+    }
+    setPwCurrent(''); setPwNext(''); setPwConfirm('');
+    addToast({ type: 'success', message: 'パスワードを変更しました' });
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-4">
@@ -119,17 +148,55 @@ export function SettingsPage() {
 
         {/* Password */}
         {activeTab === 'password' && (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-label="パスワード変更フォーム">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">パスワード変更</h2>
-            {[['現在のパスワード'], ['新しいパスワード'], ['確認']].map(([label]) => (
-              <div key={label}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-                <input type="password"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            ))}
-            <button onClick={() => addToast({ type: 'success', message: 'パスワードを変更しました（モック）' })}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">変更する</button>
+            <div>
+              <label htmlFor="pw-current" className="block text-xs font-medium text-gray-600 mb-1">現在のパスワード</label>
+              <input
+                id="pw-current"
+                type="password"
+                value={pwCurrent}
+                onChange={e => setPwCurrent(e.target.value)}
+                autoComplete="current-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="pw-next" className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード</label>
+              <input
+                id="pw-next"
+                type="password"
+                value={pwNext}
+                onChange={e => setPwNext(e.target.value)}
+                autoComplete="new-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">4 文字以上、現在のものと異なるものを設定してください</p>
+            </div>
+            <div>
+              <label htmlFor="pw-confirm" className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード（確認）</label>
+              <input
+                id="pw-confirm"
+                type="password"
+                value={pwConfirm}
+                onChange={e => setPwConfirm(e.target.value)}
+                autoComplete="new-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {pwError && (
+              <p role="alert" className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                {pwError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={pwSaving}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
+            >
+              {pwSaving ? '保存中...' : '変更する'}
+            </button>
           </div>
         )}
 

@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ToastContainer } from './components/ui/Toast';
 import { LoginPage } from './pages/LoginPage';
@@ -13,6 +14,49 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { useAppStore } from './store';
+
+/** 認証ガード: 未ログインなら /login へリダイレクト */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isAuthenticated = useAppStore(s => s.authSession !== null);
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
+  return <>{children}</>;
+}
+
+/** 30 分無操作でセッションを自動失効 */
+function SessionWatcher() {
+  const touchSession = useAppStore(s => s.touchSession);
+  const logout = useAppStore(s => s.logout);
+  const addToast = useAppStore(s => s.addToast);
+
+  useEffect(() => {
+    // 操作イベントで expiresAt を伸ばす
+    const onActivity = () => {
+      if (useAppStore.getState().authSession) touchSession();
+    };
+    const events: (keyof DocumentEventMap)[] = ['click', 'keydown', 'mousemove', 'touchstart'];
+    events.forEach(e => document.addEventListener(e, onActivity, { passive: true }));
+
+    // 30 秒おきに失効チェック
+    const interval = window.setInterval(() => {
+      const s = useAppStore.getState().authSession;
+      if (s && new Date(s.expiresAt).getTime() < Date.now()) {
+        logout();
+        addToast({ type: 'warning', message: 'セッションが切れました。再度ログインしてください' });
+      }
+    }, 30_000);
+
+    return () => {
+      events.forEach(e => document.removeEventListener(e, onActivity));
+      window.clearInterval(interval);
+    };
+  }, [touchSession, logout, addToast]);
+
+  return null;
+}
 
 function AppLayout() {
   return (
@@ -38,9 +82,10 @@ function AppLayout() {
 export function App() {
   return (
     <BrowserRouter>
+      <SessionWatcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={<AppLayout />} />
+        <Route path="/*" element={<RequireAuth><AppLayout /></RequireAuth>} />
       </Routes>
       <ToastContainer />
     </BrowserRouter>
