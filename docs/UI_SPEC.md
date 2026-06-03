@@ -220,6 +220,97 @@ const sorted = [...filtered].sort((a, b) => {
 - 状態: `[sortKey, setSortKey]`
 - 結果に即座に反映
 
+**CUS-2 顧客対応履歴一覧**:
+
+#### 一覧行への履歴バッジ追加
+- **「📅 履歴N件」バッジ**: インラインで表示、bg-indigo-50 text-indigo-700 rounded-full
+- **表示条件**: historyCountByCustomer.get(customer.id) > 0 の場合のみ表示
+- **計算方法**: reports を走査し、各 block.customerId に対してカウント（1行=1ブロック単位）
+
+#### 「📅 履歴」ボタン追加
+- **位置**: アクション列（編集ボタン同列）
+- **表示条件**: historyCountByCustomer.get(customer.id) > 0 の場合のみ表示
+- **スタイル**: px-2.5 py-1 text-xs text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50
+- **クリック動作**: `/customers/{id}#history` へ navigate
+- **aria-label**: `${customer.name} の対応履歴を見る`
+
+### CustomerDetailPage (`src/pages/CustomerDetailPage.tsx`)
+
+**役割**: 顧客詳細表示、対応履歴を一覧表示。
+
+**CUS-2 顧客対応履歴セクション**:
+
+#### レイアウト
+- **セクション ID**: `id="history"` → URL ハッシュ `#history` で scrollIntoView
+- **トリガー**: 1. URL ハッシュ `#history` で useEffect が `el.scrollIntoView({ behavior: 'smooth', block: 'start' })`
+- **構成**: `<section id="history">` + ヘッダー（「📅 対応履歴」+ 件数 + "新しい順" ラベル）+ リスト
+
+#### 空状態
+- テキスト: 「対応履歴がありません」
+- スタイル: text-sm text-gray-400 py-6 text-center
+
+#### 履歴エントリ列
+- **単位**: 1 行 = 1 TimeBlock（従来の report 単位ではない）
+- **並び順**: reportDate 降順 → 同日 startTime 降順
+- **ソース**: historyEntries = 全 reports を走査 → 該当 customerId を含む block を平める → ソート
+
+#### 各エントリの構成
+
+**1 行目: メタ情報バー**
+```
+📅 YYYY-MM-DD  🕐 HH:MM 〜 HH:MM  [種別バッジ]  👤 担当者名  [「予定」バッジ（isActual=false時）]
+```
+- `📅`: Calendar icon
+- 日付: reportDate
+- `🕐`: Clock icon
+- 時刻: block.startTime 〜 block.endTime（不在なら "--:--"）
+- **種別バッジ**: bg-gray-100 rounded-full → `${BLOCK_EMOJIS[type]} ${BLOCK_LABELS[type]}`
+- **担当者**: User icon + handler.name（報告者）
+- **「予定」バッジ**: isActual=false 時のみ → bg-amber-50 text-amber-700 rounded text-[10px]
+- **flex items-center gap-x-3 gap-y-1 text-xs text-gray-500**
+
+**2 行目: タイトル**
+- block.title が存在する場合のみ表示
+- mt-1 text-sm font-medium text-gray-900
+
+**3 行目: メモ**
+- block.memo が存在する場合のみ表示
+- mt-1 text-sm text-gray-700 whitespace-pre-wrap break-words（改行・空白を保持）
+
+**4 行目以降: 訪問結果詳細**
+- **表示条件**: result || proposal || collected || nextAppointment のいずれかが存在する場合
+- mt-2 space-y-1 text-xs
+
+```
+📄 結果: {block.result}        ← FileText icon, text-blue-500
+💡 提案: {block.proposal}      ← emoji, text-purple-600
+✅ 集金済                       ← CheckCircle2 icon, green-50/green-700
+📆 次回: {block.nextAppointment} ← emoji, blue-50/blue-700
+```
+
+#### クリック動作
+- **要素**: 各エントリ li 内の button
+- **`onClick`**: `/reports/{reportDate}` へ navigate
+- **`aria-label`**: `${reportDate} ${startTime}〜${endTime} ${typeLabel} の日報を開く`
+- **ホバー**: bg-blue-50 rounded-lg transition-colors
+- **フォーカス**: focus:outline-none focus:ring-2 focus:ring-blue-500
+
+#### 列のスタイル
+```tsx
+<ul className="divide-y divide-gray-100">
+  {historyEntries.map(({ block, ... }) => (
+    <li key={block.id}>
+      <button className="w-full text-left py-3 px-2 -mx-2 hover:bg-blue-50 rounded-lg ...">
+        {/* メタ情報バー */}
+        {/* タイトル */}
+        {/* メモ */}
+        {/* 訪問結果 */}
+      </button>
+    </li>
+  ))}
+</ul>
+```
+
 ---
 
 ## 既存ページ詳細
@@ -454,6 +545,7 @@ interface TimelinePanelProps {
 
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
+- **2026-06-03 da74db3**: CUS-2 顧客対応履歴一覧刷新 — CustomerDetailPage 履歴セクション 1行=1ブロック表示、CustomersPage 履歴バッジ・履歴ボタン追加
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件を反映
   - **NAV-1**: ReportDetailPage に日報前後ナビゲーション追加 (上長ビュー時は未確認循環値も)
   - **MGR-1**: TodayPage で上長ロール自動 redirect を `/dashboard` へ
