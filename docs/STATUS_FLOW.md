@@ -51,6 +51,20 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 上長による差し戻しは「取り下げ」と同動作（`submitted → in_progress` + `submitted=false`）。
 担当者は実績を修正し、再度「提出する」で再提出できます。
 
+## in_progress 時の提出ヘッダーカード (P0-1)
+
+`status='in_progress'` 時に、TodayPage 上部に提出ヘッダーカードを表示:
+
+```
+[blue-50 上部カード]
+実績入力が完了しました
+確認して上長に提出します
+[📤 日報を提出する] ボタン
+```
+
+- 削日下部の StatusBar の提出ボタンと重複表示で OK（両方から操作可能）
+- submitted に遷移後は緑色「✅ 提出済み」バッジに変更
+
 ## 実装ファイル
 
 - `src/types/index.ts` — `ReportStatus` / `DailyReport.submitted` 型定義
@@ -71,3 +85,4 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 ## 改修履歴
 
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
+- **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加

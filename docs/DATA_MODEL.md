@@ -140,11 +140,12 @@ interface Todo {
 }
 ```
 
-**ステータス機能**:
+**ステータス機能** (P1-2 3段巡回実装):
 - `todo`: タスク未開始（☐）
 - `doing`: 進行中（◐）
 - `done`: 完了（☑️）
-- UI 上では、ステータスアイコンをクリックで `todo → doing → done → todo` と巡回可能
+- UI 上では、ステータスアイコンをクリックで **`todo → doing → done → todo` と巡回**（3段階循環）
+- 同期: `completed = (status === 'done')` を常に維持
 
 **優先度表示**:
 - `high`（🔥 赤）
@@ -339,3 +340,4 @@ updateBlock(report.id, block.id, {
 ## 改修履歴
 
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
+- **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）
