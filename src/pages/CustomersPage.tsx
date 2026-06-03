@@ -88,6 +88,9 @@ export function CustomersPage() {
   const { customers, users, addCustomer, updateCustomer, deactivateCustomer, currentRole, currentUserId, addToast } = useAppStore();
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  // CUS-1: ソート順
+  type SortKey = 'name_asc' | 'name_desc' | 'lastContact_desc' | 'nextAppt_asc' | 'created_desc';
+  const [sortKey, setSortKey] = useState<SortKey>('name_asc');
   const [showNew, setShowNew] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
@@ -100,6 +103,32 @@ export function CustomersPage() {
     if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.area.toLowerCase().includes(query.toLowerCase())) return false;
     if (typeFilter && c.type !== typeFilter) return false;
     return true;
+  });
+
+  // CUS-1: ソートロジック
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortKey) {
+      case 'name_asc':
+        return a.name.localeCompare(b.name, 'ja');
+      case 'name_desc':
+        return b.name.localeCompare(a.name, 'ja');
+      case 'lastContact_desc': {
+        const av = a.lastContactDate ?? '';
+        const bv = b.lastContactDate ?? '';
+        if (av === bv) return a.name.localeCompare(b.name, 'ja');
+        return bv.localeCompare(av); // 新しい順
+      }
+      case 'nextAppt_asc': {
+        const av = a.nextAppointment ?? '9999-12-31';
+        const bv = b.nextAppointment ?? '9999-12-31';
+        if (av === bv) return a.name.localeCompare(b.name, 'ja');
+        return av.localeCompare(bv); // 近い順
+      }
+      case 'created_desc':
+        return (b.id ?? '').localeCompare(a.id ?? '');
+      default:
+        return 0;
+    }
   });
 
   const editingCustomer = editId ? customers.find(c => c.id === editId) : null;
@@ -116,8 +145,8 @@ export function CustomersPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4 flex gap-3 items-center">
-        <div className="relative flex-1">
+      <div className="bg-white rounded-xl border border-gray-200 p-3 mb-2 flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="顧客名・エリアで検索"
             className="w-full pl-9 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
@@ -129,14 +158,46 @@ export function CustomersPage() {
           <option value="corporate">法人</option>
           <option value="prospect">見込み</option>
         </select>
+        {/* CUS-1: ソート選択 */}
+        <select
+          value={sortKey}
+          onChange={e => setSortKey(e.target.value as SortKey)}
+          aria-label="ソート順"
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+        >
+          <option value="name_asc">氏名順（あ→ん）</option>
+          <option value="name_desc">氏名順（ん→あ）</option>
+          <option value="lastContact_desc">最終接触日（新しい順）</option>
+          <option value="nextAppt_asc">次回AP（近い順）</option>
+          <option value="created_desc">登録順（新しい順）</option>
+        </select>
       </div>
 
-      {filtered.length === 0 ? (
+      {/* CUS-1: 件数表示 */}
+      <div className="flex items-center justify-between mb-2 px-1 text-xs text-gray-600">
+        <span>
+          全 <strong className="text-gray-900">{sorted.length}</strong> 件
+          {(query || typeFilter) && (
+            <span className="text-gray-400">（全顧客 {customers.length} 件中）</span>
+          )}
+        </span>
+        {(query || typeFilter) && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); setTypeFilter(''); }}
+            className="text-blue-600 hover:underline"
+          >
+            条件をクリア
+          </button>
+        )}
+      </div>
+
+      {sorted.length === 0 ? (
         <EmptyState icon="👥" title="顧客が見つかりません"
           action={canAdd ? { label: '+ 顧客を追加', onClick: () => setShowNew(true) } : undefined} />
       ) : (
         <div className="space-y-2">
-          {filtered.map(customer => {
+          {sorted.map(customer => {
             const primaryUser = users.find(u => u.id === customer.primaryUserId);
             return (
               <div key={customer.id}

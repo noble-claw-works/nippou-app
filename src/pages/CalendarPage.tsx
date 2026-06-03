@@ -1,18 +1,32 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, subMonths, addMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, subMonths, addMonths } from 'date-fns';
 import { useAppStore } from '../store';
 import { MOOD_EMOJIS } from '../utils';
 import type { ReportStatus } from '../types';
 
+// CAL-1: 状態アイコンを大型化・表現を強化
 const STATUS_ICON: Record<ReportStatus, string> = {
-  planning: '✎', in_progress: '✍', submitted: '✓', confirmed: '★',
+  planning: '✎', in_progress: '✍', submitted: '✅', confirmed: '⭐',
+};
+
+// CAL-1: 状態別背景色塗り分け
+const STATUS_BG: Record<ReportStatus, string> = {
+  planning: 'bg-gray-50 border-gray-200',
+  in_progress: 'bg-yellow-50 border-yellow-200',
+  submitted: 'bg-blue-50 border-blue-300',
+  confirmed: 'bg-green-50 border-green-300',
+};
+
+const STATUS_LABEL: Record<ReportStatus, string> = {
+  planning: '予定入力中', in_progress: '実績入力中', submitted: '提出済', confirmed: '確認済',
 };
 
 export function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [view, setView] = useState<'month' | 'heatmap'>('month');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null); // CAL-1: 選択日
   const navigate = useNavigate();
   const { reports, users, currentRole, currentUserId } = useAppStore();
 
@@ -33,17 +47,35 @@ export function CalendarPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCurrentMonth(m => subMonths(m, 1))}
-            className="p-1.5 rounded-lg hover:bg-gray-100">
-            <ChevronLeft className="w-4 h-4" />
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* CAL-1: 月移動ボタンを大型化・コントラスト強化 */}
+          <button
+            type="button"
+            onClick={() => setCurrentMonth(m => subMonths(m, 1))}
+            className="flex items-center gap-1 px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 transition-colors min-h-[44px]"
+            aria-label="前月"
+          >
+            <ChevronLeft className="w-5 h-5 text-gray-700" />
+            <span className="hidden sm:inline text-sm text-gray-700">前月</span>
           </button>
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 min-w-[7em] text-center">
             {format(currentMonth, 'yyyy年M月')}
           </h1>
-          <button onClick={() => setCurrentMonth(m => addMonths(m, 1))}
-            className="p-1.5 rounded-lg hover:bg-gray-100">
-            <ChevronRight className="w-4 h-4" />
+          <button
+            type="button"
+            onClick={() => setCurrentMonth(m => addMonths(m, 1))}
+            className="flex items-center gap-1 px-3 py-2 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-500 transition-colors min-h-[44px]"
+            aria-label="翌月"
+          >
+            <span className="hidden sm:inline text-sm text-gray-700">翌月</span>
+            <ChevronRight className="w-5 h-5 text-gray-700" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { setCurrentMonth(new Date()); setSelectedDate(new Date()); }}
+            className="px-3 py-2 text-xs sm:text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 min-h-[44px]"
+          >
+            今日
           </button>
         </div>
         <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
@@ -72,43 +104,60 @@ export function CalendarPage() {
               const report = getReport(day);
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const today = isToday(day);
+              const selected = selectedDate ? isSameDay(day, selectedDate) : false;
               const dow = day.getDay();
               const isWeekend = dow === 0 || dow === 6;
+              // CAL-1: 状態別背景を塗り分け
+              const statusBgCls = report ? STATUS_BG[report.status] : '';
               return (
-                <div key={day.toISOString()}
+                <button
+                  key={day.toISOString()}
+                  type="button"
                   onClick={() => {
+                    setSelectedDate(day);
                     const dateStr = format(day, 'yyyy-MM-dd');
                     if (today) navigate('/today');
                     else if (report) navigate(`/reports/${dateStr}`);
                   }}
-                  className={`min-h-[80px] p-2 border-r border-b border-gray-50 cursor-pointer transition-colors hover:bg-gray-50 ${!isCurrentMonth ? 'opacity-40' : ''} ${isWeekend ? 'bg-gray-50/50' : ''}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm mb-1 ${today ? 'bg-blue-600 text-white font-bold' : 'text-gray-700'}`}>
+                  aria-label={`${format(day, 'yyyy年M月d日')}${report ? ` ${STATUS_LABEL[report.status]}` : ''}`}
+                  aria-current={today ? 'date' : undefined}
+                  className={`text-left min-h-[80px] p-2 border-r border-b transition-colors cursor-pointer
+                    ${!isCurrentMonth ? 'opacity-40' : ''}
+                    ${isWeekend ? 'bg-gray-50/40' : 'bg-white'}
+                    ${statusBgCls}
+                    ${selected ? 'ring-2 ring-blue-500 ring-inset z-10' : ''}
+                    ${today ? 'border-l-4 border-l-blue-600' : 'border-gray-100'}
+                    hover:bg-blue-50/50`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1
+                    ${today ? 'bg-blue-600 text-white font-bold shadow-sm' :
+                      selected ? 'bg-blue-100 text-blue-800 font-bold ring-1 ring-blue-400' :
+                      'text-gray-700'}`}>
                     {format(day, 'd')}
                   </div>
                   {report && (
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-500">{STATUS_ICON[report.status]}</span>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          report.status === 'confirmed' ? 'bg-green-500' :
-                          report.status === 'submitted' ? 'bg-blue-500' :
-                          'bg-gray-400'
-                        }`} />
+                        {/* CAL-1: 状態アイコンを大型化 */}
+                        <span className="text-base leading-none" title={STATUS_LABEL[report.status]}>{STATUS_ICON[report.status]}</span>
+                        {report.morningMood && (
+                          <span className="text-sm leading-none">{MOOD_EMOJIS[report.morningMood]}</span>
+                        )}
                       </div>
-                      {report.morningMood && (
-                        <span className="text-xs">{MOOD_EMOJIS[report.morningMood]}</span>
-                      )}
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
-          {/* Legend */}
-          <div className="px-4 py-2 border-t border-gray-100 flex gap-4 text-xs text-gray-500">
-            {[['✎', '下書き'], ['✓', '提出済'], ['★', '確認済'], ['↩', '差戻し']].map(([icon, label]) => (
-              <span key={icon}><span className="font-mono">{icon}</span> {label}</span>
-            ))}
+          {/* CAL-1: 凡例を背景色付きチップで表示 */}
+          <div className="px-4 py-3 border-t border-gray-100 flex flex-wrap gap-2 text-xs text-gray-600">
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-gray-50 border border-gray-200 rounded">✎ 下書き</span>
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded">✍ 入力中</span>
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 border border-blue-300 rounded font-medium">✅ 提出済</span>
+            <span className="flex items-center gap-1.5 px-2 py-1 bg-green-50 border border-green-300 rounded font-medium">⭐ 確認済</span>
+            <span className="flex items-center gap-1.5 px-2 py-1 border-l-4 border-blue-600 border-y border-r border-gray-200 rounded">今日</span>
+            <span className="flex items-center gap-1.5 px-2 py-1 ring-2 ring-blue-500 ring-inset rounded">選択中</span>
           </div>
         </div>
       )}
