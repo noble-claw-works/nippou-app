@@ -14,7 +14,8 @@ export function SettingsPage() {
   const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, getEmailChangeRequest } = useAppStore();
   const user = users.find(u => u.id === currentUserId);
   const myChips = quickChips.filter(c => c.userId === currentUserId || !c.userId);
-  const emailChangeReq = getEmailChangeRequest(currentUserId);
+  // Use store selector to ensure real-time updates
+  const emailChangeReq = useAppStore(s => s.emailChangeRequests.find(r => r.userId === currentUserId && r.status === 'pending'));
 
   const [activeTab, setActiveTab] = useState('profile');
   const [displayName, setDisplayName] = useState(user?.name ?? '');
@@ -53,10 +54,12 @@ export function SettingsPage() {
               <div className="flex gap-2">
                 <input value={user?.email ?? ''} readOnly
                   className="flex-1 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
-                <button onClick={() => { setShowEmailModal(true); setNewEmail(''); }}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-                  変更申請
-                </button>
+                {!emailChangeReq && (
+                  <button onClick={() => { setShowEmailModal(true); setNewEmail(''); }}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                    変更申請
+                  </button>
+                )}
               </div>
               <p className="text-xs text-gray-400 mt-1">メールアドレスの変更は申請制です</p>
               {emailChangeReq && (
@@ -100,6 +103,7 @@ export function SettingsPage() {
                 </button>
                 <button onClick={() => {
                   if (!newEmail.trim()) { addToast({ type: 'error', message: 'メールアドレスを入力してください' }); return; }
+                  if (!newEmail.includes('@')) { addToast({ type: 'error', message: '有効なメールアドレスを入力してください' }); return; }
                   requestEmailChange(currentUserId, newEmail);
                   addToast({ type: 'success', message: '変更申請を送信しました。管理者の承認をお待ちください。' });
                   setShowEmailModal(false);

@@ -84,7 +84,8 @@ export function TodayPage() {
   // Dialog helpers
   const openFromDrag = (startMin: number, endMin: number, type?: BlockType, col: 'planned' | 'actual' = 'actual') => {
     const pa = col === 'planned' ? { isPlanned: true, isActual: false } : { isPlanned: false, isActual: true };
-    setBlockModal({ open: true, col, block: { type: type ?? 'visit', startTime: minutesToTime(startMin), endTime: minutesToTime(Math.min(endMin, DAY_END)), title: type ? BLOCK_LABELS[type] : '', memo: '', ...pa, attachments: [] }, isNew: true, focusCustomer: !!type });
+    const block: Partial<TimeBlock> = { type, startTime: minutesToTime(startMin), endTime: minutesToTime(Math.min(endMin, DAY_END)), title: type ? BLOCK_LABELS[type] : '', memo: '', ...pa, attachments: [] };
+    setBlockModal({ open: true, col, block, isNew: true, focusCustomer: !!type });
   };
   const withLongCheck = (startMin: number, endMin: number, type: BlockType | undefined, col: 'planned' | 'actual') => {
     if (endMin - startMin >= 8 * 60) { setPendingLong({ startMin, endMin, type, col }); setShowLongBlock(true); }
@@ -107,7 +108,7 @@ export function TodayPage() {
       const nowH = new Date().getHours(), nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
       const s = nowH * 60 + nowM, e = Math.min(s + 60, DAY_END);
       const pa = col === 'planned' ? { isPlanned: true, isActual: false } : { isPlanned: false, isActual: true };
-      setBlockModal({ open: true, col, block: { type: 'visit', startTime: minutesToTime(s), endTime: minutesToTime(e), title: '', memo: '', ...pa, attachments: [] }, isNew: true, focusCustomer: false });
+      setBlockModal({ open: true, col, block: { startTime: minutesToTime(s), endTime: minutesToTime(e), title: '', memo: '', ...pa, attachments: [] }, isNew: true, focusCustomer: true });
     }
   };
 
@@ -121,12 +122,14 @@ export function TodayPage() {
       addToast({ type: 'warning', message: '提出済みの日報は変更できません' }); return;
     }
     const b = blockModal.block;
-    if (!b.startTime || !b.endTime || !b.type) return;
+    if (!b.startTime || !b.endTime || !b.type) {
+      addToast({ type: 'error', message: 'アクティビティ種別と時間は必須です' }); return;
+    }
     if (blockModal.isNew) { addBlock(report.id, b as Omit<TimeBlock, 'id'>); addToast({ type: 'success', message: '時間ブロックを追加しました' }); }
     else { updateBlock(report.id, b.id!, b); addToast({ type: 'success', message: '時間ブロックを更新しました' }); }
     if (continueInput) {
       const endMin = timeToMinutes(b.endTime!);
-      setBlockModal({ open: true, block: { type: b.type, startTime: b.endTime!, endTime: minutesToTime(Math.min(endMin + 60, DAY_END)), title: '', memo: '', isPlanned: blockModal.col === 'planned', isActual: blockModal.col === 'actual', attachments: [] }, isNew: true, col: blockModal.col, focusCustomer: true });
+      setBlockModal({ open: true, block: { type: b.type, startTime: b.endTime!, endTime: minutesToTime(Math.min(endMin + 60, DAY_END)), title: b.type ? BLOCK_LABELS[b.type] : '', memo: '', isPlanned: blockModal.col === 'planned', isActual: blockModal.col === 'actual', attachments: [] }, isNew: true, col: blockModal.col, focusCustomer: false });
     } else {
       setBlockModal({ open: false, block: {}, isNew: true, col: 'actual', focusCustomer: false });
     }
