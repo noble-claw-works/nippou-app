@@ -154,11 +154,17 @@ const buildReports = (): DailyReport[] => {
         makeBlock(`b_${rid}_4`, rid, { type: 'office', startTime: '14:00', endTime: '17:00', title: '事務作業' }),
       ],
       [
-        makeTodo(`td_${rid}_1`, rid, '顧客フォロー', i % 3 === 0, undefined, 'medium'),
-        makeTodo(`td_${rid}_2`, rid, '見積提出', i % 2 === 0, undefined, 'medium'),
-        // DEAD-1: 一部の過去日報に未完了・期限切れ TODO を仕込み (進捗パネル・赤バッジ検証用)
-        ...(i === 5 || i === 10 ? [
-          makeTodo(`td_${rid}_3`, rid, '期限切れの重要 TODO', false, d(i + 7), 'high'),
+        // DEAD-1: 検証を確実にするため、全ての過去日報に dueDate 付き TODO を最低 1 件仕込む
+        // i % 4 で見え方をバラつかせる:
+        //   0: 完了 (期限切れでもバッジなし)
+        //   1: 未完了 + 期限切れ (赤バッジ)
+        //   2: 未完了 + dueDate 未設定 (バッジなし)
+        //   3: 未完了 + 期限切れ高優先度 (赤バッジ + bold)
+        makeTodo(`td_${rid}_1`, rid, '顧客フォロー', i % 4 === 0, i % 4 === 1 ? d(i - 1) : undefined, 'medium'),
+        makeTodo(`td_${rid}_2`, rid, '見積提出', i % 4 === 2, i % 4 === 3 ? d(Math.max(1, i - 2)) : undefined, i % 4 === 3 ? 'high' : 'medium'),
+        // DEAD-1: 一部の過去日報に高優先度 期限切れ TODO
+        ...(i % 5 === 0 ? [
+          makeTodo(`td_${rid}_3`, rid, '重要課題 (要フォロー)', false, d(Math.max(1, i - 3)), 'high'),
         ] : []),
       ],
       comments
