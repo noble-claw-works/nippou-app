@@ -125,7 +125,7 @@ const handleChangePassword = async () => {
 
 ---
 
-### CalendarPage (視認性改善)
+### CalendarPage (視認性改善 + 複数ビュー)
 
 **CAL-1 カレンダー視認性**:
 
@@ -174,6 +174,61 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   <span className="flex items-center gap-1.5 px-2 py-1 ring-2 ring-blue-500 ring-inset rounded">選択中</span>
 </div>
 ```
+
+**CAL-2 複数ビュー切替（週・日・リスト）**:
+
+#### ビュー切替ボタンセット
+- **位置**:月ナビ下、月ビュー上
+- **ボタン**: 【月】【週】【日】【リスト】【ヒート】
+- **スタイル**: bg-gray-100 rounded-lg p-1 で統一
+  - 非選択: text-gray-500 hover:text-gray-700
+  - 選択中: bg-white shadow text-gray-900 font-medium
+- **状態管理**: `view: 'month'|'week'|'day'|'list'|'heatmap'`
+
+#### SubNav コンポーネント
+- **使用ビュー**: 週・日ビュー専用
+- **前/次ボタン**: ChevronLeft/Right icon
+  - 週: 前週・翌週（date-fns `subWeeks/addWeeks`）
+  - 日: 前日・翌日（date-fns `subDays/addDays`）
+- **「今日」ボタン**: bg-blue-50 text-blue-700
+- **ラベル表示**:
+  - 週: 「M/d – M/d」（開始～終了日）
+  - 日: 「yyyy年M月d日 (E)」（日本語ロケール）
+
+#### WeekView コンポーネント
+- **目的**: 1週 (月～日) を縦リスト表示
+- **各日エントリ**:
+  - **日付セル**: 曜日 (E) + 日付 (d)、今日なら bg-blue-600 text-white で丸形背景
+  - **ステータス**: StatusBadge + ブロック数表示
+  - **ミニタイムライン**: 帯形式 (h-6 bg-gray-50 rounded-md) で `calcMiniTimelineSegments` を利用
+  - 各ブロック: 絶対位置で型別カラー emoji、hover で時刻・タイトルの tooltip
+- **クリック動作**:
+  - 日報がある: `/reports/{dateStr}` へ navigate
+  - 日報がない: その日を選択、ビューを 'day' に切り替え
+- **スタイル**: border-b border-gray-100 を各行の下に、最後の行は no border
+
+#### DayView コンポーネント
+- **目的**: 指定日付の全日報（一般社員は自分のみ、上長は全員）を ReadOnlyTimeline で並べて表示
+- **権限制御**:
+  - currentRole === 'general': 自分のみ (userId === currentUserId)
+  - manager/executive: 該当日付の全報告書
+- **フィルタ**: dayReports = reports.filter(r => r.date === dateStr && ...)
+- **空状態**: 「M/d に該当する日報がありません」
+- **各レポートカード**:
+  - **ヘッダー**: 著者アバター + 名前 + StatusBadge + 「日報を開く →」ボタン
+  - **本体**: `<ReadOnlyTimeline blocks={report.blocks} customers={customers} />`
+  - **クリック**: `/reports/{dateStr}?user={userId}` へ navigate
+
+#### ListView コンポーネント
+- **目的**: 月内全日報をカード一覧（日付降順）
+- **フィルタ**: startOfMonth ～ endOfMonth の範囲内、かつ権限範囲のレポートを抽出
+- **並び順**: date 降順（新しい日付を上に）
+- **空状態**: 「yyyy年M月 の日報はまだありません」
+- **各カード行**:
+  - **左**: 日付セル (w-14) に日付 (d) + 曜日 (E) + 月 (M月) を縦積み
+  - **中央**: 著者名 (上長ビューのみ表示) + StatusBadge + 「ブロック数 · 訪問 N件」テキスト
+  - **右**: 「開く →」リンク（text-blue-600）
+  - **クリック**: `/reports/{dateStr}?user={userId}` へ navigate
 
 ---
 
@@ -410,10 +465,10 @@ TodayPage (src/pages/TodayPage.tsx)
 
 **役割**: 特定日付の日報を詳細表示、上長を認可対象。
 
-**行数**: 230行（NAV-1 + GAP-1 反映後）
+**行数**: 285行（NAV-1 + RPT-1 + RPT-2 反映後）
 
 **ナビゲーション** (NAV-1):
-- **位置**: ヘッダー下、未確認カード上に上部位置したナビゲーションエリア（bg-blue-50 border border-blue-100 rounded-lg）
+- **位置**: ヘッダー下、メインコンテンツ上に上部位置したナビゲーションエリア（bg-blue-50 border border-blue-100 rounded-lg）
 - **一般ユーザービュー** (自分のみ)
   - 「← 前の日報」ボタン (ArrowLeft + 日付)
   - 「次の日報 →」ボタン (ArrowRight + 日付)
@@ -433,32 +488,46 @@ TodayPage (src/pages/TodayPage.tsx)
     - executive: 全会社
   - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、循環可能
 
-**タイムラインセクション** (GAP-1):
-- **位置**: メインコンテンツ左側（lg:col-span-2）、ナビゲーション下
+**レイアウト** (RPT-1 + RPT-2):
+- **グリッド構成**: `grid grid-cols-1 lg:grid-cols-3 gap-4`
+  - **左側** (lg:col-span-2): タイムライン + TODO + 振り返り（縦積み）
+  - **右側** (lg:col-span-1): 上長コメント（独立ペイン）
+- **モバイル時**: 従来通り下に積まれる
+
+**タイムラインセクション** (RPT-2 縦軸ピクセルタイムライン):
+- **コンポーネント**: `ReadOnlyTimeline` (`src/components/report/ReadOnlyTimeline.tsx`)
+- **目的**: TodayPage の TimelinePanel と同じビジュアル原則で、読み取り専用表示
 - **見出し**: 📅 タイムライン
-- **スキマ時間サマリ**: 見出し右に「スキマ計 N時間M分」を表示（gap の総時間が 0 分の場合は非表示）
-- **空状態**: `report.blocks.length === 0` の場合、テキスト「記録がありません」（text-sm text-gray-400）
+- **時刻軸**: DAY_START=6*60, DAY_END=22*60+30, HOUR_PX=64
+  - `<TimeGrid>`: 1時間ごと水平線 + 左端の時刻ラベル
+- **ブロック表示** (`<BlockBar>`):
+  - **絶対位置**: left:52px right:4px で縦矩形
+  - **カラーリング**: BLOCK_COLORS で型別色分け
+  - **メモ表示**: 高さ≥50px のとき 2行 line-clamp でメモを表示
+  - **ホバー**: ブロック詳細（時刻、タイトル、顧客名）を tooltip で表示
+- **スキマ時間表示** (`<GapBar>`):
+  - **色**: amber 破線縦バー（border-dashed border-amber-300 bg-amber-50/60）
+  - **フォーマット**: formatGapDuration で「N時間M分」表示
+- **Props**: `{ blocks, customers, variant?: 'all'|'planned'|'actual' }` で将来拡張対応
+- **空状態**: ブロックなしは「記録がありません」（text-sm text-gray-400）
 
-**ブロック行の構成**:
-- **レイアウト**: flex gap-3 p-3 rounded-xl border
-- **アイコン**: BLOCK_EMOJIS[type] （text-lg）
-- **メタ情報**: startTime–endTime （text-xs text-gray-500）+ block.title （text-sm font-medium）
-- **顧客表示**: block.customerId が存在する場合、「顧客: {customer.name}」を 2 行目に表示（text-xs text-gray-600 mt-0.5）
-- **スタイル**: BLOCK_COLORS[type] で型別カラーリング
+**TODO セクション**:
+- **見出し**: ✅ TODO
+- **従来通り**: チェックボックス + テキスト + 追加ボタン
 
-**スキマ時間（gap）行の構成** (GAP-1):
-- **レイアウト**: flex items-center gap-3 px-3 py-2 rounded-xl border border-dashed border-amber-300 bg-amber-50/60
-- **role**: `note`
-- **aria-label**: `スキマ時間 {startTime}から{endTime} {formatGapDuration(durationMin)}`
-- **アイコン**: ⏳ （text-base, aria-hidden=true）
-- **テキスト**: `{startTime}–{endTime}` （text-amber-700, tabular-nums）+ 「スキマ時間」（text-amber-800 font-medium）+ `({formatGapDuration(durationMin)})` （text-amber-700）
-- **並び順**: startTime 昇順（自動整列）
+**振り返りセクション**:
+- **見出し**: 💭 振り返り
+- **従来通り**: mood selector + reflection textarea
 
-**buildTimelineWithGaps の動作**:
-1. `report.blocks` を startTime 昇順にソート
-2. 隣り合うブロック間の endTime → 次ブロック startTime の差が ≥5分（minGapMin デフォルト）の場合、gap を挿入
-3. ブロック・gap が時刻順に混在した配列を返す
-4. map で i.kind === 'gap' ? gap行 : block行 を分岐レンダリング
+**上長コメント右ペイン** (RPT-1 右ペイン化):
+- **位置**: `<aside className="lg:col-span-1">`
+- **固定スタイル** (デスクトップ時):
+  - `lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto`
+  - スクロール可能で、画面上部に固定
+- **見出し**: 上長コメント ({dayComments.length})
+- **空状態**: 「コメントがありません」
+- **コメント列**: 従来の message + author info + timestamp
+- **追加フォーム**: 権限者のみ、textarea + submit ボタン
 
 ---
 
