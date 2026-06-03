@@ -1,0 +1,94 @@
+name: Deploy to Netlify
+
+on:
+  push:
+    branches:
+      - staging
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: netlify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Determine deploy branch
+        id: branch
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "branch=main" >> "$GITHUB_OUTPUT"
+            echo "context=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch=staging" >> "$GITHUB_OUTPUT"
+            echo "context=branch-deploy" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to Netlify via API
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          DEPLOY_BRANCH: ${{ steps.branch.outputs.branch }}
+        run: |
+          set -euo pipefail
+          cd dist
+          zip -rq /tmp/deploy.zip .
+          cd -
+          echo "Deploying $(wc -c < /tmp/deploy.zip) bytes to branch=$DEPLOY_BRANCH"
+
+          if [ "$DEPLOY_BRANCH" = "main" ]; then
+            ENDPOINT="https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys"
+          else
+            ENDPOINT="https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys?branch=${DEPLOY_BRANCH}"
+          fi
+
+          RESP=$(curl -fsS -X POST "$ENDPOINT" \
+            -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@/tmp/deploy.zip")
+          DEPLOY_ID=$(echo "$RESP" | jq -r '.id')
+          DEPLOY_URL=$(echo "$RESP" | jq -r '.deploy_ssl_url // .ssl_url')
+          echo "deploy_id=$DEPLOY_ID"
+          echo "deploy_url=$DEPLOY_URL"
+          echo "::notice title=Netlify Deploy::$DEPLOY_URL"
+
+          for i in $(seq 1 30); do
+            STATE=$(curl -fsS -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}" \
+              "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID" | jq -r '.state')
+            echo "[$i] state=$STATE"
+            if [ "$STATE" = "ready" ]; then
+              echo "✅ Deployed: $DEPLOY_URL"
+              exit 0
+            fi
+            if [ "$STATE" = "error" ]; then
+              echo "❌ Deploy failed"
+              exit 1
+            fi
+            sleep 4
+          done
+          echo "⚠️ Timed out waiting for ready state"
+          exit 1
