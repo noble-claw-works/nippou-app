@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, subMonths, addMonths } from 'date-fns';
+import {
+  format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay,
+  subMonths, addMonths, subWeeks, addWeeks, subDays, addDays,
+} from 'date-fns';
 import { useAppStore } from '../store';
 import { MOOD_EMOJIS } from '../utils';
+import { SubNav, WeekView, DayView, ListView } from '../components/calendar/CalendarViews';
 import type { ReportStatus } from '../types';
 
 // CAL-1: 状態アイコンを大型化・表現を強化
@@ -25,10 +29,11 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
 
 export function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [view, setView] = useState<'month' | 'heatmap'>('month');
+  // CAL-2: ビュー拡張
+  const [view, setView] = useState<'month' | 'week' | 'day' | 'list' | 'heatmap'>('month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null); // CAL-1: 選択日
   const navigate = useNavigate();
-  const { reports, users, currentRole, currentUserId } = useAppStore();
+  const { reports, users, customers, currentRole, currentUserId } = useAppStore();
 
   const start = startOfMonth(currentMonth);
   const end = endOfMonth(currentMonth);
@@ -78,15 +83,41 @@ export function CalendarPage() {
             今日
           </button>
         </div>
-        <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-          {[['month', '月'], ['heatmap', 'ヒートマップ']].map(([v, l]) => (
-            <button key={v} onClick={() => setView(v as any)}
-              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${view === v ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-500'}`}>
+        <div className="flex bg-gray-100 rounded-lg p-1 gap-1 flex-wrap">
+          {[
+            ['month', '月'],
+            ['week', '週'],
+            ['day', '日'],
+            ['list', 'リスト'],
+            ['heatmap', 'ヒート'],
+          ].map(([v, l]) => (
+            <button key={v} onClick={() => setView(v as 'month' | 'week' | 'day' | 'list' | 'heatmap')}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${view === v ? 'bg-white shadow text-gray-900 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+              aria-pressed={view === v}>
               {l}
             </button>
           ))}
         </div>
       </div>
+
+      {/* CAL-2: ビューごとのサブナビ */}
+      {(view === 'week' || view === 'day') && (
+        <SubNav
+          view={view}
+          baseDate={selectedDate ?? currentMonth}
+          onPrev={() => {
+            const base = selectedDate ?? currentMonth;
+            const next = view === 'week' ? subWeeks(base, 1) : subDays(base, 1);
+            setSelectedDate(next); setCurrentMonth(next);
+          }}
+          onNext={() => {
+            const base = selectedDate ?? currentMonth;
+            const next = view === 'week' ? addWeeks(base, 1) : addDays(base, 1);
+            setSelectedDate(next); setCurrentMonth(next);
+          }}
+          onToday={() => { const t = new Date(); setSelectedDate(t); setCurrentMonth(t); }}
+        />
+      )}
 
       {view === 'month' && (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
@@ -160,6 +191,44 @@ export function CalendarPage() {
             <span className="flex items-center gap-1.5 px-2 py-1 ring-2 ring-blue-500 ring-inset rounded">選択中</span>
           </div>
         </div>
+      )}
+
+      {/* CAL-2: 週ビュー */}
+      {view === 'week' && (
+        <WeekView
+          baseDate={selectedDate ?? currentMonth}
+          reports={reports}
+          users={users}
+          currentRole={currentRole}
+          currentUserId={currentUserId}
+          onSelectDay={d => { setSelectedDate(d); setCurrentMonth(d); setView('day'); }}
+          onOpenReport={dateStr => navigate(`/reports/${dateStr}`)}
+        />
+      )}
+
+      {/* CAL-2: 日ビュー */}
+      {view === 'day' && (
+        <DayView
+          baseDate={selectedDate ?? currentMonth}
+          reports={reports}
+          users={users}
+          customers={customers}
+          currentRole={currentRole}
+          currentUserId={currentUserId}
+          onOpenReport={(dateStr, userId) => navigate(`/reports/${dateStr}?user=${userId}`)}
+        />
+      )}
+
+      {/* CAL-2: リストビュー */}
+      {view === 'list' && (
+        <ListView
+          baseMonth={currentMonth}
+          reports={reports}
+          users={users}
+          currentRole={currentRole}
+          currentUserId={currentUserId}
+          onOpenReport={(dateStr, userId) => navigate(`/reports/${dateStr}?user=${userId}`)}
+        />
       )}
 
       {view === 'heatmap' && (currentRole === 'manager' || currentRole === 'executive' ? (
