@@ -5,7 +5,7 @@ import { create } from 'zustand';
 import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment,
-  Role, TrackingSession, BlockType
+  Role, TrackingSession, BlockType, ManagerComment, Compliment
 } from '../types';
 import {
   USERS, TEAMS, CUSTOMERS, REPORTS, TEMPLATES,
@@ -51,6 +51,8 @@ interface AppState {
   auditLogs: AuditLog[];
   trackingSession: TrackingSession | null;
   emailChangeRequests: EmailChangeRequest[];
+  managerComments: ManagerComment[];
+  compliments: Compliment[];
 
   // UI
   toasts: Toast[];
@@ -78,8 +80,9 @@ interface AppState {
   deleteBlock: (reportId: string, blockId: string) => void;
 
   // Actions: Todo
-  addTodo: (reportId: string, text: string) => void;
+  addTodo: (reportId: string, text: string, priority?: 'high' | 'medium' | 'low') => void;
   toggleTodo: (reportId: string, todoId: string) => void;
+  updateTodo: (reportId: string, todoId: string, updates: Partial<Todo>) => void;
   deleteTodo: (reportId: string, todoId: string) => void;
 
   // Actions: Comment
@@ -112,6 +115,15 @@ interface AppState {
   addQuickChip: (chip: Omit<QuickChip, 'id'>) => void;
   updateQuickChip: (chipId: string, updates: Partial<QuickChip>) => void;
   deleteQuickChip: (chipId: string) => void;
+
+  // Actions: ManagerComment
+  addManagerComment: (dayKey: string, authorUserId: string, body: string) => void;
+  replyToManagerComment: (commentId: string, userId: string, choice: 'yes' | 'no') => void;
+  deleteManagerComment: (commentId: string) => void;
+
+  // Actions: Compliment
+  addCompliment: (dayKey: string, customerId: string | undefined, customerName: string | undefined, type: 'praise' | 'request', body: string) => void;
+  deleteCompliment: (complimentId: string) => void;
 
   // Actions: Notification
   markNotificationRead: (notifId: string) => void;
@@ -147,6 +159,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   auditLogs: AUDIT_LOGS,
   trackingSession: null,
   emailChangeRequests: [],
+  managerComments: [],
+  compliments: [],
   toasts: [],
 
   setRole: (role) => {
@@ -179,6 +193,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       blocks: [], todos: [], customerVisits: [],
       gratitude: ['', '', ''], morningMood: null, eveningMood: null,
       managerSignal: null, selfComment: '', comments: [], attachments: [],
+      submitted: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     set(s => ({ reports: [...s.reports, report] }));
@@ -266,8 +281,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  addTodo: (reportId, text) => {
-    const todo: Todo = { id: uid(), reportId, text, completed: false, rolledOver: false };
+  addTodo: (reportId, text, priority = 'medium') => {
+    const todo: Todo = { id: uid(), reportId, text, completed: false, status: 'todo', rolledOver: false, priority };
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? { ...r, todos: [...r.todos, todo], updatedAt: new Date().toISOString() }
@@ -281,7 +296,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       reports: s.reports.map(r => r.id === reportId
         ? {
             ...r,
-            todos: r.todos.map(t => t.id === todoId ? { ...t, completed: !t.completed } : t),
+            todos: r.todos.map(t => t.id === todoId ? { ...t, completed: !t.completed, status: !t.completed ? 'done' : 'todo' } : t),
+            updatedAt: new Date().toISOString()
+          }
+        : r
+      )
+    }));
+  },
+  updateTodo: (reportId, todoId, updates) => {
+    set(s => ({
+      reports: s.reports.map(r => r.id === reportId
+        ? {
+            ...r,
+            todos: r.todos.map(t => t.id === todoId ? { ...t, ...updates } : t),
             updatedAt: new Date().toISOString()
           }
         : r
@@ -329,6 +356,40 @@ export const useAppStore = create<AppState>((set, get) => ({
         ? { ...r, comments: r.comments.filter(c => c.id !== commentId) }
         : r
       )
+    }));
+  },
+
+  addManagerComment: (dayKey: string, authorUserId: string, body: string) => {
+    set(s => ({
+      managerComments: [...s.managerComments, {
+        id: uid(), dayKey, authorUserId, body, createdAt: new Date().toISOString(), replies: [],
+      }],
+    }));
+  },
+  replyToManagerComment: (commentId: string, userId: string, choice: 'yes' | 'no') => {
+    set(s => ({
+      managerComments: s.managerComments.map(c => c.id === commentId
+        ? { ...c, replies: [...c.replies, { userId, choice, repliedAt: new Date().toISOString() }] }
+        : c
+      ),
+    }));
+  },
+  deleteManagerComment: (commentId: string) => {
+    set(s => ({
+      managerComments: s.managerComments.filter(c => c.id !== commentId),
+    }));
+  },
+
+  addCompliment: (dayKey: string, customerId: string | undefined, customerName: string | undefined, type: 'praise' | 'request', body: string) => {
+    set(s => ({
+      compliments: [...s.compliments, {
+        id: uid(), dayKey, customerId, customerName, type, body, createdAt: new Date().toISOString(),
+      }],
+    }));
+  },
+  deleteCompliment: (complimentId: string) => {
+    set(s => ({
+      compliments: s.compliments.filter(c => c.id !== complimentId),
     }));
   },
 
@@ -487,6 +548,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
     templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
     notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
-    trackingSession: null, emailChangeRequests: [], toasts: [],
+    trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [], toasts: [],
   }),
 }));

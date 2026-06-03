@@ -68,8 +68,10 @@ export interface Todo {
   reportId: string;
   text: string;
   completed: boolean;
+  status: 'todo' | 'doing' | 'done';
   rolledOver: boolean;
   dueDate?: string;
+  priority: 'high' | 'medium' | 'low';
 }
 
 export interface CustomerVisit {
@@ -105,6 +107,31 @@ export interface Attachment {
 export type MoodType = 'sunny' | 'partly_cloudy' | 'cloudy' | 'rainy';
 export type ManagerSignal = 'consult' | 'listen' | 'ok' | null;
 
+export interface ManagerCommentReply {
+  userId: string;
+  choice: 'yes' | 'no';
+  repliedAt: string;
+}
+
+export interface ManagerComment {
+  id: string;
+  dayKey: string; // YYYY-MM-DD (日報特定用)
+  authorUserId: string;
+  body: string;
+  createdAt: string;
+  replies: ManagerCommentReply[];
+}
+
+export interface Compliment {
+  id: string;
+  dayKey: string; // YYYY-MM-DD
+  customerId?: string;
+  customerName?: string;
+  type: 'praise' | 'request';
+  body: string;
+  createdAt: string;
+}
+
 export interface DailyReport {
   id: string;
   userId: string;
@@ -123,6 +150,7 @@ export interface DailyReport {
   selfComment: string;
   comments: Comment[];
   attachments: Attachment[];
+  submitted: boolean; // 日報提出フラグ
   submittedAt?: string;
   confirmedAt?: string;
   sentBackAt?: string;

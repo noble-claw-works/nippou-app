@@ -2,32 +2,40 @@ import { useState } from 'react';
 import { Plus, X, Check, ChevronDown } from 'lucide-react';
 import { BLOCK_EMOJIS, MOOD_EMOJIS } from '../../utils';
 import type { DailyReport, Customer, MoodType, ManagerSignal } from '../../types';
+import { ComplimentsCard } from './ComplimentsCard';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface SidePanelCardsProps {
   report: DailyReport;
   customers: Customer[];
   onUpdateReport: (updates: Partial<DailyReport>) => void;
-  onAddTodo: (text: string) => void;
+  onAddTodo: (text: string, priority?: 'high' | 'medium' | 'low') => void;
   onToggleTodo: (todoId: string) => void;
   onDeleteTodo: (todoId: string) => void;
 }
 
 // ─── TODO Card ────────────────────────────────────────────────────────────────
+interface TodoInputState {
+  text: string;
+  priority: 'high' | 'medium' | 'low';
+  dueDate: string;
+}
+
 function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePanelCardsProps, 'report' | 'onAddTodo' | 'onToggleTodo' | 'onDeleteTodo'>) {
-  const [inputText, setInputText] = useState('');
+  const [input, setInput] = useState<TodoInputState>({ text: '', priority: 'medium', dueDate: '' });
   const [showInput, setShowInput] = useState(false);
 
   const handleAdd = () => {
-    const t = inputText.trim();
+    const t = input.text.trim();
     if (!t) return;
-    onAddTodo(t);
-    setInputText('');
+    onAddTodo(t, input.priority);
+    // TODO dueDate は updateTodo で後から設定するため、ここではaddTodoにはpriority渡し
+    setInput({ text: '', priority: 'medium', dueDate: '' });
     setShowInput(false);
   };
 
-  const pending   = report.todos.filter(t => !t.completed);
-  const completed = report.todos.filter(t => t.completed);
+  const pending   = report.todos.filter(t => t.status !== 'done');
+  const done      = report.todos.filter(t => t.status === 'done');
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -52,17 +60,40 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
 
       {/* インライン入力 */}
       {showInput && (
-        <div className="flex gap-2 mb-3">
+        <div className="space-y-2 mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
           <input
             autoFocus
             type="text"
-            value={inputText}
-            onChange={e => setInputText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowInput(false); setInputText(''); } }}
-            placeholder="TODO を入力して Enter"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            value={input.text}
+            onChange={e => setInput({ ...input, text: e.target.value })}
+            onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setShowInput(false); setInput({ text: '', priority: 'medium', dueDate: '' }); } }}
+            placeholder="TODO を入力"
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
-          <button onClick={handleAdd} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">追加</button>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">優先度</label>
+              <select
+                value={input.priority}
+                onChange={e => setInput({ ...input, priority: e.target.value as 'high' | 'medium' | 'low' })}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="high">🔥 高</option>
+                <option value="medium">⭐ 中</option>
+                <option value="low">💧 低</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-600 mb-1">期限</label>
+              <input
+                type="date"
+                value={input.dueDate}
+                onChange={e => setInput({ ...input, dueDate: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <button onClick={handleAdd} className="w-full px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">追加</button>
         </div>
       )}
 
@@ -70,33 +101,51 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
         {report.todos.length === 0 && !showInput && (
           <p className="text-xs text-gray-400">TODOがありません。＋ で追加できます</p>
         )}
-        {/* 未完了 */}
-        {pending.map(todo => (
-          <div key={todo.id} className="flex items-center gap-2 group">
-            <button
-              onClick={() => onToggleTodo(todo.id)}
-              className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center border-gray-300 hover:border-green-500"
-            />
-            <span className="flex-1 text-sm text-gray-700">{todo.text}</span>
-            <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded">
-              <X className="w-3 h-3 text-gray-400" />
-            </button>
-          </div>
-        ))}
+        {/* todo / doing / done */}
+        {pending.map(todo => {
+          const priorityEmoji = todo.priority === 'high' ? '🔥' : todo.priority === 'medium' ? '⭐' : '💧';
+          const statusIcon = todo.status === 'todo' ? '☐' : todo.status === 'doing' ? '◐' : '☑';
+          const today = new Date().toISOString().split('T')[0];
+          const isDueSoon = todo.dueDate && todo.dueDate === today;
+          const isOverdue = todo.dueDate && todo.dueDate < today;
+          const dueColor = isOverdue ? 'text-red-600' : isDueSoon ? 'text-amber-600' : 'text-gray-500';
+          
+          return (
+            <div key={todo.id} className="flex items-center gap-2 group">
+              <button
+                onClick={() => onToggleTodo(todo.id)}
+                title="クリックで todo → doing → done を巡回"
+                className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm hover:bg-blue-100"
+              >
+                {statusIcon}
+              </button>
+              <span className={`flex-1 text-sm ${todo.status === 'done' ? 'line-through text-gray-400' : 'text-gray-700'}`}>{todo.text}</span>
+              <span className="text-xs flex-shrink-0">{priorityEmoji}</span>
+              {todo.dueDate && (
+                <span className={`text-xs px-1.5 py-0.5 bg-gray-100 rounded flex-shrink-0 ${dueColor}`}>
+                  〜{todo.dueDate.slice(5)}
+                </span>
+              )}
+              <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+                <X className="w-3 h-3 text-gray-400" />
+              </button>
+            </div>
+          );
+        })}
         {/* 完了済み（折りたたみ） */}
-        {completed.length > 0 && (
+        {done.length > 0 && (
           <details className="mt-1">
             <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 list-none flex items-center gap-1">
-              <ChevronDown className="w-3 h-3" /> 完了済み {completed.length}件
+              <ChevronDown className="w-3 h-3" /> 完了済み {done.length}件
             </summary>
             <div className="mt-1 space-y-1">
-              {completed.map(todo => (
+              {done.map(todo => (
                 <div key={todo.id} className="flex items-center gap-2 group">
-                  <button onClick={() => onToggleTodo(todo.id)} className="w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center bg-green-500 border-green-500">
-                    <Check className="w-3 h-3 text-white" />
+                  <button onClick={() => onToggleTodo(todo.id)} className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm">
+                    ☑️
                   </button>
                   <span className="flex-1 text-sm line-through text-gray-400">{todo.text}</span>
-                  <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded">
+                  <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
                     <X className="w-3 h-3 text-gray-400" />
                   </button>
                 </div>
@@ -262,7 +311,7 @@ function ThemeCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 'report
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       {(() => {
-        const done = !!(report.dailyTheme?.trim() || report.mainTheme?.trim());
+        const done = !!(report.mainTheme?.trim() || report.dailyTheme?.trim() || report.monthlyTheme?.trim());
         return (
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-700">🎯 テーマ</span>
@@ -274,6 +323,16 @@ function ThemeCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 'report
         );
       })()}
       <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">📌 メインテーマ（中長期）</label>
+          <input
+            type="text"
+            value={report.mainTheme ?? ''}
+            onChange={e => onUpdateReport({ mainTheme: e.target.value })}
+            placeholder="中長期的なテーマを入力"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          />
+        </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">今日のテーマ</label>
           <input
@@ -360,6 +419,7 @@ export function SidePanelCards({
         onDeleteTodo={onDeleteTodo}
       />
       <ThemeCard report={report} onUpdateReport={onUpdateReport} />
+      <ComplimentsCard dayKey={report.date} isReadOnly={report.status === 'submitted' || report.status === 'confirmed'} />
       <ReflectionCard report={report} onUpdateReport={onUpdateReport} />
       <GratitudeCard report={report} onUpdateReport={onUpdateReport} />
     </div>

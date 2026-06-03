@@ -12,6 +12,7 @@ import { useBlockDrag } from '../components/timeline/useBlockDrag';
 import { TimelinePanel } from '../components/today/TimelinePanel';
 import { BlockModal, type BlockModalState } from '../components/today/BlockModal';
 import { SidePanelCards } from '../components/today/SidePanelCards';
+import { ManagerCommentSection } from '../components/today/ManagerCommentSection';
 import { TrackingBanner } from '../components/today/TrackingBanner';
 import { StatusBar, StatusStepper, SubmitModalContent } from '../components/today/StatusBar';
 
@@ -212,10 +213,12 @@ export function TodayPage() {
                 <SidePanelCards
                   report={report} customers={customers}
                   onUpdateReport={u => updateReport(report.id, u)}
-                  onAddTodo={t => addTodo(report.id, t)}
+                  onAddTodo={(t, p) => addTodo(report.id, t, p)}
                   onToggleTodo={id => toggleTodo(report.id, id)}
                   onDeleteTodo={id => deleteTodo(report.id, id)}
                 />
+                {/* P0-1: 上長コメント */}
+                <ManagerCommentSection dayKey={report.date} submitted={report.submitted} />
               </div>
             </div>
           )}

@@ -67,7 +67,7 @@ function makeBlock(id: string, reportId: string, opts: Partial<TimeBlock>): Time
 }
 
 function makeTodo(id: string, reportId: string, text: string, completed = false): Todo {
-  return { id, reportId, text, completed, rolledOver: false };
+  return { id, reportId, text, completed, status: completed ? 'done' : 'todo', rolledOver: false, priority: 'medium' };
 }
 
 function makeComment(id: string, reportId: string, userId: string, text: string, createdAt: string): Comment {
@@ -99,6 +99,7 @@ const makeReport = (
   selfComment: '',
   comments,
   attachments: [],
+  submitted: status === 'submitted' || status === 'confirmed',
   submittedAt: (status === 'submitted' || status === 'confirmed') ? `${date}T18:30:00` : undefined,
   confirmedAt: status === 'confirmed' ? `${date}T19:30:00` : undefined,
   confirmedBy: status === 'confirmed' ? 'u4' : undefined,
