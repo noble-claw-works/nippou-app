@@ -639,11 +639,12 @@ const isDueToday = (todo: Todo): boolean => {
     - executive: 全会社
   - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、循環可能
 
-**レイアウト** (RPT-1 + RPT-2):
+**レイアウト** (RPT-1 + RPT-2、BUG-A対応):
 - **グリッド構成**: `grid grid-cols-1 lg:grid-cols-3 gap-4`
-  - **左側** (lg:col-span-2): タイムライン + TODO + 振り返り（縦積み）
-  - **右側** (lg:col-span-1): 上長コメント（独立ペイン）
+  - **左側** (lg:col-span-2): タイムラインのみ
+  - **右側** (lg:col-span-1): TODO + 振り返り + 上長コメント（右ペイン、縦積み）
 - **モバイル時**: 従来通り下に積まれる
+- **デザイン統一**: Today ページと同じ 2 列レイアウト（左=タイムライン / 右=サイドパネル）
 
 **タイムラインセクション** (RPT-2 縦軸ピクセルタイムライン):
 - **コンポーネント**: `ReadOnlyTimeline` (`src/components/report/ReadOnlyTimeline.tsx`)
@@ -662,23 +663,26 @@ const isDueToday = (todo: Todo): boolean => {
 - **Props**: `{ blocks, customers, variant?: 'all'|'planned'|'actual' }` で将来拡張対応
 - **空状態**: ブロックなしは「記録がありません」（text-sm text-gray-400）
 
+**右ペイン** (BUG-A対応後):
+
 **TODO セクション**:
 - **見出し**: ✅ TODO
-- **従来通り**: チェックボックス + テキスト + 追加ボタン
+- **位置**: 右ペイン内（上）
+- **内容**: チェックボックス + テキスト + 追加ボタン + DEAD-1 期限切れ赤バッジ
 
 **振り返りセクション**:
 - **見出し**: 💭 振り返り
-- **従来通り**: mood selector + reflection textarea
+- **位置**: 右ペイン内（中）
+- **内容**: mood selector + reflection textarea
 
-**上長コメント右ペイン** (RPT-1 右ペイン化):
-- **位置**: `<aside className="lg:col-span-1">`
-- **固定スタイル** (デスクトップ時):
-  - `lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto`
-  - スクロール可能で、画面上部に固定
+**上長コメント** (RPT-1、BUG-A後は通常カード):
+- **位置**: 右ペイン内（下）
+- **スタイル**: 通常カード（`<div className="...rounded-xl border...">`）
 - **見出し**: 上長コメント ({dayComments.length})
 - **空状態**: 「コメントがありません」
 - **コメント列**: 従来の message + author info + timestamp
 - **追加フォーム**: 権限者のみ、textarea + submit ボタン
+- **備考**: 旧 sticky aside (`lg:sticky lg:top-4 lg:self-start`) → 新 通常カード（右ペイン内に統合）
 
 ---
 
