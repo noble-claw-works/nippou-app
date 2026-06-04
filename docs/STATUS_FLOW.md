@@ -75,6 +75,49 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 | 上長コメント返答 | ❌ | ❌ | ✅ | ✅ |
 | 取り下げ | — | — | ✅（未承認時のみ） | ❌ |
 
+---
+
+## TODO 編集可否フロー (BUG-B + BUG-B 残存修正)
+
+### 判定ルール
+
+TODO の編集可否は以下の OR 条件で判定する。**どちらか一つで即座に読み取り専用となる**。
+
+| 条件 | 読み取り専用になる理由 | commit |
+|---|---|---|
+| `report.status ∈ ['submitted', 'confirmed']` | 提出済み/承認済み日報由来の保護 | ae0ce12 |
+| `todo.dueDate < today` (YYYY-MM-DD 文字列比較) | 期限切れ TODO の変更防止 | db741db |
+
+```
+todo
+  ├── report.status in ['submitted', 'confirmed']?
+  │     Yes → 🔒 読み取り専用 ("提出済み日報の TODO は変更できません")
+  ├── todo.dueDate && todo.dueDate < today?
+  │     Yes → 🔒 読み取り専用 ("期限切れの TODO は変更できません")
+  └── のどちらでもない
+        → ✅ 編集可能
+```
+
+### ae0ce12 vs db741db の関係性
+
+| | ae0ce12 (BUG-B [P0]) | db741db (BUG-B 残存修正) |
+|---|---|---|
+| **適用画面** | ReportDetail 画面中心 | Today 画面中心 |
+| **保護トリガー** | submitted / confirmed 日報ステータス | submitted / confirmed ⊕ 期限切れ（両方） |
+| **判定粒度** | 日報単位（`isReadOnly` prop） | per-todo 単位（`isTodoReadOnly(todo, status, today)`） |
+| **ユーティリティ** | 標準ロール比較 | `src/utils/todoReadOnly.ts` 一元管理 |
+| **store ガード** | status のみでブロック | `isTodoReadOnly` でブロック（期限切れも含む） |
+
+### 実装コンポーネント
+
+| 層 | コンポーネント | 役割 |
+|---|---|---|
+| 共通ロジック | `src/utils/todoReadOnly.ts` | `isTodoReadOnly` / `getTodoReadOnlyReason` |
+| UI 層 | `src/components/today/SidePanelCards.tsx` | per-todo `isBtnDisabled` 判定・表示制御 |
+| store 層 | `src/store/index.ts` | `toggleTodo` / `updateTodo` / `deleteTodo` ガード |
+
+---
+
 ## 提出フロー
 
 ### submitted フラグと status の関係
@@ -213,6 +256,7 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 
 ## 改修履歴
 
+- **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`todoReadOnly.ts` 新規作成により OR 条件を一元管理。期限切れ (dueDate < today) の判定を UI 層・ store 層の両方に展開
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガード（commit 5170401）を二重防壁として温存
 - **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
 - **2026-06-04 139386b**: E-8 顧客削除後表示リュール — ReadOnlyTimeline/SidePanelCards/SearchPage で削除済み顧客を `'不明'` と表示

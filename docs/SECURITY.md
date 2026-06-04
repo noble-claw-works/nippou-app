@@ -103,6 +103,45 @@ fi
 
 ---
 
+### BUG-B 残存修正: TODO 編集の二層防御拡張 (db741db — 2026-06-04)
+
+#### 問題
+`ae0ce12` (BUG-B [P0]) で提出済み/承認済み日報由来の TODO 保護は実装済みだったが、**期限切れ TODO**（`dueDate < today`）が Today 画面から変更可能なまま残っていた。
+
+#### 対策
+
+**共通判定ユーティリティ: `src/utils/todoReadOnly.ts`**
+
+TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の両方で利用。
+
+| 読み取り専用条件 | 詳細 |
+|---|---|
+| `reportStatus ∈ ['submitted', 'confirmed']` | 提出済み/承認済み日報由来の TODO |
+| `todo.dueDate < today` | 期限切れ TODO (YYYY-MM-DD 文字列比較) |
+
+**UI 層: `src/components/today/SidePanelCards.tsx`**
+- 各 TODO 行で `isTodoReadOnly(todo, report.status, todayStr)` を呼び出し per-todo で判定
+- `isBtnDisabled = isReadOnly || todoReadOnly` によりチェックボックス・削除ボタンを無効化
+
+**store 層: `src/store/index.ts`**
+- `toggleTodo` / `updateTodo` / `deleteTodo` 内のガードを `isTodoReadOnly` を使う形に更新
+- status が `planning` / `in_progress` な TODO でも期限切れの場合は no-op
+- `console.warn('[store] toggleTodo blocked: todo is read-only', { reportId, todoId, status, dueDate })` を出力しデバッグ容易化
+
+#### 二層防御の構成
+
+```
+リクエスト
+  └→ UI 層: isBtnDisabled=true → ボタン disabled (操作を防ぐ)
+  └→ store 層: isTodoReadOnly → true なら no-op (万が一 UI を迭貧しても防ぐ)
+```
+
+#### テスト
+- `src/__tests__/todoReadOnly.test.ts` — 23 テスト（`isTodoReadOnly` / `getTodoReadOnlyReason` 全エッジケース）
+- `src/__tests__/todoCardReadOnly.test.tsx` — +4 テスト（overdue シナリオ: チェックボックス disabled / ハンドラ無効 / バッジ表示）
+
+---
+
 ## セキュリティ原則
 
 ### 二層防御 (Defense in Depth)
@@ -123,6 +162,7 @@ fi
 
 ## 改修履歴
 
+- **2026-06-04 db741db**: BUG-B 残存修正 — TODO 編集の二層防御を期限切れ (dueDate < today) まで拡張。`src/utils/todoReadOnly.ts` を新規作成し UI 層・ store 層両方に展開
 - **2026-06-04 8ccb832**: P0 — 顧客削除権限に付帯情報判定を導入、二層防御を実装
 - **2026-06-04 f2cd145**: P1 — ログインロックアウトを localStorage で永続化、NaN ガード追加
 - **2026-06-04 0326621**: P1 — netlify-deploy.sh の Site ID をハードコードから環境変数に変更

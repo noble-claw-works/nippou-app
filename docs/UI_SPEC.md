@@ -953,8 +953,77 @@ UI 層の disable のみでなく、万が一の API 突破アクセスに対し
 
 ---
 
+## BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO 完全読み取り専用化 (db741db — 2026-06-04)
+
+**背景**: commit ae0ce12 (BUG-B [P0]) は ReportDetail 画面および提出済み/承認済み日報由来の TODO 保護を実装したが、Today 画面特有の「期限切れ TODO 」（dueDate が今日未満）が変更可能なまま残っていた。
+
+**修正方針**: `src/utils/todoReadOnly.ts` を新規作成し per-todo 判定ロジックを一元管理。UI 層と store 層の両方で判定を展開する。
+
+### TODO 読み取り専用判定ルール（OR 結合）
+
+| 会定 | 条件 |
+|---|---|
+| 提出済み/承認済み日報由来 | `report.status === 'submitted' \|\| report.status === 'confirmed'` |
+| 期限切れ | `todo.dueDate !== undefined && todo.dueDate < today` (YYYY-MM-DD 文字列比較) |
+
+どちらか一つでも即座に読み取り専用となる。
+
+### `src/utils/todoReadOnly.ts` (新規)
+
+```typescript
+export function isTodoReadOnly(
+  todo: Pick<Todo, 'dueDate'>,
+  reportStatus: ReportStatus,
+  today?: string, // YYYY-MM-DD。省略時は実行時日付
+): boolean
+
+export function getTodoReadOnlyReason(
+  todo: Pick<Todo, 'dueDate'>,
+  reportStatus: ReportStatus,
+  today?: string,
+): string | null  // '提出済み日報の TODO は変更できません' | '期限切れの TODO は変更できません' | null
+```
+
+### `SidePanelCards.tsx` の変更 (per-todo 層展開)
+
+- `todayStr = new Date().toISOString().split('T')[0]` をコンポーネント内で一度計算し、各 todo の計算に再利用
+- 各 TODO 行で `isTodoReadOnly(todo, report.status, todayStr)` を呼び出し `todoReadOnly` フラグを算出
+- `isBtnDisabled = isReadOnly || todoReadOnly` でチェックボックス・削除ボタンを無効化
+- `handleToggle(todoId, todoReadOnly)` / `handleDelete(todoId, todoReadOnly)` のシグネチャを履年化（引数追加）
+
+### store 層二層防御の残存修正
+
+`toggleTodo` / `updateTodo` / `deleteTodo` 内のガードを `isTodoReadOnly` を使う形に更新：
+
+```typescript
+// 変更前 (ae0ce12)
+if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
+
+// 変更後 (db741db)
+const todo = report.todos.find(t => t.id === todoId);
+const todayStr = new Date().toISOString().split('T')[0];
+if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) {
+  console.warn('[store] toggleTodo blocked: todo is read-only', ...);
+  return;
+}
+```
+
+`toggleTodo` / `updateTodo` / `deleteTodo` の 3 アクション全てに適用。期限切れ TODO への操作を store 層でも封鎖する。
+
+### テスト
+- `src/__tests__/todoReadOnly.test.ts` (+新規 23 テスト): `isTodoReadOnly` / `getTodoReadOnlyReason` の全エッジケース
+- `src/__tests__/todoCardReadOnly.test.tsx` (+4 テスト): overdue シナリオ追加
+
+**品質**:
+- TypeScript: 0 error
+- Vitest: 201/201 通過 (既存 178 + 新規 23)
+- Staging commit: `db741db`
+
+---
+
 ## 改修履歴
 
+- **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`src/utils/todoReadOnly.ts` を新規作成し `isTodoReadOnly` / `getTodoReadOnlyReason` を一元管理。SidePanelCards で per-todo 期限切れ判定を追加し UI 層を拡張。store 層 `toggleTodo` / `updateTodo` / `deleteTodo` も期限切れ TODO を二層防御でガード
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガードを二重防壁として温存
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
