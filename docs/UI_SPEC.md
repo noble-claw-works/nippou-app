@@ -791,6 +791,42 @@ interface TimelinePanelProps {
 
 ---
 
+### NotFoundPage (`src/pages/NotFoundPage.tsx`)
+
+**役割**: 未定義 URL へのアクセス時に表示する 404 エラーページ。
+
+**E-7 NotFoundPage (catch-all ルート)**:
+- **トリガー**: App.tsx の catch-all ルート (`path="*"`) により、定義されていないパスへのアクセス時に描画される
+- **ルート定義**: `<Route path="*" element={<NotFoundPage />} />` — AppLayout 内 `<Routes>` の末尾に配置
+- **認証ガード**: `RequireAuth` でラップされているため、未認証ユーザーは `/login` へリダイレクトされ、この画面には到達しない
+
+**UI**:
+- **アイコン**: `FileQuestion` (lucide-react, `w-16 h-16 text-gray-300`)
+- **見出し**: 「404 - ページが見つかりません」 (`text-2xl font-bold text-gray-800`)
+- **説明文**: 「お探しのページは存在しないか、移動・削除された可能性があります。」 (`text-sm text-gray-500`)
+- **戻るリンク**: `<Link to="/">` → 「トップへ戻る」ボタン (`bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-2.5`)
+- **レイアウト**: 中央寄せカード (`min-h-[60vh] flex flex-col items-center justify-center`, `bg-gray-50 rounded-2xl border border-gray-200 p-10 max-w-md shadow-sm`)
+
+---
+
+### 顧客削除後の過去日報表示ルール (E-8)
+
+**背景**: `deleteCustomer(customerId)` 実行後、過去の日報ブロックに残る `customerId` は参照先が存在しなくなる。この状態で顧客名を表示しようとした際の統一表示ルール。
+
+**ルール**: 削除済み顧客を参照するブロックの顧客名表示箇所では、名前の代わりに `'不明'` と表示する。
+
+**適用箇所と実装**:
+
+| コンポーネント | 箇所 | 実装 |
+|---|---|---|
+| `ReadOnlyTimeline` (`src/components/report/ReadOnlyTimeline.tsx`) | BlockBar に渡す `customerName` | `customers.find(c => c.id === block.customerId)?.name ?? '不明'` |
+| `SidePanelCards` (`src/components/today/SidePanelCards.tsx`) | CustomerSummaryCard 内の2箇所 | `customer?.name ?? '不明'` (旧: `customer?.name ?? block.customerId`) |
+| `SearchPage` (`src/pages/SearchPage.tsx`) | 検索結果カードの訪問顧客名リスト | `customers.find(c => c.id === b.customerId)?.name ?? '不明'` |
+
+**変更の意図**: 旧実装は削除済み顧客に対して内部 ID（`customerId` UUID 文字列）をそのまま表示していたが、ユーザーには意味不明なため `'不明'` に統一した。
+
+---
+
 
 *NotificationsPage*:
 - **handleClick 関数**: relatedReportId から report を検索し、有効なら `/reports/{date}?user={userId}` へ遷移
@@ -849,6 +885,8 @@ interface TimelinePanelProps {
   - **EMP-1**: TodayPage ヘッダー日付左右に前・翌日ナビボタン追加
   - **EMP-2**: Dashboard ヒートマップセル button 化、hover 状態改善、user param 付与
   - **LIST-1**: SearchPage 検索結果で author.name を先頭強調表示（上長以上のみ）
+- **2026-06-04 90a69fe**: E-7 NotFoundPage と catch-all ルートを実装 — 未定義 URL で 404 ページを表示
+- **2026-06-04 139386b**: E-8 顧客削除後の過去日報で「不明」表示に統一 — ReadOnlyTimeline / SidePanelCards / SearchPage の顧客名フォールバックを ID 表示から「不明」へ変更
 - **2026-06-04 694684f**: 主上ご下命 6 件 (CUS-3/MGR-3/MGR-4/MGR-5/MGR-6/DEAD-1) を反映
   - **CUS-3**: CustomerDetailPage 顧客対応履歴をタイムライン型カードレイアウトに刷新 (垂直軸ドット + 種別欄側 + 2列グリッド訪問結果)
   - **MGR-3**: SearchPage 一覧カードにミニタイムライン追加 (08:00〜20:00 を 100% 正規化した帯形式)

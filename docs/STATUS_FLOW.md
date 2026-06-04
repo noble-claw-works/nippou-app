@@ -138,6 +138,31 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 | ReportDetailPage | general | 自分の日報のみ前後ナビ |
 | ReportDetailPage | manager/executive | 範囲内各日報の前後ナビ + 未確認循環ナビ |
 | DashboardPage | (all) | 上長以上のみアクセス可能 |
+| **未定義パス** | (all) | `NotFoundPage` を描画 (catch-all `path="*"`) |
+
+---
+
+## catch-all ルートと NotFoundPage (E-7)
+
+### ルート定義
+
+```tsx
+// src/App.tsx 内 AppLayout > Routes の末尾
+<Route path="*" element={<NotFoundPage />} />
+```
+
+### 挙動
+
+- **認証済み**: `RequireAuth` 内部のルートなので、未認証ユーザーがヒットしても `/login` へリダイレクトされ、`NotFoundPage` は表示されない。
+- **認証済み**: 完全に未定義な URL（例: `/nonexistent`, `/admin/foo`）へのアクセス時に `NotFoundPage` を表示する。
+- `AppShell`（サイドダー / ヘッダー）は通常通り描画される。
+
+### テストカバレッジ
+
+`e2e/notfound.spec.ts` に以下シナリオをカバー:
+- `/nonexistent` へのアクセスで 404 ページが表示される
+- 「トップへ戻る」リンクが表示され、クリックでトップページへ移動する
+- `h1` に「404」文字列を含む
 
 **上長ビューの未確認循環ナビ**:
 - 初料粗い結果一覧 (status='submitted' のみ) を出力。unconfirmedReports を数える
@@ -145,8 +170,19 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 
 ---
 
+## 顧客削除後のルーティング影響 (E-8)
+
+`deleteCustomer` は日報データに影響しないため、顧客削除後も `ReportDetailPage` / `SearchPage` へのルーティングはそのまま機能する。だだし照了事項：
+
+- `customerId` を URL パラメータとして受けるページ（`CustomerDetailPage` など）は、削除済み顧客が指定された場合に別途ハンドリングが必要。現在はデフォルトがないため、これらのページへのリンクは履歴カードから容易に迅例されない設計となっている。
+- 日報内 `block.customerId` による履歴表示は `'不明'` フォールバックにより安全に描画する。
+
+---
+
 ## 改修履歴
 
+- **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
+- **2026-06-04 139386b**: E-8 顧客削除後表示リュール — ReadOnlyTimeline/SidePanelCards/SearchPage で削除済み顧客を `'不明'` と表示
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2 認証セッション・ガード実装 — ログイン認証・30分無操作失効・パスワード変更
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件 を反映 (前後ナビ・上長リダイレクト・未確認フィルタ・前後日付・ヒートマップbutton化・氏名強調)
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記

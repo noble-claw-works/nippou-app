@@ -283,6 +283,32 @@ interface Customer {
 
 ---
 
+### 削除済み顧客の参照ポリシー (E-8)
+
+`deleteCustomer(customerId)` を実行すると顧客レコードはストアから即座に削除されるが、過去の `DailyReport.blocks` 内の `TimeBlock.customerId` はそのまま残る。
+
+**参照先の存在チェックルール**:
+
+| 箇所 | 表示ルール |
+|---|---|
+| `ReadOnlyTimeline` 内 BlockBar 顧客名 | `customers.find(c => c.id === block.customerId)?.name ?? '不明'` |
+| `SidePanelCards` CustomerSummaryCard | `customer?.name ?? '不明'` |
+| `SearchPage` 訪問顧客名リスト | `customers.find(c => c.id === b.customerId)?.name ?? '不明'` |
+
+**設計方針**:
+- `customerId` は日報ブロックに残る（履歴保全のため）
+- UI 層で `customers` リストに顧客が見つからない場合は `'不明'` を表示
+- 削除前に `deactivateCustomer(customerId)` （ステータスを `inactive` に変更）を使うことを推奨する—顧客メコなどは残るため記録が履歴と結びつく
+
+**`deleteCustomer` vs `deactivateCustomer`**:
+
+| 操作 | 顧客レコード | 過去日報の表示 | 推奨用途 |
+|---|---|---|---|
+| `deleteCustomer` | **完全削除** | `'不明'` が表示される | 誤登録・テストデータの消去 |
+| `deactivateCustomer` | 残る（status=inactive） | 顧客名を正常表示 | 取引終了・長期休眠 |
+
+---
+
 ### Todo
 
 日報に紐づくタスク。ステータス・優先度・期限を管理。
@@ -520,4 +546,5 @@ updateBlock(report.id, block.id, {
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
+- **2026-06-04 90a69fe/139386b**: E-7 NotFoundPage 実装 / E-8 削除済み顧客参照ポリシー追加 — TimeBlock.customerId の参照先不在時は `'不明'` と表示する UI ルールを策定
 - **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）
