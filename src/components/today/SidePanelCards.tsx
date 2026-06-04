@@ -3,6 +3,8 @@ import { Plus, X, Check, ChevronDown } from 'lucide-react';
 import { BLOCK_EMOJIS, MOOD_EMOJIS } from '../../utils';
 import type { DailyReport, Customer, MoodType, ManagerSignal } from '../../types';
 import { ComplimentsCard } from './ComplimentsCard';
+import { isTodoReadOnly, getTodoReadOnlyReason } from '../../utils/todoReadOnly';
+import type { ReportStatus } from '../../utils/todoReadOnly';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface SidePanelCardsProps {
@@ -25,6 +27,9 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
   const [input, setInput] = useState<TodoInputState>({ text: '', priority: 'medium', dueDate: '' });
   const [showInput, setShowInput] = useState(false);
 
+  // 今日の日付 (YYYY-MM-DD) — per-todo 期限切れ判定に使用
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const handleAdd = () => {
     if (isReadOnly) return;
     const t = input.text.trim();
@@ -35,13 +40,13 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
     setShowInput(false);
   };
 
-  const handleToggle = (todoId: string) => {
-    if (isReadOnly) return;
+  const handleToggle = (todoId: string, todoReadOnly: boolean) => {
+    if (isReadOnly || todoReadOnly) return;
     onToggleTodo(todoId);
   };
 
-  const handleDelete = (todoId: string) => {
-    if (isReadOnly) return;
+  const handleDelete = (todoId: string, todoReadOnly: boolean) => {
+    if (isReadOnly || todoReadOnly) return;
     onDeleteTodo(todoId);
   };
 
@@ -123,19 +128,23 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
         {pending.map(todo => {
           const priorityEmoji = todo.priority === 'high' ? '🔥' : todo.priority === 'medium' ? '⭐' : '💧';
           const statusIcon = todo.status === 'todo' ? '☐' : todo.status === 'doing' ? '◐' : '☑';
-          const today = new Date().toISOString().split('T')[0];
-          const isDueSoon = todo.dueDate && todo.dueDate === today;
-          const isOverdue = todo.dueDate && todo.dueDate < today;
+          const isDueSoon = todo.dueDate && todo.dueDate === todayStr;
+          const isOverdue = todo.dueDate && todo.dueDate < todayStr;
           const dueColor = isOverdue ? 'text-red-600' : isDueSoon ? 'text-amber-600' : 'text-gray-500';
+          // BUG-B 修正: 期限切れ OR 提出済み由来は per-todo 読み取り専用
+          const todoReadOnly = isTodoReadOnly(todo, report.status as ReportStatus, todayStr);
+          const isBtnDisabled = isReadOnly || todoReadOnly;
+          const btnTitle = getTodoReadOnlyReason(todo, report.status as ReportStatus, todayStr)
+            ?? 'クリックで todo → doing → done を巡回';
           
           return (
             <div key={todo.id} className="flex items-center gap-2 group">
               <button
-                onClick={() => handleToggle(todo.id)}
-                disabled={isReadOnly}
-                aria-disabled={isReadOnly}
-                title={isReadOnly ? '提出済み日報の TODO は変更できません' : 'クリックで todo → doing → done を巡回'}
-                className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isReadOnly ? 'cursor-not-allowed opacity-50' : 'hover:bg-blue-100'}`}
+                onClick={() => handleToggle(todo.id, todoReadOnly)}
+                disabled={isBtnDisabled}
+                aria-disabled={isBtnDisabled}
+                title={btnTitle}
+                className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isBtnDisabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-blue-100'}`}
               >
                 {statusIcon}
               </button>
@@ -146,8 +155,8 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
                   〜{todo.dueDate.slice(5)}
                 </span>
               )}
-              {!isReadOnly && (
-                <button onClick={() => handleDelete(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+              {!isBtnDisabled && (
+                <button onClick={() => handleDelete(todo.id, todoReadOnly)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
                   <X className="w-3 h-3 text-gray-400" />
                 </button>
               )}
@@ -161,25 +170,31 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
               <ChevronDown className="w-3 h-3" /> 完了済み {done.length}件
             </summary>
             <div className="mt-1 space-y-1">
-              {done.map(todo => (
-                <div key={todo.id} className="flex items-center gap-2 group">
-                  <button
-                    onClick={() => handleToggle(todo.id)}
-                    disabled={isReadOnly}
-                    aria-disabled={isReadOnly}
-                    title={isReadOnly ? '提出済み日報の TODO は変更できません' : ''}
-                    className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
-                  >
-                    ☑️
-                  </button>
-                  <span className="flex-1 text-sm line-through text-gray-400">{todo.text}</span>
-                  {!isReadOnly && (
-                    <button onClick={() => handleDelete(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
-                      <X className="w-3 h-3 text-gray-400" />
+              {done.map(todo => {
+                // 完了済み TODO も同様に per-todo 読み取り専用判定を適用
+                const todoDoneReadOnly = isTodoReadOnly(todo, report.status as ReportStatus, todayStr);
+                const isDoneDisabled = isReadOnly || todoDoneReadOnly;
+                const doneBtnTitle = getTodoReadOnlyReason(todo, report.status as ReportStatus, todayStr) ?? '';
+                return (
+                  <div key={todo.id} className="flex items-center gap-2 group">
+                    <button
+                      onClick={() => handleToggle(todo.id, todoDoneReadOnly)}
+                      disabled={isDoneDisabled}
+                      aria-disabled={isDoneDisabled}
+                      title={doneBtnTitle}
+                      className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isDoneDisabled ? 'cursor-not-allowed opacity-50' : ''}`}
+                    >
+                      ☑️
                     </button>
-                  )}
-                </div>
-              ))}
+                    <span className="flex-1 text-sm line-through text-gray-400">{todo.text}</span>
+                    {!isDoneDisabled && (
+                      <button onClick={() => handleDelete(todo.id, todoDoneReadOnly)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+                        <X className="w-3 h-3 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </details>
         )}

@@ -20,10 +20,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SidePanelCards } from '../components/today/SidePanelCards';
 import type { DailyReport, Customer, ReportStatus, Todo } from '../types';
 
-function makeTodo(id: string, text: string, status: Todo['status'] = 'todo'): Todo {
+function makeTodo(id: string, text: string, status: Todo['status'] = 'todo', dueDate?: string): Todo {
   return {
     id, reportId: 'r1', text, completed: status === 'done', status,
     rolledOver: false, priority: 'medium',
+    ...(dueDate ? { dueDate } : {}),
   };
 }
 
@@ -169,5 +170,79 @@ describe('BUG-B: TodoCard UI 層が submitted/confirmed で読み取り専用', 
       fireEvent.click(buttons[0]);
       expect(onToggleTodo).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+// ─── BUG-B 残存: 期限切れ TODO の UI 保護テスト ────────────────────────────────
+describe('BUG-B 残存: 期限切れ TODO は status=planning でも読み取り専用', () => {
+  const PAST_DATE = '2026-06-01'; // 確実に過去
+  const TODAY_DATE = new Date().toISOString().split('T')[0];
+
+  function renderWithOverdueTodo(reportStatus: ReportStatus) {
+    const todos = [
+      makeTodo('t-overdue', '法人アポ取り', 'todo', PAST_DATE),  // 期限切れ
+      makeTodo('t-today', '今日期限タスク', 'todo', TODAY_DATE),  // 今日期限 (変更可)
+      makeTodo('t-nodue', '期限なしタスク', 'todo'),              // 期限なし (変更可)
+    ];
+    const report = makeReport(reportStatus, todos);
+    const onToggleTodo = vi.fn();
+    const onAddTodo = vi.fn();
+    const onDeleteTodo = vi.fn();
+    const onUpdateReport = vi.fn();
+
+    render(
+      <SidePanelCards
+        report={report}
+        customers={[]}
+        onUpdateReport={onUpdateReport}
+        onAddTodo={onAddTodo}
+        onToggleTodo={onToggleTodo}
+        onDeleteTodo={onDeleteTodo}
+      />,
+    );
+    return { onToggleTodo, onAddTodo, onDeleteTodo };
+  }
+
+  it('期限切れ TODO チェックボックスは disabled かつ aria-disabled=true', () => {
+    renderWithOverdueTodo('planning');
+    // 期限切れ TODO は「期限切れの TODO は変更できません」というタイトルを持つ
+    const overdueBtn = document.querySelector<HTMLButtonElement>(
+      'button[title="期限切れの TODO は変更できません"]',
+    );
+    expect(overdueBtn).not.toBeNull();
+    expect(overdueBtn!.disabled).toBe(true);
+    expect(overdueBtn!.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('期限切れ TODO をクリックしても onToggleTodo が呼ばれない', () => {
+    const { onToggleTodo } = renderWithOverdueTodo('planning');
+    const overdueBtn = document.querySelector<HTMLButtonElement>(
+      'button[title="期限切れの TODO は変更できません"]',
+    );
+    expect(overdueBtn).not.toBeNull();
+    fireEvent.click(overdueBtn!);
+    expect(onToggleTodo).not.toHaveBeenCalled();
+  });
+
+  it('今日期限の TODO は変更可能 (status=planning)', () => {
+    const { onToggleTodo } = renderWithOverdueTodo('planning');
+    // 今日期限のボタンは「クリックで todo → doing → done を巡回」というタイトル
+    const todayBtns = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[title="クリックで todo → doing → done を巡回"]'),
+    );
+    expect(todayBtns.length).toBeGreaterThan(0);
+    fireEvent.click(todayBtns[0]);
+    expect(onToggleTodo).toHaveBeenCalledTimes(1);
+  });
+
+  it('status=in_progress でも期限切れ TODO は変更不可', () => {
+    const { onToggleTodo } = renderWithOverdueTodo('in_progress');
+    const overdueBtn = document.querySelector<HTMLButtonElement>(
+      'button[title="期限切れの TODO は変更できません"]',
+    );
+    expect(overdueBtn).not.toBeNull();
+    expect(overdueBtn!.disabled).toBe(true);
+    fireEvent.click(overdueBtn!);
+    expect(onToggleTodo).not.toHaveBeenCalled();
   });
 });

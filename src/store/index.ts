@@ -43,6 +43,8 @@ import {
   persistAuthSession,
   type AuthSession,
 } from './auth';
+import { isTodoReadOnly } from '../utils/todoReadOnly';
+import type { ReportStatus as TodoReportStatus } from '../utils/todoReadOnly';
 
 // 再エクスポート (既存の import パス互換用)
 export { AUTH_STORAGE_KEY, AUTH_SESSION_TTL_MS, DEFAULT_DEMO_PASSWORD } from './auth';
@@ -427,8 +429,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleTodo: (reportId, todoId) => {
     // BUG-B: 提出済み / 確認済み日報の TODO は変更不可（二層防御: store ガード）
+    // BUG-B 残存修正: 期限切れ TODO も変更不可（store 層での二層防御）
     const report = get().reports.find(r => r.id === reportId);
-    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
+    if (!report) return;
+    const todo = report.todos.find(t => t.id === todoId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) {
+      console.warn('[store] toggleTodo blocked: todo is read-only', { reportId, todoId, status: report.status, dueDate: todo?.dueDate });
+      return;
+    }
     // 3段階巡回: todo → doing → done → todo
     const nextStatus = (current: 'todo' | 'doing' | 'done'): 'todo' | 'doing' | 'done' => {
       if (current === 'todo') return 'doing';
@@ -454,8 +463,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   updateTodo: (reportId, todoId, updates) => {
     // BUG-B: 提出済み / 確認済み日報の TODO は変更不可
+    // BUG-B 残存修正: 期限切れ TODO も変更不可（store 層二層防御）
     const report = get().reports.find(r => r.id === reportId);
-    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
+    if (!report) return;
+    const todo = report.todos.find(t => t.id === todoId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) {
+      console.warn('[store] updateTodo blocked: todo is read-only', { reportId, todoId, status: report.status, dueDate: todo?.dueDate });
+      return;
+    }
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? {
@@ -470,8 +486,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   deleteTodo: (reportId, todoId) => {
     // BUG-B: 提出済み / 確認済み日報の TODO は削除不可
+    // BUG-B 残存修正: 期限切れ TODO も削除不可（store 層二層防御）
     const report = get().reports.find(r => r.id === reportId);
-    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
+    if (!report) return;
+    const todo = report.todos.find(t => t.id === todoId);
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) {
+      console.warn('[store] deleteTodo blocked: todo is read-only', { reportId, todoId, status: report.status, dueDate: todo?.dueDate });
+      return;
+    }
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? { ...r, todos: r.todos.filter(t => t.id !== todoId), updatedAt: new Date().toISOString() }
