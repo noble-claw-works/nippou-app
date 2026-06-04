@@ -477,7 +477,7 @@ updateBlock(report.id, block.id, {
 |---|---|
 | `addCustomer(customer)` | 顧客追加 |
 | `updateCustomer(customerId, updates)` | 顧客更新 |
-| `deleteCustomer(customerId)` | 顧客完全削除 (CUS-3: 管理者/控糠者のみ実行可) |
+| `deleteCustomer(customerId)` | 顧客完全削除 (CUS-3: 管理者/役員のみ実行可)。付帯情報あり + admin/executive 以外は no-op (保安司 P0 二層防御) |
 | `deactivateCustomer(customerId)` | 顧客無効化 (status: active → inactive) |
 
 ### ManagerComment 操作
@@ -515,6 +515,19 @@ updateBlock(report.id, block.id, {
 - **外部 API**: なし
 - **セキュリティ**: ユーザー入力は React JSX 経由。`dangerouslySetInnerHTML` 不使用
 
+### localStorage キー一覧
+
+| キー | 型 | 記載場所 | 説明 |
+|---|---|---|---|
+| `nippou.auth.v1` | JSON (AuthSession) | AUTH-1/AUTH-2 | 認証セッション情報。ログイン済ユーザー情報 + 履行期限 |
+| `nippou_login_fails` | 数値文字列 | P1 (保安司 2026-06-04) | ログイン失敗回数。`LoginPage` 起動時に `parseInt` で読み込み、NaN なら 0 にフォールバック |
+| `nippou_login_lock_until` | Unixミリ秒文字列 | P1 (保安司 2026-06-04) | ロック解除時刻 (ms)、5回失敗時に `Date.now() + 30分` を保存。過去ならロック解除 |
+
+**localStorage 書き込みタイミング (`nippou_login_fails` / `nippou_login_lock_until`)**:
+- **読み込み**: `LoginPage` マウント時 (`useState` 初期値)
+- **失敗時**: `failCount + 1` を同期。`failCount >= 5` でロックタイムスタンプも保存
+- **成功時**: `localStorage.removeItem` で両キーを削除・リセット
+
 ---
 
 ## 訪問結果の活用フロー
@@ -548,3 +561,5 @@ updateBlock(report.id, block.id, {
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
 - **2026-06-04 90a69fe/139386b**: E-7 NotFoundPage 実装 / E-8 削除済み顧客参照ポリシー追加 — TimeBlock.customerId の参照先不在時は `'不明'` と表示する UI ルールを策定
 - **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）
+- **2026-06-04 f2cd145**: 保安司 P1 — localStorage キー `nippou_login_fails` / `nippou_login_lock_until` を追加。ログイン失敗回数とロックタイムスタンプをセッション跨ぎで永続化
+- **2026-06-04 8ccb832**: 保安司 P0 — `deleteCustomer` に付帯情報判定を用いた二層防御を追加。`hasCustomerAttachment` / `canDeleteCustomer` ユーティリティを新規導入

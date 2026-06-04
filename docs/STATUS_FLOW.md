@@ -179,6 +179,38 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 
 ---
 
+## 顔客削除フロー: 付帯情報あり/なしの分岐 (保安司 P0 2026-06-04)
+
+### トリガー
+`CustomersPage` 各顔客行の削除ボタンがクリックされる。
+
+### 分岐フロー
+
+```
+削除ボタンクリック
+  └→ canDeleteForCustomer(customerId) 判定
+       ├→ [false] disabled ボタン + ツールチップ 表示（操作不可）
+       └→ [true]  ConfirmDialog を表示
+                  ├→ [Cancel] 何もしない
+                  └→ [Confirm] deleteCustomer(customerId) 呼び出し
+                               ├→ [store 内: 付帯情報あり + non-admin/exec] no-op (二層防御)
+                               └→ [削除許可] 顔客レコード即座削除
+```
+
+### `canDeleteForCustomer(customerId)` の評価ルール
+
+| `hasCustomerAttachment` | currentRole | canDelete |
+|---|---|---|
+| false (付帯情報なし) | general / manager / executive / admin | **true** |
+| true (付帯情報あり) | admin / executive | **true** |
+| true (付帯情報あり) | general / manager | **false** |
+| どちらでも | undefined (未ログイン) | **false** |
+
+### ストア内二層防御
+`deleteCustomer` アクションは内部でも同様の判定を実施する。UI が二重に指示を辺り込んできた場合も不正履行を防ぐ。
+
+---
+
 ## 改修履歴
 
 - **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
@@ -187,3 +219,4 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件 を反映 (前後ナビ・上長リダイレクト・未確認フィルタ・前後日付・ヒートマップbutton化・氏名強調)
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
 - **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加
+- **2026-06-04 8ccb832**: 保安司 P0 — 顔客削除フローに付帯情報判定分岐を追加 (hasCustomerAttachment / canDeleteCustomer)

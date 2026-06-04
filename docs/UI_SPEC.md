@@ -17,6 +17,15 @@ nippou-app の Today ページは以下のコンポーネントに分割され�
 - 「役割で選んでログイン」展開: active ユーザー一覧から選んで loginAsUser。アバターイニシャルス + 名前 + メールアドレス + 役割表示
 - メール+パスワードフォーム: `login(email, password)` 呼び出し、失敗は失敗カウンタ切り上げ、5回以上でアカウントロック
 - 既にログイン済みなら useEffect で /today へリダイレクト
+
+**P1 ログインロックアウト永続化 (保安司 2026-06-04)**:
+- `failCount` 初期値: `localStorage.getItem('nippou_login_fails')` を `parseInt` し、`isNaN` なら `0` にフォールバック
+- ログイン失敗時: `failCount + 1` を `localStorage.setItem('nippou_login_fails', ...)` に同期
+- 5 回失敗時: `Date.now() + 30 * 60 * 1000` を `localStorage.setItem('nippou_login_lock_until', ...)` に保存
+- ロック状態判定: `lockUntil > Date.now() || failCount >= 5` → ロック中はフォームを disabled 表示
+- 正常ログイン時: `localStorage.removeItem('nippou_login_fails')` と `localStorage.removeItem('nippou_login_lock_until')` でクリア
+- **NaN ガード**: `parseInt` 結果が `NaN` の場合は `0` にフォールバック（破損データ対策）
+- **ロック期間**: 30 分
 - トースト作成: `addToast({ type: 'success', message: '〜さんとしてログインしました' })`
 
 **UI**:
@@ -307,6 +316,36 @@ const sorted = [...filtered].sort((a, b) => {
 - **権限制御**:
   - `canDelete = currentRole === 'admin' || currentRole === 'executive'`
   - 上記のロール以外は削除ボタン表示なし
+
+**P0 顔客削除権限: 付帯情報判定による分岐 (保安司 2026-06-04)**:
+
+#### 付帯情報の定義
+「顔客に付帯情報がある」 = 以下のいずれかに該当する顔客:
+- `reports[].blocks[].customerId` にその顔客 ID が含まれる
+- `reports[].todos[].customerId` にその顔客 ID が含まれる
+
+#### 削除可否判定ロジック (`src/utils/customerAttachment.ts`)
+
+| 顔客の状態 | 削除許可ロール |
+|---|---|
+| 付帯情報なし | ログイン中の任意ロール (general/manager/executive/admin) |
+| 付帯情報あり | `admin` / `executive` のみ |
+| 未ログイン (currentRole=undefined) | 常に不可 |
+
+#### UI 制御 (CustomersPage 各顔客行)
+- `canDeleteForCustomer(customer.id)`: `canDeleteCustomer(state, customerId, currentRole)` を行ごとに計算
+- **付帯情報あり + 権限なし**: 削除ボタン `disabled` + ホバーツールチップ表示（「日報に付帯情報あり。削除は admin/executive のみ」）
+- **付帯情報なし or 権限あり**: 削除ボタン enabled
+- 編集モーダル内「危険ゾーン」の削除ボタンも同様に制御
+
+#### ストア二層防御 (store/index.ts `deleteCustomer`)
+- 付帯情報あり + `currentRole` が admin/executive 以外 → `console.warn` を出力して no-op で終了
+- UI 制御とストア制御の二層構成で不正履行を阪止
+
+#### 関連ユーティリティ (`src/utils/customerAttachment.ts`)
+- `hasCustomerAttachment(state, customerId): boolean` — 付帯情報の有無を判定
+- `canDeleteCustomer(state, customerId, currentRole): boolean` — 削除可否を統合判定
+- テスト: `src/__tests__/customerAttachment.test.ts` (14 テスト)
 
 ### CustomerDetailPage (`src/pages/CustomerDetailPage.tsx`)
 
@@ -898,4 +937,6 @@ interface TimelinePanelProps {
   - **MGR-5**: Dashboard に「✍ 自分の日報を書く」ボタン追加, TodayPage は `?self=1` で上長迂回不可をバイパス
   - **MGR-6**: executive が manager の日報を確認可能 (撤変了、既存実装で要件充足)
   - **DEAD-1**: NotificationsPage handleClick を導入, SettingsPage の、通知・表示・スナップ select を controlled 化
+- **2026-06-04 8ccb832**: 保安司 P0 — 顔客削除権限を付帯情報判定で分岐。`src/utils/customerAttachment.ts` (付帯情報判定ユーティリティ) を新規作成。CustomersPage 各行で `canDeleteForCustomer()` を計算し、付帯情報あり + 権限なしの場合 disabled + ツールチップ表示。store に二層防御追加
+- **2026-06-04 f2cd145**: 保安司 P1 — ログイン失敗回数 (nippou_login_fails) とロックタイムスタンプ (nippou_login_lock_until) を localStorage で永続化。NaN ガード追加
 - **2026-06-03 以前**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映
