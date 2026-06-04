@@ -426,6 +426,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleTodo: (reportId, todoId) => {
+    // BUG-B: 提出済み / 確認済み日報の TODO は変更不可（二層防御: store ガード）
+    const report = get().reports.find(r => r.id === reportId);
+    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
     // 3段階巡回: todo → doing → done → todo
     const nextStatus = (current: 'todo' | 'doing' | 'done'): 'todo' | 'doing' | 'done' => {
       if (current === 'todo') return 'doing';
@@ -450,6 +453,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
   updateTodo: (reportId, todoId, updates) => {
+    // BUG-B: 提出済み / 確認済み日報の TODO は変更不可
+    const report = get().reports.find(r => r.id === reportId);
+    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? {
@@ -463,6 +469,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteTodo: (reportId, todoId) => {
+    // BUG-B: 提出済み / 確認済み日報の TODO は削除不可
+    const report = get().reports.find(r => r.id === reportId);
+    if (!report || report.status === 'submitted' || report.status === 'confirmed') return;
     set(s => ({
       reports: s.reports.map(r => r.id === reportId
         ? { ...r, todos: r.todos.filter(t => t.id !== todoId), updatedAt: new Date().toISOString() }
