@@ -173,15 +173,19 @@ export function ReportDetailPage() {
         )}
       </nav>
 
+      {/* BUG-A: Today と同じ 2 列レイアウト（左=タイムライン / 右=TODO+振り返り+上長コメント） */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Timeline + TODO + Mood (left 2 columns) */}
+        {/* Timeline (left 2 columns) */}
         <div className="lg:col-span-2 space-y-4">
           {/* RPT-2 縦軸ピクセルタイムライン */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">📅 タイムライン</h2>
             <ReadOnlyTimeline blocks={report.blocks} customers={customers} />
           </div>
+        </div>
 
+        {/* 右ペイン: TODO + 振り返り + 上長コメント */}
+        <aside className="lg:col-span-1 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">✅ TODO</h2>
             {report.todos.length === 0 ? (
@@ -243,10 +247,9 @@ export function ReportDetailPage() {
               )}
             </div>
           </div>
-        </div>
 
-        {/* RPT-1 右ペイン: 上長コメント */}
-        <aside className="lg:col-span-1 bg-white rounded-xl border border-gray-200 p-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
+          {/* RPT-1: 上長コメント */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
             <MessageCircle className="w-4 h-4" /> 上長コメント ({dayComments.length})
           </h2>
@@ -311,6 +314,7 @@ export function ReportDetailPage() {
             </button>
           </div>
         )}
+          </div>
         </aside>
       </div>
 
