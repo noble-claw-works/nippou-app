@@ -175,7 +175,7 @@ function CustomerSummaryCard({ report, customers }: Pick<SidePanelCardsProps, 'r
               <div key={block.id} className="border border-gray-100 rounded-lg p-2.5 space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
                   <span>{BLOCK_EMOJIS[block.type]}</span>
-                  <span className="truncate">{customer?.name ?? block.customerId}</span>
+                  <span className="truncate">{customer?.name ?? '不明'}</span>
                   <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
                     {block.startTime}–{block.endTime}
                   </span>
@@ -217,7 +217,7 @@ function CustomerSummaryCard({ report, customers }: Pick<SidePanelCardsProps, 'r
             <div key={block.id} className="flex items-center gap-2 text-sm">
               <span>{BLOCK_EMOJIS[block.type]}</span>
               <span className="text-gray-700 truncate">
-                {customers.find(c => c.id === block.customerId)?.name ?? block.customerId}
+                {customers.find(c => c.id === block.customerId)?.name ?? '不明'}
               </span>
             </div>
           ))}

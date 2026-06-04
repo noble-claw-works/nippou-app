@@ -140,7 +140,7 @@ export function SearchPage() {
                 const author = users.find(u => u.id === report.userId);
                 const visitedCustomers = report.blocks
                   .filter(b => b.customerId)
-                  .map(b => customers.find(c => c.id === b.customerId)?.name)
+                  .map(b => customers.find(c => c.id === b.customerId)?.name ?? '不明')
                   .filter(Boolean);
                 // ミニタイムライン (MGR-3): 08:00〜20:00 を 100% にして block を帯形式で描画
                 const sortedBlocks = [...report.blocks].sort((a, b) => a.startTime.localeCompare(b.startTime));

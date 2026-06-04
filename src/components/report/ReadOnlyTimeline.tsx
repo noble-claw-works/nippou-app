@@ -45,7 +45,7 @@ function TimeGrid() {
   );
 }
 
-function BlockBar({ block, customer }: { block: TimeBlock; customer?: Customer }) {
+function BlockBar({ block, customerName }: { block: TimeBlock; customerName?: string }) {
   const startMin = timeToMin(block.startTime);
   const endMin = timeToMin(block.endTime);
   const top = minuteToY(startMin) + 8;
@@ -68,8 +68,8 @@ function BlockBar({ block, customer }: { block: TimeBlock; customer?: Customer }
           {block.startTime}–{block.endTime}
         </span>
       </div>
-      {customer && (
-        <p className="text-[10px] text-gray-600 truncate">👥 {customer.name}</p>
+      {customerName && (
+        <p className="text-[10px] text-gray-600 truncate">👥 {customerName}</p>
       )}
       {block.memo && height > 50 && (
         <p className="text-[10px] text-gray-500 line-clamp-2 mt-0.5 whitespace-pre-wrap">{block.memo}</p>
@@ -141,7 +141,9 @@ export function ReadOnlyTimeline({ blocks, customers, variant = 'all' }: Props) 
             <BlockBar
               key={item.block.id}
               block={item.block}
-              customer={item.block.customerId ? customers.find(c => c.id === item.block.customerId) : undefined}
+              customerName={item.block.customerId
+                ? (customers.find(c => c.id === item.block.customerId)?.name ?? '不明')
+                : undefined}
             />
           );
         })}
