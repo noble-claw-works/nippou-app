@@ -14,6 +14,7 @@ import { TemplatesPage } from './pages/TemplatesPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { useAppStore } from './store';
 
 /** 認証ガード: 未ログインなら /login へリダイレクト */
@@ -74,6 +75,7 @@ function AppLayout() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>
   );
