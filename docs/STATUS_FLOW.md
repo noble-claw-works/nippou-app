@@ -213,6 +213,7 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 
 ## 改修履歴
 
+- **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガード（commit 5170401）を二重防壁として温存
 - **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
 - **2026-06-04 139386b**: E-8 顧客削除後表示リュール — ReadOnlyTimeline/SidePanelCards/SearchPage で削除済み顧客を `'不明'` と表示
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2 認証セッション・ガード実装 — ログイン認証・30分無操作失効・パスワード変更

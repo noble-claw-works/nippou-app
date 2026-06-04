@@ -916,8 +916,46 @@ interface TimelinePanelProps {
 
 ---
 
+## BUG-B [P0] UI層での読み取り専用化（2026-06-04）
+
+**問題**: 提出済み・確認済み日報に関連する TODO が、store 層ではガードされているが UI 層では変更可能に見えていたため、ユーザが「過去データ改ざんが成立した」と錯覚する可能性があった。
+
+**修正方針**: UI 層で完全読み取り専用化を実装。
+
+### SidePanelCards / TodoCard の読み取り専用化
+
+**コンポーネント**: `src/components/today/SidePanelCards.tsx` / `src/components/today/TodoCard.tsx`
+
+**実装**:
+- `SidePanelCards` に `isReadOnly` prop を導入（`report.status === 'submitted' || report.status === 'confirmed'`）
+- `TodoCard` に `isReadOnly` を伝搬
+  - **チェックボックス**: `disabled=true` / `aria-disabled=true` / `cursor-not-allowed` / `opacity-50` / `title="提出済み日報の TODO は変更できません"`
+  - **＋追加ボタン**: `isReadOnly` 時は非表示（`hidden` / `display:none`）
+  - **削除ボタン（X）**: `isReadOnly` 時は描画自体しない（条件付きレンダリング）
+  - **インライン入力フォーム**: `disabled` でクリック無効化、enter キーも無視
+  - **バッジ**: TODO ヘッダに「🔒 読み取り専用」バッジを表示（`isReadOnly` 時のみ）
+
+**テスト** (`src/__tests__/todoCardReadOnly.test.tsx` / 12 件追加):
+- `status='submitted'`: チェックボックス disabled / aria-disabled / ハンドラ無効 / バッジ表示 / ＋ボタン非表示 / 削除ボタン非描画
+- `status='confirmed'`: 同上
+- `status='planning'` / `'in_progress'` (対照群): チェックボックス enabled / ハンドラ実行 / バッジ非表示 / ＋ボタン表示 / 削除ボタン描画
+
+### 二重防壁（store 層）
+
+`src/store/index.ts` の `toggleTodo` / `updateTodo` / `deleteTodo` には、既存のガード（commit 5170401）を温存。
+UI 層の disable のみでなく、万が一の API 突破アクセスに対しても no-op で対応。
+
+**品質**:
+- TypeScript: 0 error
+- Vitest: 178/178 通過 (既存 166 + 新規 12)
+- Build: 486.27 KB / gzip 135.16 KB
+- Staging commit: `ae0ce12`
+
+---
+
 ## 改修履歴
 
+- **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガードを二重防壁として温存
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03 da74db3**: CUS-2 顧客対応履歴一覧刷新 — CustomerDetailPage 履歴セクション 1行=1ブロック表示、CustomersPage 履歴バッジ・履歴ボタン追加
