@@ -21,17 +21,28 @@ interface TodoInputState {
   dueDate: string;
 }
 
-function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePanelCardsProps, 'report' | 'onAddTodo' | 'onToggleTodo' | 'onDeleteTodo'>) {
+function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePanelCardsProps, 'report' | 'onAddTodo' | 'onToggleTodo' | 'onDeleteTodo'> & { isReadOnly: boolean }) {
   const [input, setInput] = useState<TodoInputState>({ text: '', priority: 'medium', dueDate: '' });
   const [showInput, setShowInput] = useState(false);
 
   const handleAdd = () => {
+    if (isReadOnly) return;
     const t = input.text.trim();
     if (!t) return;
     onAddTodo(t, input.priority);
     // TODO dueDate は updateTodo で後から設定するため、ここではaddTodoにはpriority渡し
     setInput({ text: '', priority: 'medium', dueDate: '' });
     setShowInput(false);
+  };
+
+  const handleToggle = (todoId: string) => {
+    if (isReadOnly) return;
+    onToggleTodo(todoId);
+  };
+
+  const handleDelete = (todoId: string) => {
+    if (isReadOnly) return;
+    onDeleteTodo(todoId);
   };
 
   const pending   = report.todos.filter(t => t.status !== 'done');
@@ -48,18 +59,25 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
             {report.todos.length > 0 && pending.length === 0 && (
               <span className="text-xs bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">✓ 完了</span>
             )}
+            {isReadOnly && (
+              <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5 inline-flex items-center gap-0.5" title="提出済み・確認済み日報の TODO は読み取り専用です">
+                🔒 読み取り専用
+              </span>
+            )}
           </span>
-        <button
-          onClick={() => setShowInput(v => !v)}
-          className="p-1 rounded hover:bg-gray-100"
-          title="TODO を追加"
-        >
-          <Plus className="w-4 h-4 text-gray-500" />
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={() => setShowInput(v => !v)}
+            className="p-1 rounded hover:bg-gray-100"
+            title="TODO を追加"
+          >
+            <Plus className="w-4 h-4 text-gray-500" />
+          </button>
+        )}
       </div>
 
       {/* インライン入力 */}
-      {showInput && (
+      {showInput && !isReadOnly && (
         <div className="space-y-2 mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
           <input
             autoFocus
@@ -113,9 +131,11 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
           return (
             <div key={todo.id} className="flex items-center gap-2 group">
               <button
-                onClick={() => onToggleTodo(todo.id)}
-                title="クリックで todo → doing → done を巡回"
-                className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm hover:bg-blue-100"
+                onClick={() => handleToggle(todo.id)}
+                disabled={isReadOnly}
+                aria-disabled={isReadOnly}
+                title={isReadOnly ? '提出済み日報の TODO は変更できません' : 'クリックで todo → doing → done を巡回'}
+                className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isReadOnly ? 'cursor-not-allowed opacity-50' : 'hover:bg-blue-100'}`}
               >
                 {statusIcon}
               </button>
@@ -126,9 +146,11 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
                   〜{todo.dueDate.slice(5)}
                 </span>
               )}
-              <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
-                <X className="w-3 h-3 text-gray-400" />
-              </button>
+              {!isReadOnly && (
+                <button onClick={() => handleDelete(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+                  <X className="w-3 h-3 text-gray-400" />
+                </button>
+              )}
             </div>
           );
         })}
@@ -141,13 +163,21 @@ function TodoCard({ report, onAddTodo, onToggleTodo, onDeleteTodo }: Pick<SidePa
             <div className="mt-1 space-y-1">
               {done.map(todo => (
                 <div key={todo.id} className="flex items-center gap-2 group">
-                  <button onClick={() => onToggleTodo(todo.id)} className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm">
+                  <button
+                    onClick={() => handleToggle(todo.id)}
+                    disabled={isReadOnly}
+                    aria-disabled={isReadOnly}
+                    title={isReadOnly ? '提出済み日報の TODO は変更できません' : ''}
+                    className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-sm ${isReadOnly ? 'cursor-not-allowed opacity-50' : ''}`}
+                  >
                     ☑️
                   </button>
                   <span className="flex-1 text-sm line-through text-gray-400">{todo.text}</span>
-                  <button onClick={() => onDeleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
-                    <X className="w-3 h-3 text-gray-400" />
-                  </button>
+                  {!isReadOnly && (
+                    <button onClick={() => handleDelete(todo.id)} className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded flex-shrink-0">
+                      <X className="w-3 h-3 text-gray-400" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -409,17 +439,20 @@ export function SidePanelCards({
   report, customers,
   onUpdateReport, onAddTodo, onToggleTodo, onDeleteTodo,
 }: SidePanelCardsProps) {
+  // BUG-B: 提出済み / 確認済み日報の TODO を UI レベルでも読み取り専用にする
+  const isReadOnly = report.status === 'submitted' || report.status === 'confirmed';
   return (
     <div className="space-y-4">
       <CustomerSummaryCard report={report} customers={customers} />
       <TodoCard
         report={report}
+        isReadOnly={isReadOnly}
         onAddTodo={onAddTodo}
         onToggleTodo={onToggleTodo}
         onDeleteTodo={onDeleteTodo}
       />
       <ThemeCard report={report} onUpdateReport={onUpdateReport} />
-      <ComplimentsCard dayKey={report.date} isReadOnly={report.status === 'submitted' || report.status === 'confirmed'} />
+      <ComplimentsCard dayKey={report.date} isReadOnly={isReadOnly} />
       <ReflectionCard report={report} onUpdateReport={onUpdateReport} />
       <GratitudeCard report={report} onUpdateReport={onUpdateReport} />
     </div>
