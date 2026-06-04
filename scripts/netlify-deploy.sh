@@ -16,7 +16,12 @@
 set -euo pipefail
 
 BRANCH="${1:-staging}"
-SITE_ID="53453b52-8d02-43b5-860b-0bee67040bc8"
+SITE_ID="${NETLIFY_SITE_ID:-}"
+if [ -z "$SITE_ID" ]; then
+  echo "ERROR: NETLIFY_SITE_ID is not set" >&2
+  echo "  Export it before running: export NETLIFY_SITE_ID=<your-site-id>" >&2
+  exit 1
+fi
 ACCOUNT="${OP_ACCOUNT:-executiveboosterinc}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
