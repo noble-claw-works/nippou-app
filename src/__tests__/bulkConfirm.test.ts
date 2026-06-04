@@ -76,8 +76,10 @@ describe('CUS-3 deleteCustomer', () => {
       expect(true).toBe(true);
       return;
     }
-    const beforeCount = s.customers.length;
-    s.deleteCustomer(target.id);
+    // P0: 付帯情報あり顧客を削除するには admin ロールが必要
+    useAppStore.setState({ currentRole: 'admin' });
+    const beforeCount = useAppStore.getState().customers.length;
+    useAppStore.getState().deleteCustomer(target.id);
     const after = useAppStore.getState().customers;
     expect(after.length).toBe(beforeCount - 1);
     expect(after.find(c => c.id === target.id)).toBeUndefined();
