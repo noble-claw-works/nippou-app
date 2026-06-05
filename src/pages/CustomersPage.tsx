@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, MapPin, Tag } from 'lucide-react';
 import { useAppStore } from '../store';
+import { canDeleteCustomer, hasCustomerAttachment } from '../utils/customerAttachment';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState, FormField } from '../components/ui/EmptyState';
@@ -88,6 +89,9 @@ export function CustomersPage() {
   const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, deleteCustomer, currentRole, currentUserId, addToast } = useAppStore();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  // P0 付帯情報判定用 state
+  const attachmentState = { reports };
+
   // 顧客 ID → 対応履歴件数 マップを一度だけ計算
   const historyCountByCustomer = (() => {
     const map = new Map<string, number>();
@@ -107,11 +111,10 @@ export function CustomersPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
 
-  // CUS-3: 全ロールで CRUD 可能とする (鳳凰検証 2026-06-04 02:50 JST 反映 - 全ロールで削除ボタン認識可能に)
+  // CUS-3: 全ロールで CRUD 可能とする
   const canAdd = currentRole !== undefined;
   const canEdit = currentRole !== undefined;
   const canDeactivate = currentRole !== undefined;
-  const canDelete = currentRole !== undefined;
 
   const filtered = customers.filter(c => {
     if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.area.toLowerCase().includes(query.toLowerCase())) return false;
@@ -267,13 +270,26 @@ export function CustomersPage() {
                         🚫 無効化
                       </button>
                     )}
-                    {canDelete && (
-                      <button onClick={() => setDeleteId(customer.id)}
-                        className="px-2.5 py-1 text-xs text-red-700 border border-red-300 rounded-lg hover:bg-red-50"
-                        aria-label={`${customer.name} を削除`}>
-                        🗑 削除
-                      </button>
-                    )}
+                    {(() => {
+                      const customerHasAttach = hasCustomerAttachment(attachmentState, customer.id);
+                      const canDeleteThis = canDeleteCustomer(attachmentState, customer.id, currentRole);
+                      return currentRole !== undefined && (
+                        <button
+                          disabled={!canDeleteThis}
+                          title={customerHasAttach && !canDeleteThis ? '付帯情報あり: admin/executive のみ削除可' : ''}
+                          onClick={() => canDeleteThis && setDeleteId(customer.id)}
+                          className={`px-2.5 py-1 text-xs border rounded-lg ${
+                            canDeleteThis
+                              ? 'text-red-700 border-red-300 hover:bg-red-50'
+                              : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed'
+                          }`}
+                          aria-label={`${customer.name} を削除`}
+                          aria-disabled={!canDeleteThis}
+                        >
+                          🗑 削除
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -307,7 +323,7 @@ export function CustomersPage() {
             onCancel={() => setEditId(null)}
           />
           {/* CUS-3: 編集モーダル内の危険ゾーン (削除・無効化) */}
-          {(canDelete || canDeactivate) && (
+          {(currentRole !== undefined) && (
             <div className="mt-6 pt-4 border-t border-red-100">
               <p className="text-xs font-semibold text-red-700 mb-2">⚠ 危険ゾーン</p>
               <div className="flex gap-2 flex-wrap">
@@ -320,16 +336,27 @@ export function CustomersPage() {
                     🚫 無効化する
                   </button>
                 )}
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => { setEditId(null); setDeleteId(editingCustomer.id); }}
-                    className="px-3 py-1.5 text-xs text-red-700 border border-red-300 rounded-lg hover:bg-red-50 font-medium"
-                    aria-label={`${editingCustomer.name} を完全削除`}
-                  >
-                    🗑 この顧客を削除
-                  </button>
-                )}
+                {(() => {
+                  const modalHasAttach = hasCustomerAttachment(attachmentState, editingCustomer.id);
+                  const modalCanDelete = canDeleteCustomer(attachmentState, editingCustomer.id, currentRole);
+                  return (
+                    <button
+                      type="button"
+                      disabled={!modalCanDelete}
+                      title={modalHasAttach && !modalCanDelete ? '付帯情報あり: admin/executive のみ削除可' : ''}
+                      onClick={() => { if (modalCanDelete) { setEditId(null); setDeleteId(editingCustomer.id); } }}
+                      className={`px-3 py-1.5 text-xs border rounded-lg font-medium ${
+                        modalCanDelete
+                          ? 'text-red-700 border-red-300 hover:bg-red-50'
+                          : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed'
+                      }`}
+                      aria-label={`${editingCustomer.name} を完全削除`}
+                      aria-disabled={!modalCanDelete}
+                    >
+                      🗑 この顧客を削除
+                    </button>
+                  );
+                })()}
               </div>
               <p className="text-[10px] text-gray-500 mt-1.5">削除は不可逆です。予定・履歴を保全したい場合は「無効化」を推奨します。</p>
             </div>

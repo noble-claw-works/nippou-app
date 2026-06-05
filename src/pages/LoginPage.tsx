@@ -11,12 +11,39 @@ const ROLE_LABEL_JA: Record<string, string> = {
 };
 
 export function LoginPage() {
+  const FAILS_KEY = 'nippou_login_fails';
+  const LOCK_KEY = 'nippou_login_lock_until';
+  const LOCK_DURATION_MS = 30 * 60 * 1000; // 30分
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('demo');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [failCount, setFailCount] = useState(0);
+  const [failCount, setFailCount] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10);
+    return Number.isNaN(v) ? 0 : v;
+  });
+  const [lockUntil, setLockUntil] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem('nippou_login_lock_until') ?? '0', 10);
+    return Number.isNaN(v) ? 0 : v;
+  });
   const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  // 毎秒更新してロック解除時刻のカウントダウンを表示
+  useEffect(() => {
+    if (lockUntil <= 0) return;
+    const timer = setInterval(() => {
+      const n = Date.now();
+      setNow(n);
+      if (n >= lockUntil) {
+        clearInterval(timer);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockUntil]);
+
+  const isLocked = failCount >= 5 || lockUntil > now;
   const [showQuickPick, setShowQuickPick] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,21 +62,34 @@ export function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (failCount >= 5) return;
+    if (isLocked) return;
     setLoading(true);
     setError('');
     await new Promise(r => setTimeout(r, 300));
 
     const result = login(email, password);
     if (result.ok) {
+      // 成功時: 失敗カウンタ・ロックをリセット
       setFailCount(0);
+      setLockUntil(0);
+      localStorage.removeItem(FAILS_KEY);
+      localStorage.removeItem(LOCK_KEY);
       addToast({ type: 'success', message: `${result.user.name} さんとしてログインしました` });
       const from = (location.state as { from?: string } | null)?.from ?? '/today';
       navigate(from, { replace: true });
     } else {
       const nextFail = failCount + 1;
       setFailCount(nextFail);
-      setError(nextFail >= 5 ? 'アカウントが30分間ロックされました' : result.error);
+      localStorage.setItem(FAILS_KEY, String(nextFail));
+      if (nextFail >= 5) {
+        const until = Date.now() + LOCK_DURATION_MS;
+        setLockUntil(until);
+        setNow(Date.now());
+        localStorage.setItem(LOCK_KEY, String(until));
+        setError(`アカウントがロックされました。${LOCK_DURATION_MS / 60000}分後に自動解除されます。`);
+      } else {
+        setError(result.error + ` (あと${5 - nextFail}回失敗するとロック)`);
+      }
     }
     setLoading(false);
   };
@@ -141,6 +181,21 @@ export function LoginPage() {
           <div className="relative flex justify-center text-xs text-gray-400 bg-white px-2">またはメールでログイン</div>
         </div>
 
+        {/* P1: ロックバナー */}
+        {isLocked && (
+          <div role="alert" className="mb-4 px-4 py-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2">
+            <span className="text-red-500 text-lg flex-shrink-0">🔒</span>
+            <div className="text-xs text-red-700">
+              <p className="font-semibold mb-0.5">アカウントがロックされています</p>
+              {lockUntil > now ? (
+                <p>{Math.ceil((lockUntil - now) / 60000)} 分後にロック解除されます</p>
+              ) : (
+                <p>ログイン失敗が5回に達しました。しばらくお待ちください。</p>
+              )}
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleLogin} className="space-y-3" aria-label="ログインフォーム">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="login-email">メールアドレス</label>
@@ -173,9 +228,9 @@ export function LoginPage() {
               {error}
             </p>
           )}
-          <button type="submit" disabled={loading || failCount >= 5}
+          <button type="submit" disabled={loading || isLocked}
             className="w-full py-2.5 bg-gray-700 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors min-h-[44px]">
-            {loading ? '認証中...' : 'ログイン'}
+            {loading ? '認証中...' : isLocked ? 'ロック中' : 'ログイン'}
           </button>
         </form>
 

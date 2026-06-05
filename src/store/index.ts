@@ -43,8 +43,13 @@ import {
   persistAuthSession,
   type AuthSession,
 } from './auth';
+import {
+  loadDeletedCustomerIds,
+  persistDeletedCustomerId,
+} from './deletedCustomers';
 import { isTodoReadOnly } from '../utils/todoReadOnly';
 import type { ReportStatus as TodoReportStatus } from '../utils/todoReadOnly';
+import { hasCustomerAttachment } from '../utils/customerAttachment';
 
 // 再エクスポート (既存の import パス互換用)
 export { AUTH_STORAGE_KEY, AUTH_SESSION_TTL_MS, DEFAULT_DEMO_PASSWORD } from './auth';
@@ -179,6 +184,12 @@ const _initialUser = _initialAuthSession
   ? USERS.find(u => u.id === _initialAuthSession.userId)
   : undefined;
 
+// E-8 修正: 削除済み顧客 ID を localStorage から復元し、seed から除外
+const _deletedCustomerIds = loadDeletedCustomerIds();
+const _initialCustomers = _deletedCustomerIds.size > 0
+  ? CUSTOMERS.filter(c => !_deletedCustomerIds.has(c.id))
+  : CUSTOMERS;
+
 export const useAppStore = create<AppState>((set, get) => ({
   currentRole: _initialUser?.role ?? 'general',
   currentUserId: _initialUser?.id ?? 'u1',
@@ -186,7 +197,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   passwords: Object.fromEntries(USERS.map(u => [u.id, DEFAULT_DEMO_PASSWORD])),
   users: USERS,
   teams: TEAMS,
-  customers: CUSTOMERS,
+  customers: _initialCustomers,
   reports: REPORTS,
   templates: TEMPLATES,
   quickChips: DEFAULT_QUICK_CHIPS,
@@ -582,7 +593,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteCustomer: (customerId) => {
+    // P0 二層防御: 付帯情報あり顧客は admin/executive のみ削除可
+    const s = get();
+    if (hasCustomerAttachment({ reports: s.reports }, customerId)) {
+      if (s.currentRole !== 'admin' && s.currentRole !== 'executive') {
+        console.warn('[security] deleteCustomer blocked: 付帯情報あり customer は admin/executive のみ削除可');
+        return;
+      }
+    }
     // CUS-3: 完全削除。過去日報からの参照は customerId が dangling になるが、UI 側で fallback 表示する
+    // E-8 修正: 削除した顧客 ID を localStorage に永続化し、ページリロード後も削除状態を保持する
+    persistDeletedCustomerId(customerId);
     set(s => ({ customers: s.customers.filter(c => c.id !== customerId) }));
   },
 
@@ -728,6 +749,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   resetAll: () => {
     persistAuthSession(null);
+    // E-8 修正: リセット時は削除済み顧客 ID もクリア
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem('nippou.deletedCustomerIds.v1');
+    }
     set({
       currentRole: 'general', currentUserId: 'u1',
       authSession: null,
