@@ -287,7 +287,33 @@ interface Customer {
 
 `deleteCustomer(customerId)` を実行すると顧客レコードはストアから即座に削除されるが、過去の `DailyReport.blocks` 内の `TimeBlock.customerId` はそのまま残る。
 
-**参照先の存在チェックルール**:
+> **真の原因修正 (e54993b + 0450936)**: `139386b` は UI 層の `'不明'` フォールバックを実装したが、Zustand store が非永続化なためページリロード/URL直接アクセスで削除した顧客が seed data から復元される根本問題が残っていた。`e54993b`/`0450936` で `src/store/deletedCustomers.ts` を新規作成し、`deleteCustomer` 時に削除済み顧客 ID を localStorage に永続化。store 初期化時に seed data からフィルタアウトする。
+
+**削除済み顧客 ID の永続化 (`src/store/deletedCustomers.ts`)**:
+```typescript
+export const DELETED_CUSTOMERS_STORAGE_KEY = 'nippou.deletedCustomerIds.v1';
+
+loadDeletedCustomerIds(): Set<string>    // localStorage から削除済み ID を読み込む
+saveDeletedCustomerIds(ids: Set<string>) // 削除済み ID を localStorage に保存
+persistDeletedCustomerId(id: string)     // 1 件追加して保存
+```
+
+**store 初期化時の処理**:
+```typescript
+const _deletedCustomerIds = loadDeletedCustomerIds();
+const _initialCustomers = _deletedCustomerIds.size > 0
+  ? CUSTOMERS.filter(c => !_deletedCustomerIds.has(c.id))
+  : CUSTOMERS;
+```
+
+**deleteCustomer アクション**:
+- `persistDeletedCustomerId(customerId)` で削除前に ID を localStorage に保存
+- `set(s => ({ customers: s.customers.filter(c => c.id !== customerId) }))` でストアから削除
+
+**resetAll アクション**:
+- `localStorage.removeItem('nippou.deletedCustomerIds.v1')` で削除済み ID をクリア
+
+**UI 層フォールバック** (既存、`139386b`):
 
 | 箇所 | 表示ルール |
 |---|---|
@@ -297,15 +323,16 @@ interface Customer {
 
 **設計方針**:
 - `customerId` は日報ブロックに残る（履歴保全のため）
-- UI 層で `customers` リストに顧客が見つからない場合は `'不明'` を表示
-- 削除前に `deactivateCustomer(customerId)` （ステータスを `inactive` に変更）を使うことを推奨する—顧客メコなどは残るため記録が履歴と結びつく
+- ページリロード後も `nippou.deletedCustomerIds.v1` の永続化により削除状態を維持
+- UI 層で `customers` リストに顧客が見つからない場合は `'不明'` を表示（二重フォールバック）
+- 削除前に `deactivateCustomer(customerId)` （ステータスを `inactive` に変更）を使うことを推奨する
 
 **`deleteCustomer` vs `deactivateCustomer`**:
 
-| 操作 | 顧客レコード | 過去日報の表示 | 推奨用途 |
-|---|---|---|---|
-| `deleteCustomer` | **完全削除** | `'不明'` が表示される | 誤登録・テストデータの消去 |
-| `deactivateCustomer` | 残る（status=inactive） | 顧客名を正常表示 | 取引終了・長期休眠 |
+| 操作 | 顧客レコード | 過去日報の表示 | リロード後の状態 | 推奨用途 |
+|---|---|---|---|---|
+| `deleteCustomer` | **完全削除** + localStorage に ID 保存 | `'不明'` が表示される | 削除状態を維持 | 誤登録・テストデータの消去 |
+| `deactivateCustomer` | 残る（status=inactive） | 顧客名を正常表示 | 非アクティブ維持 | 取引終了・長期休眠 |
 
 ---
 
@@ -520,13 +547,19 @@ updateBlock(report.id, block.id, {
 | キー | 型 | 記載場所 | 説明 |
 |---|---|---|---|
 | `nippou.auth.v1` | JSON (AuthSession) | AUTH-1/AUTH-2 | 認証セッション情報。ログイン済ユーザー情報 + 履行期限 |
-| `nippou_login_fails` | 数値文字列 | P1 (保安司 2026-06-04) | ログイン失敗回数。`LoginPage` 起動時に `parseInt` で読み込み、NaN なら 0 にフォールバック |
-| `nippou_login_lock_until` | Unixミリ秒文字列 | P1 (保安司 2026-06-04) | ロック解除時刻 (ms)、5回失敗時に `Date.now() + 30分` を保存。過去ならロック解除 |
+| `nippou_login_fails` | 数値文字列 | P1 (e54993b 2026-06-06) | ログイン失敗回数。`LoginPage` `useState` 初期値で `parseInt` 読み込み、`Number.isNaN` なら 0 にフォールバック |
+| `nippou_login_lock_until` | Unixミリ秒文字列 | P1 (e54993b 2026-06-06) | ロック解除時刻 (ms)。5回失敗時に `Date.now() + 30分` を保存。`Date.now() > lockUntil` で自動解除 |
+| `nippou.deletedCustomerIds.v1` | JSON (string[]) | E-8 (e54993b/0450936 2026-06-06) | 削除済み顧客 ID の配列。`deleteCustomer` 時に追加。store 初期化時に seed data をフィルタアウト。`resetAll` 時にクリア |
 
 **localStorage 書き込みタイミング (`nippou_login_fails` / `nippou_login_lock_until`)**:
-- **読み込み**: `LoginPage` マウント時 (`useState` 初期値)
+- **読み込み**: `LoginPage` `useState` lazy initializer で読み込み（マウント時に一度だけ）
 - **失敗時**: `failCount + 1` を同期。`failCount >= 5` でロックタイムスタンプも保存
 - **成功時**: `localStorage.removeItem` で両キーを削除・リセット
+
+**localStorage 書き込みタイミング (`nippou.deletedCustomerIds.v1`)**:
+- **読み込み**: store モジュール初期化時 (`loadDeletedCustomerIds()`)
+- **削除時**: `deleteCustomer(id)` 内で `persistDeletedCustomerId(id)` が追加・保存
+- **リセット時**: `resetAll()` 内で `localStorage.removeItem('nippou.deletedCustomerIds.v1')`
 
 ---
 
@@ -559,7 +592,9 @@ updateBlock(report.id, block.id, {
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
-- **2026-06-04 90a69fe/139386b**: E-7 NotFoundPage 実装 / E-8 削除済み顧客参照ポリシー追加 — TimeBlock.customerId の参照先不在時は `'不明'` と表示する UI ルールを策定
+- **2026-06-06 0450936**: E-8 真の原因修正 — `src/store/deletedCustomers.ts` 新規作成。`nippou.deletedCustomerIds.v1` localStorage キーを追加。`deleteCustomer` 時に ID を永続化し store 初期化時に seed data からフィルタアウト。`resetAll` 時にクリア
+- **2026-06-06 e54993b**: P0/P1 本体実装 — `nippou_login_fails`/`nippou_login_lock_until` の LoginPage への組み込み完成。`deleteCustomer` に二層防御 (付帯情報 + role チェック) 追加。前回 d8aae47 の汚染 docs を訂正
+- **2026-06-04 90a69fe/139386b**: E-7 NotFoundPage 実装 / E-8 削除済み顧客参照ポリシー追加 — TimeBlock.customerId の参照先不在時は `'不明'` と表示する UI ルールを策定（根本修正は e54993b/0450936）
 - **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）
-- **2026-06-04 f2cd145**: 保安司 P1 — localStorage キー `nippou_login_fails` / `nippou_login_lock_until` を追加。ログイン失敗回数とロックタイムスタンプをセッション跨ぎで永続化
-- **2026-06-04 8ccb832**: 保安司 P0 — `deleteCustomer` に付帯情報判定を用いた二層防御を追加。`hasCustomerAttachment` / `canDeleteCustomer` ユーティリティを新規導入
+- **2026-06-04 f2cd145**: 保安司 P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
+- **2026-06-04 8ccb832**: 保安司 P0 — `hasCustomerAttachment` / `canDeleteCustomer` ユーティリティを新規作成（UI/Store への組み込みは e54993b で完成）

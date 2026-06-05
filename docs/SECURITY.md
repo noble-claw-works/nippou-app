@@ -9,23 +9,30 @@ nippou-app のセキュリティ要件と対策実装の記録。
 
 ## 実施済み対策
 
-### P0: 顧客削除権限の付帯情報判定 (8ccb832 — 2026-06-04)
+### P0: 顧客削除権限の付帯情報判定 (e54993b — 2026-06-06 本体実装, 8ccb832 はテストのみで実装欠落)
+
+> **⚠ 訂正 (d8aae47 の汚染分)**: 前回 commit `d8aae47` の docs は `8ccb832`（テストのみ）を実装済みとして記録していたが、CustomersPage.tsx/store/index.ts の本体実装は欠落していた。真の実装は `e54993b` (2026-06-06) である。
 
 #### 問題
-付帯情報（日報ブロック・TODO）が紐付いている顧客でも、権限不足のロールが削除操作を実行できる状態にあった。
+付帯情報（日報ブロック・TODO）が紐付いている顧客でも、権限不足のロールが削除操作を実行できる状態にあった（`8ccb832` ではユーティリティとテストのみ追加され、UI/Store への組み込みが欠落）。
 
 #### 対策
 
-**UI 層: `CustomersPage.tsx`**
-- 各顧客行で `canDeleteCustomer(state, customerId, currentRole)` を計算
-- 削除不可の場合: 削除ボタンを `disabled` 状態にし、ホバーでツールチップを表示
-- 編集モーダル内「危険ゾーン」の削除ボタンも同様に制御
+**UI 層: `src/pages/CustomersPage.tsx` (e54993b)**
+- `import { canDeleteCustomer, hasCustomerAttachment } from '../utils/customerAttachment'` を追加
+- `attachmentState = { reports }` を計算して各 IIFE に渡す
+- 各顧客行の削除ボタン:
+  - `canDeleteCustomer(attachmentState, customer.id, currentRole)` を per-行で評価
+  - 削除不可の場合: `disabled` + `cursor-not-allowed` + `opacity-50` + `title` ツールチップ（「付帯情報あり: admin/executive のみ削除可」）
+  - 削除可の場合: `text-red-700 border-red-300 hover:bg-red-50`
+  - `aria-disabled` を付与（アクセシビリティ対応）
+- 編集モーダル内「危険ゾーン」の削除ボタンも同様: `modalHasAttach` / `modalCanDelete` で個別判定
 
-**ストア層: `store/index.ts` (`deleteCustomer`)**
-- 付帯情報あり + `currentRole` が admin/executive 以外の場合 → `console.warn` を出力して no-op で終了
+**ストア層: `src/store/index.ts` (`deleteCustomer`) (e54993b)**
+- 付帯情報あり + `currentRole` が admin/executive 以外 → `console.warn('[security] deleteCustomer blocked: 付帯情報あり customer は admin/executive のみ削除可')` を出力して no-op で終了
 - UI 層とストア層の **二層防御** により、不正な直接呼び出しも阻止
 
-**判定ユーティリティ: `src/utils/customerAttachment.ts`**
+**判定ユーティリティ: `src/utils/customerAttachment.ts` (8ccb832 で新規作成)**
 - `hasCustomerAttachment(state, customerId): boolean`
   - `reports[].blocks[].customerId` または `reports[].todos[].customerId` に一致すれば `true`
 - `canDeleteCustomer(state, customerId, currentRole): boolean`
@@ -34,46 +41,61 @@ nippou-app のセキュリティ要件と対策実装の記録。
   - 付帯情報あり: `admin` / `executive` のみ → `true`、それ以外 → `false`
 
 #### テスト
-`src/__tests__/customerAttachment.test.ts` — 14 テスト（`hasCustomerAttachment` 5件 + `canDeleteCustomer` 9件）
+- `src/__tests__/customerAttachment.test.ts` — 14 テスト（`hasCustomerAttachment` 5件 + `canDeleteCustomer` 9件、8ccb832 で追加）
+- `e2e/customer-delete-role.spec.ts` — 5 テスト (e54993b で追加、E2E レベルで権限制御を検証)
 
 ---
 
-### P1: ログイン失敗回数の localStorage 永続化 (f2cd145 — 2026-06-04)
+### P1: ログイン失敗回数の localStorage 永続化 (e54993b — 2026-06-06 本体実装, f2cd145 はテストのみで実装欠落)
+
+> **⚠ 訂正 (d8aae47 の汚染分)**: 前回 commit `d8aae47` の docs は `f2cd145`（テストのみ）を実装済みとして記録していたが、LoginPage.tsx への localStorage 永続化・ロックバナー・カウントダウンの実装は欠落していた。真の実装は `e54993b` (2026-06-06) である。
 
 #### 問題
-ログイン失敗カウンタが `useState` のメモリのみで管理されていたため、ページリロードでリセットされ、ブルートフォース攻撃対策が無効化されていた。
+ログイン失敗カウンタが `useState` のメモリのみで管理されていたため、ページリロードでリセットされ、ブルートフォース攻撃対策が無効化されていた（`f2cd145` ではユーティリティとテストのみ追加され、LoginPage.tsx への組み込みが欠落）。
 
 #### 対策
 
-**`src/pages/LoginPage.tsx`**
+**`src/pages/LoginPage.tsx` (e54993b)**
 
 | タイミング | 処理 |
 |---|---|
-| マウント時 | `localStorage.getItem('nippou_login_fails')` を読み込み、`parseInt` で数値化。NaN の場合は `0` にフォールバック |
+| マウント時 | `useState` 初期値で `parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10)` を読み込み。`Number.isNaN` なら `0` にフォールバック |
+| マウント時 | `lockUntil` の初期値で `parseInt(localStorage.getItem('nippou_login_lock_until') ?? '0', 10)` を読み込み |
 | ログイン失敗時 | `failCount + 1` を `localStorage.setItem('nippou_login_fails', ...)` に同期 |
-| 5 回失敗時 | `Date.now() + 30 * 60 * 1000` を `localStorage.setItem('nippou_login_lock_until', ...)` に保存 |
-| ログイン成功時 | `localStorage.removeItem` で両キーをクリア |
+| 5 回失敗時 | `Date.now() + 30 * 60 * 1000` を `lockUntil` state と `localStorage.setItem('nippou_login_lock_until', ...)` に保存 |
+| ログイン成功時 | `setFailCount(0)` / `setLockUntil(0)` + `localStorage.removeItem` で両キーをクリア |
 
 **ロック状態判定**:
 ```ts
-const isLocked = lockUntil > Date.now() || failCount >= 5;
+const isLocked = failCount >= 5 || lockUntil > now;
+// now は useEffect で毎秒更新（カウントダウン表示用）
 ```
 
 **NaN ガード** (破損データ対策):
 ```ts
-const raw = localStorage.getItem('nippou_login_fails') ?? '0';
-const parsed = parseInt(raw, 10);
-const failCount = isNaN(parsed) ? 0 : parsed;
+const v = parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10);
+const failCount = Number.isNaN(v) ? 0 : v;
 ```
+
+**ロックバナー (UI)**:
+- `isLocked` 中は▼の赤バナーを表示 (`role="alert"`, `bg-red-50 border border-red-300`)
+- ロック解除までの残り時間を分単位でカウントダウン表示 (`Math.ceil((lockUntil - now) / 60000) 分後にロック解除`)
+- `useEffect` で `lockUntil > 0` の間、`setInterval(1000)` で `now` を毎秒更新
+
+**ボタン制御**:
+- `<button type="submit" disabled={loading || isLocked}>` — ロック中はボタン disabled
+- ボタンラベル: `loading ? '認証中...' : isLocked ? 'ロック中' : 'ログイン'`
+- `handleLogin` 冠頭で `if (isLocked) return;` ガード
 
 #### localStorage キー
 | キー | 値 | 用途 |
 |---|---|---|
 | `nippou_login_fails` | 数値文字列 | 連続失敗回数 (0〜) |
-| `nippou_login_lock_until` | Unix ミリ秒文字列 | ロック解除時刻 (0 = ロックなし) |
+| `nippou_login_lock_until` | Unix ミリ秒文字列 | ロック解除時刻 (0 = ロックなし)。`Date.now() > lockUntil` で自動解除 |
 
 #### テスト
-`src/__tests__/loginLockout.test.ts` — 13 テスト（初期値読み込み・NaN ガード・失敗時書き込み・成功時クリア・ロック状態判定）
+- `src/__tests__/loginLockout.test.ts` — 13 テスト（初期値読み込み・NaN ガード・失敗時書き込み・成功時クリア・ロック状態判定）
+- `e2e/login-lockout.spec.ts` — 4 テスト (e54993b で追加、E2E レベルでロック展開を検証)
 
 ---
 
@@ -162,8 +184,10 @@ TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の�
 
 ## 改修履歴
 
+- **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本修正。`src/store/deletedCustomers.ts` 新規作成・削除済み顧客 ID を localStorage 永続化、store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア
+- **2026-06-06 e54993b**: P0/P1 本体実装 — CustomersPage.tsx に per-customer 削除権限制御 (canDeleteCustomer + hasCustomerAttachment 適用、disabled + title ツールチップ、編集モーダル危険ゾーンも同様)、LoginPage.tsx に localStorage 永続化・ロックバナー・カウントダウン・ボタン disabled を実装。store/index.ts deleteCustomer に二層防御追加。前回 d8aae47 の汚染 docs を訂正
 - **2026-06-04 db741db**: BUG-B 残存修正 — TODO 編集の二層防御を期限切れ (dueDate < today) まで拡張。`src/utils/todoReadOnly.ts` を新規作成し UI 層・ store 層両方に展開
-- **2026-06-04 8ccb832**: P0 — 顧客削除権限に付帯情報判定を導入、二層防御を実装
-- **2026-06-04 f2cd145**: P1 — ログインロックアウトを localStorage で永続化、NaN ガード追加
+- **2026-06-04 8ccb832**: P0 — 顧客削除権限の付帯情報判定ユーティリティ (`customerAttachment.ts`) と単体テストを新規作成（UI/Store への組み込みは e54993b で完成）
+- **2026-06-04 f2cd145**: P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
 - **2026-06-04 0326621**: P1 — netlify-deploy.sh の Site ID をハードコードから環境変数に変更
 - **2026-06-03 319e32c**: AUTH-1〜5 — ログイン認証・セッション失効・パスワード変更・認証ガードを実装

@@ -222,22 +222,34 @@ todo
 
 ---
 
-## 顔客削除フロー: 付帯情報あり/なしの分岐 (保安司 P0 2026-06-04)
+## 顧客削除フロー: 付帯情報あり/なしの分岐 + 削除 ID 永続化 (e54993b/0450936 2026-06-06)
+
+> **注意 (8ccb832/d8aae47 の訂正)**: `8ccb832` ではユーティリティとテストのみで UI/Store への組み込みが欠落していた。真の本体実装は `e54993b`。
 
 ### トリガー
-`CustomersPage` 各顔客行の削除ボタンがクリックされる。
+`CustomersPage` 各顧客行の削除ボタンがクリックされる。
 
-### 分岐フロー
+### 分岐フロー (e54993b で実装)
 
 ```
 削除ボタンクリック
-  └→ canDeleteForCustomer(customerId) 判定
-       ├→ [false] disabled ボタン + ツールチップ 表示（操作不可）
-       └→ [true]  ConfirmDialog を表示
+  └→ hasCustomerAttachment(attachmentState, customerId) + canDeleteCustomer(...) を per-行で評価
+       ├→ [canDelete=false] disabled ボタン + title ツールチップ「付帯情報あり: admin/executive のみ削除可」
+       └→ [canDelete=true]  ConfirmDialog を表示
                   ├→ [Cancel] 何もしない
                   └→ [Confirm] deleteCustomer(customerId) 呼び出し
-                               ├→ [store 内: 付帯情報あり + non-admin/exec] no-op (二層防御)
-                               └→ [削除許可] 顔客レコード即座削除
+                               ├→ [store 内: 付帯情報あり + non-admin/exec] console.warn + no-op (二層防御)
+                               └→ [削除許可] persistDeletedCustomerId(customerId) で localStorage に保存
+                                            → 顧客レコードをストアから削除
+```
+
+### 削除後の永続化 (0450936/e54993b で実装)
+
+```
+ページリロード / URL 直接アクセス
+  └→ store 初期化: loadDeletedCustomerIds() で nippou.deletedCustomerIds.v1 を読み込む
+       └→ CUSTOMERS.filter(c => !_deletedCustomerIds.has(c.id)) でフィルタアウト
+            └→ 削除した顧客が seed data から復元されない
 ```
 
 ### `canDeleteForCustomer(customerId)` の評価ルール
@@ -249,8 +261,32 @@ todo
 | true (付帯情報あり) | general / manager | **false** |
 | どちらでも | undefined (未ログイン) | **false** |
 
-### ストア内二層防御
-`deleteCustomer` アクションは内部でも同様の判定を実施する。UI が二重に指示を辺り込んできた場合も不正履行を防ぐ。
+### ストア内二層防御 (e54993b)
+`deleteCustomer` アクションは内部でも同様の判定を実施する。UI を迂回した直接呼び出しも防ぐ。
+`console.warn('[security] deleteCustomer blocked: 付帯情報あり customer は admin/executive のみ削除可')` を出力。
+
+---
+
+## ログインロック状態遷移 (e54993b 2026-06-06)
+
+### 状態遷移図
+
+```
+[通常状態]
+  └→ ログイン失敗: failCount++ → localStorage 保存
+       ├→ [failCount 1〜4] エラーメッセージ「あと N 回失敗するとロック」表示
+       └→ [failCount = 5] lockUntil = Date.now() + 30分 → localStorage 保存
+                           → isLocked = true
+                           → ロックバナー + ボタン disabled 表示
+[ロック状態]
+  └→ 毎秒: setInterval で now を更新し残り時間カウントダウン表示
+       └→ [Date.now() >= lockUntil] isLocked = false → 通常状態に復帰
+[ページリロード時]
+  └→ useState lazy init で localStorage から failCount / lockUntil を読み込み
+       └→ ロック中なら isLocked = true を維持
+[ログイン成功時]
+  └→ setFailCount(0) + setLockUntil(0) + localStorage.removeItem で両キーをクリア
+```
 
 ---
 
@@ -259,9 +295,11 @@ todo
 - **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`todoReadOnly.ts` 新規作成により OR 条件を一元管理。期限切れ (dueDate < today) の判定を UI 層・ store 層の両方に展開
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガード（commit 5170401）を二重防壁として温存
 - **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
-- **2026-06-04 139386b**: E-8 顧客削除後表示リュール — ReadOnlyTimeline/SidePanelCards/SearchPage で削除済み顧客を `'不明'` と表示
+- **2026-06-06 0450936**: E-8 真の原因修正 — `src/store/deletedCustomers.ts` 新規作成・削除顧客 ID を localStorage 永続化。store 初期化時に seed data からフィルタアウト。`e2e/e8-deletedCustomer.spec.ts` 3テスト追加
+- **2026-06-06 e54993b**: P0/P1 本体実装 — 顧客削除フローに付帯情報判定 + localStorage 永続化フローを追加。ログインロック状態遷移を LoginPage.tsx に実装 (useState lazy init / ロックバナー / カウントダウン / ボタン disabled)。`e2e/customer-delete-role.spec.ts` 5テスト + `e2e/login-lockout.spec.ts` 4テスト追加
+- **2026-06-04 139386b**: E-8 顧客削除後表示ルール — ReadOnlyTimeline/SidePanelCards/SearchPage で削除済み顧客を `'不明'` と表示（根本修正は e54993b/0450936）
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2 認証セッション・ガード実装 — ログイン認証・30分無操作失効・パスワード変更
 - **2026-06-03 c059b47**: 鳳凰殿 UX ジャーニー改善 6件 を反映 (前後ナビ・上長リダイレクト・未確認フィルタ・前後日付・ヒートマップbutton化・氏名強調)
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
 - **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加
-- **2026-06-04 8ccb832**: 保安司 P0 — 顔客削除フローに付帯情報判定分岐を追加 (hasCustomerAttachment / canDeleteCustomer)
+- **2026-06-04 8ccb832**: 保安司 P0 — `customerAttachment.ts` ユーティリティと単体テスト新規作成（UI/Store への組み込みは e54993b で完成）

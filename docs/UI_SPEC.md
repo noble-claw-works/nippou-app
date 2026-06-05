@@ -18,14 +18,22 @@ nippou-app の Today ページは以下のコンポーネントに分割され�
 - メール+パスワードフォーム: `login(email, password)` 呼び出し、失敗は失敗カウンタ切り上げ、5回以上でアカウントロック
 - 既にログイン済みなら useEffect で /today へリダイレクト
 
-**P1 ログインロックアウト永続化 (保安司 2026-06-04)**:
-- `failCount` 初期値: `localStorage.getItem('nippou_login_fails')` を `parseInt` し、`isNaN` なら `0` にフォールバック
+**P1 ログインロックアウト永続化 (e54993b 2026-06-06 本体実装、f2cd145/d8aae47 はテストのみで実装欠落)**:
+- `failCount` 初期値: `useState` lazy initializer で `parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10)` を読み込み。`Number.isNaN` なら `0` にフォールバック
+- `lockUntil` 初期値: `useState` lazy initializer で `parseInt(localStorage.getItem('nippou_login_lock_until') ?? '0', 10)` を読み込み
 - ログイン失敗時: `failCount + 1` を `localStorage.setItem('nippou_login_fails', ...)` に同期
-- 5 回失敗時: `Date.now() + 30 * 60 * 1000` を `localStorage.setItem('nippou_login_lock_until', ...)` に保存
-- ロック状態判定: `lockUntil > Date.now() || failCount >= 5` → ロック中はフォームを disabled 表示
-- 正常ログイン時: `localStorage.removeItem('nippou_login_fails')` と `localStorage.removeItem('nippou_login_lock_until')` でクリア
-- **NaN ガード**: `parseInt` 結果が `NaN` の場合は `0` にフォールバック（破損データ対策）
-- **ロック期間**: 30 分
+- 5 回失敗時: `Date.now() + 30 * 60 * 1000` を `lockUntil` state と `localStorage.setItem('nippou_login_lock_until', ...)` に保存
+- ロック状態判定: `const isLocked = failCount >= 5 || lockUntil > now;`
+  - `now` は `useEffect` + `setInterval(1000)` で 1秒ごと更新（カウントダウン表示用）
+  - `lockUntil <= 0` の場合は interval 起動なし
+- 正常ログイン時: `setFailCount(0)` / `setLockUntil(0)` + `localStorage.removeItem` で両キーをクリア
+- **NaN ガード**: `Number.isNaN` で判定し破損データを `0` にフォールバック
+- **ロック期間**: 30 分 (`LOCK_DURATION_MS = 30 * 60 * 1000`)
+- **ロックバナー (UI)**: `isLocked` 時に `role="alert"` バナーを表示 (`bg-red-50 border border-red-300 rounded-xl`)
+  - `lockUntil > now` の間: `Math.ceil((lockUntil - now) / 60000) 分後にロック解除` を表示
+  - `lockUntil <= now` 且つ `failCount >= 5`: "ログイン失敗が5回に達しました。しばらお待ちください。"
+- **ボタン制御**: `disabled={loading || isLocked}` / ラベル `isLocked ? 'ロック中' : 'ログイン'`
+- **コンソール**: ログイン失敗時に `あと${5 - nextFail}回失敗するとロック` をエラーメッセージに追加
 - トースト作成: `addToast({ type: 'success', message: '〜さんとしてログインしました' })`
 
 **UI**:
@@ -856,7 +864,9 @@ interface TimelinePanelProps {
 
 **背景**: `deleteCustomer(customerId)` 実行後、過去の日報ブロックに残る `customerId` は参照先が存在しなくなる。この状態で顧客名を表示しようとした際の統一表示ルール。
 
-**ルール**: 削除済み顧客を参照するブロックの顧客名表示箇所では、名前の代わりに `'不明'` と表示する。
+> **真の原因 (0450936 で対応)**: `139386b` は UI 層の `'不明'` フォールバックを実装したが、Zustand store をリロードすると削除した顧客が seed data から復元される根本問題が未解決だった。`e54993b`/`0450936` で `src/store/deletedCustomers.ts` の永続化機構を実装し、リロード後も削除状態を維持するようになった。
+
+**UI 層ルール**: 削除済み顧客を参照するブロックの顧客名表示箇所では、名前の代わりに `'不明'` と表示する。
 
 **適用箇所と実装**:
 
@@ -866,7 +876,9 @@ interface TimelinePanelProps {
 | `SidePanelCards` (`src/components/today/SidePanelCards.tsx`) | CustomerSummaryCard 内の2箇所 | `customer?.name ?? '不明'` (旧: `customer?.name ?? block.customerId`) |
 | `SearchPage` (`src/pages/SearchPage.tsx`) | 検索結果カードの訪問顧客名リスト | `customers.find(c => c.id === b.customerId)?.name ?? '不明'` |
 
-**変更の意図**: 旧実装は削除済み顧客に対して内部 ID（`customerId` UUID 文字列）をそのまま表示していたが、ユーザーには意味不明なため `'不明'` に統一した。
+**層別路線**:
+1. **UI 層 (`139386b`)**: `customers.find(...)?.name ?? '不明'` フォールバック→ SPA ナビでは正常表示
+2. **Store 永続化層 (`e54993b` + `0450936`)**: `src/store/deletedCustomers.ts` が `deleteCustomer` 時に `persistDeletedCustomerId(customerId)` で ID を localStorage に保存。store 初期化時に `_deletedCustomerIds` を読み込み、seed data からフィルタアウト→ リロード後も削除状態を維持
 
 ---
 
@@ -1044,6 +1056,8 @@ if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) 
   - **MGR-5**: Dashboard に「✍ 自分の日報を書く」ボタン追加, TodayPage は `?self=1` で上長迂回不可をバイパス
   - **MGR-6**: executive が manager の日報を確認可能 (撤変了、既存実装で要件充足)
   - **DEAD-1**: NotificationsPage handleClick を導入, SettingsPage の、通知・表示・スナップ select を controlled 化
-- **2026-06-04 8ccb832**: 保安司 P0 — 顔客削除権限を付帯情報判定で分岐。`src/utils/customerAttachment.ts` (付帯情報判定ユーティリティ) を新規作成。CustomersPage 各行で `canDeleteForCustomer()` を計算し、付帯情報あり + 権限なしの場合 disabled + ツールチップ表示。store に二層防御追加
-- **2026-06-04 f2cd145**: 保安司 P1 — ログイン失敗回数 (nippou_login_fails) とロックタイムスタンプ (nippou_login_lock_until) を localStorage で永続化。NaN ガード追加
+- **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本解決。`src/store/deletedCustomers.ts` 新規作成・`deleteCustomer` 時に `persistDeletedCustomerId` で ID を localStorage に保存。store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア。`e2e/e8-deletedCustomer.spec.ts` 3テスト追加 (SPA nav / リロード永続化 / URL 直接アクセス)
+- **2026-06-06 e54993b**: P0/P1 本体実装 — CustomersPage.tsx に per-customer 削除権限制御 (canDeleteCustomer + hasCustomerAttachment 適用、disabled + title ツールチップ、編集モーダル危険ゾーンも同様)、LoginPage.tsx に localStorage 永続化・ロックバナー・カウントダウン・ボタン disabled を実装。store/index.ts deleteCustomer に二層防御追加。`e2e/customer-delete-role.spec.ts` 5テスト + `e2e/login-lockout.spec.ts` 4テスト追加
+- **2026-06-04 8ccb832**: 保安司 P0 — `src/utils/customerAttachment.ts` (付帯情報判定ユーティリティ) と単体テストを新規作成（UI/Store への組み込みは e54993b で完成）
+- **2026-06-04 f2cd145**: 保安司 P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
 - **2026-06-03 以前**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映
