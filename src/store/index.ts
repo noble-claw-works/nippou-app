@@ -125,7 +125,7 @@ interface AppState {
   addCustomer: (customer: Omit<Customer, 'id'>) => Customer;
   updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
   deactivateCustomer: (customerId: string, reason?: string) => void;
-  deleteCustomer: (customerId: string) => void;
+  deleteCustomer: (customerId: string) => boolean;
 
   // Actions: User
   addUser: (user: Omit<User, 'id'>) => User;
@@ -598,13 +598,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (hasCustomerAttachment({ reports: s.reports }, customerId)) {
       if (s.currentRole !== 'admin' && s.currentRole !== 'executive') {
         console.warn('[security] deleteCustomer blocked: 付帯情報あり customer は admin/executive のみ削除可');
-        return;
+        return false;
       }
     }
     // CUS-3: 完全削除。過去日報からの参照は customerId が dangling になるが、UI 側で fallback 表示する
     // E-8 修正: 削除した顧客 ID を localStorage に永続化し、ページリロード後も削除状態を保持する
     persistDeletedCustomerId(customerId);
     set(s => ({ customers: s.customers.filter(c => c.id !== customerId) }));
+    return true;
   },
 
   deactivateCustomer: (customerId) => {

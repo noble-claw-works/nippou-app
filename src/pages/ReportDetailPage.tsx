@@ -174,9 +174,9 @@ export function ReportDetailPage() {
       </nav>
 
       {/* BUG-A: Today と同じ 2 列レイアウト（左=タイムライン / 右=TODO+振り返り+上長コメント） */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Timeline (left 2 columns) */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="md:col-span-2 space-y-4">
           {/* RPT-2 縦軸ピクセルタイムライン */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">📅 タイムライン</h2>
@@ -185,7 +185,7 @@ export function ReportDetailPage() {
         </div>
 
         {/* 右ペイン: TODO + 振り返り + 上長コメント */}
-        <aside className="lg:col-span-1 space-y-4">
+        <aside className="md:col-span-1 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">✅ TODO</h2>
             {report.todos.length === 0 ? (

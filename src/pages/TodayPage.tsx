@@ -265,9 +265,9 @@ export function TodayPage() {
               <button onClick={() => setShowStartModal(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">日報を作成する</button>
             </div>
           ) : (
-            <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
               {/* タイムライン: モバイルでは先に表示 */}
-              <div className="lg:col-span-2 order-1">
+              <div className="md:col-span-2 order-1">
                 <TimelinePanel
                   report={report} customers={customers}
                   blockDragState={blockDragState} startDrag={startDrag}

@@ -276,12 +276,16 @@ export function CustomersPage() {
                       return currentRole !== undefined && (
                         <button
                           disabled={!canDeleteThis}
-                          title={customerHasAttach && !canDeleteThis ? '付帯情報あり: admin/executive のみ削除可' : ''}
+                          title={
+                            customerHasAttach
+                              ? (canDeleteThis ? '付帯情報あり顧客 (admin/executive 削除可)' : '付帯情報あり: admin/executive のみ削除可')
+                              : ''
+                          }
                           onClick={() => canDeleteThis && setDeleteId(customer.id)}
                           className={`px-2.5 py-1 text-xs border rounded-lg ${
                             canDeleteThis
                               ? 'text-red-700 border-red-300 hover:bg-red-50'
-                              : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed'
+                              : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed pointer-events-none'
                           }`}
                           aria-label={`${customer.name} を削除`}
                           aria-disabled={!canDeleteThis}
@@ -343,12 +347,16 @@ export function CustomersPage() {
                     <button
                       type="button"
                       disabled={!modalCanDelete}
-                      title={modalHasAttach && !modalCanDelete ? '付帯情報あり: admin/executive のみ削除可' : ''}
+                      title={
+                        modalHasAttach
+                          ? (modalCanDelete ? '付帯情報あり顧客 (admin/executive 削除可)' : '付帯情報あり: admin/executive のみ削除可')
+                          : ''
+                      }
                       onClick={() => { if (modalCanDelete) { setEditId(null); setDeleteId(editingCustomer.id); } }}
                       className={`px-3 py-1.5 text-xs border rounded-lg font-medium ${
                         modalCanDelete
                           ? 'text-red-700 border-red-300 hover:bg-red-50'
-                          : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed'
+                          : 'text-red-300 border-red-200 opacity-50 cursor-not-allowed pointer-events-none'
                       }`}
                       aria-label={`${editingCustomer.name} を完全削除`}
                       aria-disabled={!modalCanDelete}
@@ -387,6 +395,12 @@ export function CustomersPage() {
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={() => {
+          // P0 defense-in-depth: ダイアログ表示中に状態が変わっていても再判定
+          if (deleteId && !canDeleteCustomer(attachmentState, deleteId, currentRole)) {
+            addToast({ type: 'error', message: '付帯情報あり顧客は admin/executive のみ削除可能です' });
+            setDeleteId(null);
+            return;
+          }
           deleteCustomer(deleteId!);
           addToast({ type: 'success', message: '顧客を削除しました' });
           setDeleteId(null);

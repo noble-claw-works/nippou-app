@@ -162,4 +162,72 @@ test.describe('P0 顧客削除権限チェック', () => {
       await expect(btn).toBeEnabled();
     }
   });
+
+  test('P0補強: general ロールで c1 (付帯情報あり) の disabled ボタンに pointer-events-none が展開され、クリックしてもダイアログが開かない', async ({ page }) => {
+    await loginAs(page, 'general');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: /顧客マスタ/ })).toBeVisible({ timeout: 5000 });
+
+    const deleteButtons = page.getByRole('button', { name: /削除/ });
+    const count = await deleteButtons.count();
+    if (count === 0) { test.skip(); return; }
+
+    // disabled ボタンを見つける
+    let disabledBtn: import('@playwright/test').Locator | null = null;
+    for (let i = 0; i < count; i++) {
+      const btn = deleteButtons.nth(i);
+      if (await btn.isDisabled()) {
+        disabledBtn = btn;
+        break;
+      }
+    }
+    if (!disabledBtn) { test.skip(); return; }
+
+    // pointer-events-none クラスが付いていることを確認
+    const className = await disabledBtn.getAttribute('class');
+    expect(className).toContain('pointer-events-none');
+
+    // 確認ダイアログが開かない (force click でも開かない → pointer-events-none なのでりクリック自体が発火しない)
+    // dispatchEvent による迂回テスト: クリックイベントを発火してもダイアログを確認しない
+    await disabledBtn.dispatchEvent('click');
+    // ダイアログが開かないことを確認 (100ms 待つ)
+    await page.waitForTimeout(100);
+    const dialog = page.locator('[role="dialog"]').filter({ hasText: /完全に削除/ });
+    await expect(dialog).not.toBeVisible();
+  });
+
+  test('P0補強: general ロールで c2 (付帯情報なし) の削除ボタンは enabled でクリック可', async ({ page }) => {
+    await loginAs(page, 'general');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: /顧客マスタ/ })).toBeVisible({ timeout: 5000 });
+
+    const deleteButtons = page.getByRole('button', { name: /削除/ });
+    const count = await deleteButtons.count();
+    if (count === 0) { test.skip(); return; }
+
+    // enabled な削除ボタンを見つける (付帯情報なし顧客)
+    let enabledBtn: import('@playwright/test').Locator | null = null;
+    for (let i = 0; i < count; i++) {
+      const btn = deleteButtons.nth(i);
+      if (!(await btn.isDisabled())) {
+        enabledBtn = btn;
+        break;
+      }
+    }
+    if (!enabledBtn) { test.skip(); return; }
+
+    // enabled ボタンに pointer-events-none がないことを確認
+    const className = await enabledBtn.getAttribute('class');
+    expect(className ?? '').not.toContain('pointer-events-none');
+
+    // クリックで確認ダイアログが開く
+    await enabledBtn.click();
+    await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
+    // ダイアログを閉じる
+    await page.getByRole('button', { name: /キャンセル|閉じる/ }).first().click();
+  });
 });
