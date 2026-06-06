@@ -1,6 +1,7 @@
 // =====================================================
 // 認証セッション関連の定義とヘルパー
 // =====================================================
+import type { Role } from '../types';
 
 export interface AuthSession {
   userId: string;
@@ -36,6 +37,39 @@ export function persistAuthSession(s: AuthSession | null) {
   try {
     if (s) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(s));
     else window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+// =====================================================
+// E-9: ロール切替永続化ヘルパー
+// =====================================================
+export const ROLE_SWITCH_STORAGE_KEY = 'nippou.currentRole.v1';
+export const USER_SWITCH_STORAGE_KEY = 'nippou.currentUserId.v1';
+
+export function loadRoleSwitch(): { role: Role; userId: string } | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const role = window.localStorage.getItem(ROLE_SWITCH_STORAGE_KEY);
+    const userId = window.localStorage.getItem(USER_SWITCH_STORAGE_KEY);
+    if (!role || !userId) return null;
+    return { role: role as Role, userId };
+  } catch {
+    return null;
+  }
+}
+
+export function persistRoleSwitch(role: Role | null, userId: string | null) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    if (role && userId) {
+      window.localStorage.setItem(ROLE_SWITCH_STORAGE_KEY, role);
+      window.localStorage.setItem(USER_SWITCH_STORAGE_KEY, userId);
+    } else {
+      window.localStorage.removeItem(ROLE_SWITCH_STORAGE_KEY);
+      window.localStorage.removeItem(USER_SWITCH_STORAGE_KEY);
+    }
   } catch {
     // ignore
   }

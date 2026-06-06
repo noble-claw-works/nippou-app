@@ -41,6 +41,8 @@ import {
   DEFAULT_DEMO_PASSWORD,
   loadAuthSession,
   persistAuthSession,
+  loadRoleSwitch,
+  persistRoleSwitch,
   type AuthSession,
 } from './auth';
 import {
@@ -53,6 +55,7 @@ import { hasCustomerAttachment } from '../utils/customerAttachment';
 
 // 再エクスポート (既存の import パス互換用)
 export { AUTH_STORAGE_KEY, AUTH_SESSION_TTL_MS, DEFAULT_DEMO_PASSWORD } from './auth';
+export { ROLE_SWITCH_STORAGE_KEY, USER_SWITCH_STORAGE_KEY } from './auth';
 export type { AuthSession } from './auth';
 
 interface AppState {
@@ -183,6 +186,8 @@ const _initialAuthSession = loadAuthSession();
 const _initialUser = _initialAuthSession
   ? USERS.find(u => u.id === _initialAuthSession.userId)
   : undefined;
+// E-9: ロール切替永続化 — リロード後もロール選択を保持
+const _initialRoleSwitch = loadRoleSwitch();
 
 // E-8 修正: 削除済み顧客 ID を localStorage から復元し、seed から除外
 const _deletedCustomerIds = loadDeletedCustomerIds();
@@ -191,8 +196,9 @@ const _initialCustomers = _deletedCustomerIds.size > 0
   : CUSTOMERS;
 
 export const useAppStore = create<AppState>((set, get) => ({
-  currentRole: _initialUser?.role ?? 'general',
-  currentUserId: _initialUser?.id ?? 'u1',
+  // E-9: ロール切替が永続化されていればそちら優先、なければ auth ユーザーのロール
+  currentRole: _initialRoleSwitch?.role ?? _initialUser?.role ?? 'general',
+  currentUserId: _initialRoleSwitch?.userId ?? _initialUser?.id ?? 'u1',
   authSession: _initialUser ? _initialAuthSession : null,
   passwords: Object.fromEntries(USERS.map(u => [u.id, DEFAULT_DEMO_PASSWORD])),
   users: USERS,
@@ -216,7 +222,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       executive: 'u5',
       admin: 'u6',
     };
-    set({ currentRole: role, currentUserId: roleUserMap[role] });
+    const userId = roleUserMap[role];
+    persistRoleSwitch(role, userId);  // E-9: ロール切替を localStorage に永続化
+    set({ currentRole: role, currentUserId: userId });
   },
 
   // ----------------------------------------------------
@@ -250,6 +258,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       expiresAt: new Date(now.getTime() + AUTH_SESSION_TTL_MS).toISOString(),
     };
     persistAuthSession(session);
+    persistRoleSwitch(null, null);  // E-9: ログイン時はロール切替記録をクリア（ログインユーザー本来のロールを優先）
     set(s => ({
       authSession: session,
       currentRole: user.role,
@@ -261,6 +270,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   logout: () => {
     persistAuthSession(null);
+    persistRoleSwitch(null, null);  // E-9: ログアウト時もロール切替記録をクリア
     set({ authSession: null });
   },
 
@@ -750,6 +760,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   resetAll: () => {
     persistAuthSession(null);
+    persistRoleSwitch(null, null);  // E-9: リセット時はロール切替記録もクリア
     // E-8 修正: リセット時は削除済み顧客 ID もクリア
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem('nippou.deletedCustomerIds.v1');
