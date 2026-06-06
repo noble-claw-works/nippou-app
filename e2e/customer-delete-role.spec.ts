@@ -198,6 +198,20 @@ test.describe('P0 顧客削除権限チェック', () => {
     await expect(dialog).not.toBeVisible();
   });
 
+  test('P0補強: general ロールで付帯情報あり顧客 (c1/c3/c7) のバッジが表示される', async ({ page }) => {
+    await loginAs(page, 'general');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: /顧客マスタ/ })).toBeVisible({ timeout: 5000 });
+
+    // 付帯情報ありバッジが少なくとも 3 件 (c1/c3/c7) 表示される
+    const badges = page.locator('text=🔗 付帯情報あり');
+    await expect(badges.first()).toBeVisible({ timeout: 5000 });
+    const badgeCount = await badges.count();
+    expect(badgeCount).toBeGreaterThanOrEqual(3);
+  });
+
   test('P0補強: general ロールで c2 (付帯情報なし) の削除ボタンは enabled でクリック可', async ({ page }) => {
     await loginAs(page, 'general');
     await page.goto('/customers');

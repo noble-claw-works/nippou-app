@@ -40,6 +40,31 @@ nippou-app のセキュリティ要件と対策実装の記録。
   - 付帯情報なし: ログイン中の任意ロール → `true`
   - 付帯情報あり: `admin` / `executive` のみ → `true`、それ以外 → `false`
 
+#### 付帯情報の判定基準 (明文化)
+
+「付帯情報」と診断される情報とされない情報を明確に定義する。
+
+| 情報種別 | 付帯情報として判定 | 理由 |
+|---|---|---|
+| `reports[].blocks[].customerId` への参照 | ✅ **含む** | 日報の活動履歴に直接紐づくため、削除すると履歴が毀れる |
+| `reports[].todos[].customerId` への参照 | ✅ **含む** | 日報の TODO 履歴に直接紐づくため、削除すると履歴が毀れる |
+| `customer.nextAppointment` | ❌ **含まない** | 顧客レコード自体のフィールドであり、日報履歴への参照ではない |
+| `customer.lastContactDate` | ❌ **含まない** | 同上 |
+| `customer.tags` | ❌ **含まない** | 同上 |
+| `customer.memo` | ❌ **含まない** | 同上 |
+
+> **判定の根拠**: 「過去の活動履歴に紐づく顧客は誤削除すると履歴が毀れる」が判定の根拠。`nextAppointment` など顧客レコード自体のフィールドは顧客削除により同時に削除されるのみであり、別レコードへの参照を持たないため履歴破壊のリスクはない。
+
+#### seed データにおける付帯情報あり顧客の確定リスト
+
+| 顧客 ID | 顧客名 | 付帯情報の種別 |
+|---|---|---|
+| c1 | KOORO GILSON | `reports[].blocks[].customerId` への参照あり |
+| c3 | 暁和化学ゴム | `reports[].blocks[].customerId` への参照あり |
+| c7 | テクノ精工 | `reports[].todos[].customerId` への参照あり |
+
+> **注意**: `nextAppointment` が設定されている暁和化学ゴム (c3) が **別途** 付帯情報ありに判定されるのは、`blocks[].customerId` への参照があるからである。`nextAppointment` フィールド自体は判定対象外。
+
 #### テスト
 - `src/__tests__/customerAttachment.test.ts` — 14 テスト（`hasCustomerAttachment` 5件 + `canDeleteCustomer` 9件、8ccb832 で追加）
 - `e2e/customer-delete-role.spec.ts` — 5 テスト (e54993b で追加、E2E レベルで権限制御を検証)
@@ -164,6 +189,47 @@ TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の�
 
 ---
 
+---
+
+## P0 検証手順 (staging 環境)
+
+### リセット手順
+
+1. **Settings ページからリセット** (UI 操作)
+   - `/settings` に移動
+   - 「データを初期状態にリセット」ボタンをクリック
+
+2. **ブラウザコンソールからリセット** (DevTools 操作)
+   ```js
+   localStorage.clear();
+   location.reload();
+   ```
+
+> ⚠ E-8 修正後、削除済み顧客 ID は `nippou_deleted_customers` キーで localStorage に永続化される。`resetAll` または `localStorage.clear()` でクリアされるまで顧客は復元しない。
+
+### 一般社員 (袈田 祈司) での検証手順
+
+1. staging を開く (`https://<staging-url>/login`)
+2. 「役割で選んでログイン」から「袈田 祈司 (general)」を選択
+3. `/customers` に移動
+
+**期待動作**:
+
+| 顧客 | 判定 | 展示 | 削除ボタン |
+|---|---|---|---|
+| c1 (KOORO GILSON) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c3 (暁和化学ゴム) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c7 (テクノ精工) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c2, c4, c5, c6, c8, c9, c10… | 付帯情報なし | バッジなし | enabled (削除可能) |
+
+**tooltip テキスト**: 「付帯情報あり: admin/executive のみ削除可」
+
+**追加確認事項**:
+- 削除ボタンを `dispatchEvent('click')` で発火しても「完全に削除しますか」ダイアログが開かないこと
+- `pointer-events-none` クラスが附いていることを DevTools で確認
+
+---
+
 ## セキュリティ原則
 
 ### 二層防御 (Defense in Depth)
@@ -184,6 +250,7 @@ TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の�
 
 ## 改修履歴
 
+- **2026-06-06 (P0検証強化)**: seed に付帯情報あり顧客を複数化 (c1+c3+c7)(ブロック参照 c3, TODO 参照 c7)。`Todo` 型に `customerId` フィールド追加、`customerAttachment.ts` の型キャストを正規化。`CustomersPage.tsx` に付帯情報ありバッジ (🔗) を追加。`docs/SECURITY.md` に付帯情報判定基準・確定リスト・ P0 検証手順を明記
 - **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本修正。`src/store/deletedCustomers.ts` 新規作成・削除済み顧客 ID を localStorage 永続化、store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア
 - **2026-06-06 e54993b**: P0/P1 本体実装 — CustomersPage.tsx に per-customer 削除権限制御 (canDeleteCustomer + hasCustomerAttachment 適用、disabled + title ツールチップ、編集モーダル危険ゾーンも同様)、LoginPage.tsx に localStorage 永続化・ロックバナー・カウントダウン・ボタン disabled を実装。store/index.ts deleteCustomer に二層防御追加。前回 d8aae47 の汚染 docs を訂正
 - **2026-06-04 db741db**: BUG-B 残存修正 — TODO 編集の二層防御を期限切れ (dueDate < today) まで拡張。`src/utils/todoReadOnly.ts` を新規作成し UI 層・ store 層両方に展開

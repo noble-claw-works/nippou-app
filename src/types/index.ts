@@ -72,6 +72,8 @@ export interface Todo {
   rolledOver: boolean;
   dueDate?: string;
   priority: 'high' | 'medium' | 'low';
+  /** 付帯情報判定用: 当該 TODO が紐づく顧客 ID */
+  customerId?: string;
 }
 
 export interface CustomerVisit {

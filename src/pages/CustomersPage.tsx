@@ -222,11 +222,16 @@ export function CustomersPage() {
                 onClick={() => navigate(`/customers/${customer.id}`)}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-medium text-gray-900">{customer.name}</span>
                       <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">{TYPE_LABELS[customer.type]}</span>
                       {customer.status === 'inactive' && <span className="text-xs text-red-500">無効</span>}
                       {customer.isFavorite && <span>⭐</span>}
+                      {hasCustomerAttachment(attachmentState, customer.id) && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded" title="日報ブロックまたは TODO に結びつきあり">
+                          🔗 付帯情報あり
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-gray-500">
                       {customer.area && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{customer.area}</span>}

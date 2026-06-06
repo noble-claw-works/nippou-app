@@ -32,7 +32,7 @@ export function hasCustomerAttachment(
     }
     // todos への参照チェック
     for (const todo of report.todos) {
-      if ((todo as { customerId?: string }).customerId === customerId) return true;
+      if (todo.customerId === customerId) return true;
     }
   }
   return false;
