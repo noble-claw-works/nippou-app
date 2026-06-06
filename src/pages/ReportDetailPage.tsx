@@ -245,10 +245,10 @@ export function ReportDetailPage() {
             </div>
           </div>
 
-          {/* RPT-1: 上長コメント */}
+          {/* RPT-1: コメント (上長↔部下双方向スレッド) */}
           <div className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <MessageCircle className="w-4 h-4" /> 上長コメント ({dayComments.length})
+            <MessageCircle className="w-4 h-4" /> コメント ({dayComments.length})
           </h2>
         {dayComments.length === 0 && (
           <p className="text-sm text-gray-400 mb-3">コメントがありません</p>
@@ -256,14 +256,24 @@ export function ReportDetailPage() {
         <div className="space-y-3 mb-4">
           {dayComments.map(comment => {
             const commentUser = users.find(u => u.id === comment.authorUserId);
+            // authorRole がない場合は authorUserId の role でフォールバック
+            const resolvedRole = comment.authorRole ?? commentUser?.role;
+            const isMemberComment = resolvedRole === 'general';
             return (
               <div key={comment.id} className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-700 flex-shrink-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                  isMemberComment ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>
                   {commentUser?.avatarInitials ?? '?'}
                 </div>
                 <div className="flex-1 bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-700">{commentUser?.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-gray-700">{commentUser?.name}</span>
+                      {isMemberComment && (
+                        <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium">↑ 上長宛</span>
+                      )}
+                    </div>
                     <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
                   </div>
                   <p className="text-sm text-gray-800">{comment.body}</p>
@@ -300,12 +310,12 @@ export function ReportDetailPage() {
           <div className="flex gap-2">
             <input
               type="text" value={newComment} onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } })()}
+              onKeyDown={e => e.key === 'Enter' && (() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment, currentRole as 'manager' | 'executive' | 'general'); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } })()}
               placeholder={canCommentAsAuthor ? '上長への返信・補足を入力...' : 'コメントを追加...'}
               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
-              onClick={() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } }}
+              onClick={() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment, currentRole as 'manager' | 'executive' | 'general'); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } }}
               className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send className="w-4 h-4" />
             </button>

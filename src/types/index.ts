@@ -119,6 +119,8 @@ export interface ManagerComment {
   id: string;
   dayKey: string; // YYYY-MM-DD (日報特定用)
   authorUserId: string;
+  /** 表示用ロール — 上長コメント: 'manager'|'executive', 部下コメント: 'general' (optional for backward compat) */
+  authorRole?: 'manager' | 'executive' | 'general';
   body: string;
   createdAt: string;
   replies: ManagerCommentReply[];

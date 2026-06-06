@@ -149,7 +149,7 @@ interface AppState {
   deleteQuickChip: (chipId: string) => void;
 
   // Actions: ManagerComment
-  addManagerComment: (dayKey: string, authorUserId: string, body: string) => void;
+  addManagerComment: (dayKey: string, authorUserId: string, body: string, authorRole?: 'manager' | 'executive' | 'general') => void;
   replyToManagerComment: (commentId: string, userId: string, choice: 'yes' | 'no') => void;
   deleteManagerComment: (commentId: string) => void;
 
@@ -548,10 +548,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  addManagerComment: (dayKey: string, authorUserId: string, body: string) => {
+  addManagerComment: (dayKey: string, authorUserId: string, body: string, authorRole?: 'manager' | 'executive' | 'general') => {
     set(s => ({
       managerComments: [...s.managerComments, {
-        id: uid(), dayKey, authorUserId, body, createdAt: new Date().toISOString(), replies: [],
+        id: uid(), dayKey, authorUserId, authorRole, body, createdAt: new Date().toISOString(), replies: [],
       }],
     }));
   },
