@@ -686,29 +686,41 @@ const isDueToday = (todo: Todo): boolean => {
     - executive: 全会社
   - unconfirmedReports: isManagerView 時のみ status='submitted' を抽出、循環可能
 
-**レイアウト** (RPT-1 + RPT-2、BUG-A対応):
+**レイアウト** (RPT-1 + RPT-2、BUG-A 真の修正 94ed85b):
 - **グリッド構成**: `grid grid-cols-1 lg:grid-cols-3 gap-4`
-  - **左側** (lg:col-span-2): タイムラインのみ
+  - **左側** (lg:col-span-2): `ReadOnlyTimeline` のみ（外側ラッパーなし—ヘッダーはコンポーネント内部で保持）
   - **右側** (lg:col-span-1): TODO + 振り返り + 上長コメント（右ペイン、縦積み）
 - **モバイル時**: 従来通り下に積まれる
 - **デザイン統一**: Today ページと同じ 2 列レイアウト（左=タイムライン / 右=サイドパネル）
+- **BUG-A (中間対応 b4ec6c8 廣待指摘以前)**: ReadOnlyTimeline 内部で md ブレークポイント（768px）で 2 列化していたが、主上御指摘により sm ブレークポイント（640px）+ Today と同一コンポーネント 構成に統一（真の修正）
 
-**タイムラインセクション** (RPT-2 縦軸ピクセルタイムライン):
+**タイムラインセクション** (RPT-2 縦軸ピクセルタイムライン + BUG-A 真の修正 94ed85b):
 - **コンポーネント**: `ReadOnlyTimeline` (`src/components/report/ReadOnlyTimeline.tsx`)
-- **目的**: TodayPage の TimelinePanel と同じビジュアル原則で、読み取り専用表示
-- **見出し**: 📅 タイムライン
+- **目的**: TodayPage の TimelinePanel と同じ「◀ 予定 | 実績 ▶」2 カラム並列レイアウトで読み取り専用表示
+- **ヘッダー**: コンポーネント内部に「📅 タイムライン」見出し + 「🎨 凡例」トグルボタンを持つ（ReportDetailPage 外側の `<h2>` + `bg-white rounded-xl p-4` ラッパーは撤去済み）
 - **時刻軸**: DAY_START=6*60, DAY_END=22*60+30, HOUR_PX=64
   - `<TimeGrid>`: 1時間ごと水平線 + 左端の時刻ラベル
+- **variant='all'（デフォルト）— 2 カラム並列レイアウト**:
+  - **sm 以上 (≥640px)**: `hidden sm:flex` で横並び 2 列
+    - 時刻ラベル列: `width: 40px`（bg-gray-50/50）
+    - 予定列: `flex-1` + `data-testid="timeline-planned-col"`（indigo テーマ, bg-indigo-50/20）
+    - 1px セパレータ: `w-px bg-gray-200`
+    - 実績列: `flex-1` + `data-testid="timeline-actual-col"`（emerald テーマ, bg-emerald-50/20）
+  - **sm 未満 (モバイル)**: `sm:hidden` で予定→実績の縦積み
+    - 予定ブロック: ヘッダー「📋 予定」(indigo-50) + `ReadOnlyTimelineColumn`
+    - 実績ブロック: ヘッダー「✅ 実績」(emerald-50) + `ReadOnlyTimelineColumn`
+  - **説明バー (sm 以上)**: 「◀ 予定（計画したこと）」「実績（実際にやったこと）▶」
+  - **Today との対称性**: TodayPage TimelinePanel と完全に同じカラム構成・カラーリングを採用
+- **variant='planned'|'actual'（後方互換）**: 単一カラム `SingleColumnTimeline` で表示
 - **ブロック表示** (`<BlockBar>`):
-  - **絶対位置**: left:52px right:4px で縦矩形
   - **カラーリング**: BLOCK_COLORS で型別色分け
   - **メモ表示**: 高さ≥50px のとき 2行 line-clamp でメモを表示
-  - **ホバー**: ブロック詳細（時刻、タイトル、顧客名）を tooltip で表示
 - **スキマ時間表示** (`<GapBar>`):
-  - **色**: amber 破線縦バー（border-dashed border-amber-300 bg-amber-50/60）
+  - **色**: amber 破線縦バー（border-dashed border-amber-300 bg-amber-50/40）
   - **フォーマット**: formatGapDuration で「N時間M分」表示
-- **Props**: `{ blocks, customers, variant?: 'all'|'planned'|'actual' }` で将来拡張対応
-- **空状態**: ブロックなしは「記録がありません」（text-sm text-gray-400）
+- **Props**: `{ blocks, customers, variant?: 'all'|'planned'|'actual' }`
+- **e2e テスト**: `data-testid="timeline-planned-col"` / `"timeline-actual-col"` で横並び確認可能
+- **空状態**: ブロックなしは「記録なし」（text-xs text-gray-400）
 
 **右ペイン** (BUG-A対応後):
 
@@ -1035,6 +1047,7 @@ if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) 
 
 ## 改修履歴
 
+- **2026-06-06 94ed85b**: BUG-A 真の修正 — `ReadOnlyTimeline` (确認用画面) を Today `TimelinePanel` と同一の「◀ 予定 | 実績 ▶」 2 カラム並列レイアウトに統一。sm ブレークポイント（≥640px）で横並び 2 列（時刻軸 40px + 予定 1fr + 1px セパレータ + 実績 1fr）、sm 未満で予定→実績縦積み。`variant='planned'|'actual'` は単一カラムで後方互換維持。ReportDetailPage 外側 `bg-white rounded-xl p-4 + <h2>` ラッパー撤去。`data-testid="timeline-planned-col"` / `"timeline-actual-col"` 追加。e2e `buga-layout.spec.ts` 拡張
 - **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`src/utils/todoReadOnly.ts` を新規作成し `isTodoReadOnly` / `getTodoReadOnlyReason` を一元管理。SidePanelCards で per-todo 期限切れ判定を追加し UI 層を拡張。store 層 `toggleTodo` / `updateTodo` / `deleteTodo` も期限切れ TODO を二層防御でガード
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガードを二重防壁として温存
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更

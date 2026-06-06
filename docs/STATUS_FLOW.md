@@ -290,8 +290,32 @@ todo
 
 ---
 
+---
+
+## ReadOnlyTimeline 表示モード (variant) 定義 (94ed85b 2026-06-06)
+
+`ReadOnlyTimeline` コンポーネントは `variant` prop で表示モードを切り替える。
+
+| variant | レイアウト | 用途 |
+|---|---|---|
+| `'all'`（デフォルト） | 「◀ 予定 | 実績 ▶」 2 カラム並列 | 確認用画面 `/reports/:date` |
+| `'planned'` | 単一カラム（予定ブロックのみ） | 将来用履歴ビュー等 |
+| `'actual'` | 単一カラム（実績ブロックのみ） | 将来用履歴ビュー等 |
+
+### variant='all' レスポンシブブレークポイント
+
+| 画面幅 | レイアウト |
+|---|---|
+| sm 以上 (≥640px) | 横並び 2 列: 時刻軸 40px + 予定 1fr + 1px セパレータ + 実績 1fr |
+| sm 未満 (<640px) | 縦積み: 予定 → 実績の順に表示 |
+
+> **BUG-A 履歴**: 中間対応 (b4ec6c8) では md ブレークポイント (768px) を利用していたが、主上御指摘により sm (640px) + Today と同一コンポーネント構成に統一（真の修正 94ed85b）。
+
+---
+
 ## 改修履歴
 
+- **2026-06-06 94ed85b**: BUG-A 真の修正 — `ReadOnlyTimeline` (確認用画面) を Today `TimelinePanel` と同一の 2 カラム並列レイアウトに統一。variant テーブルを STATUS_FLOW.md に追記
 - **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`todoReadOnly.ts` 新規作成により OR 条件を一元管理。期限切れ (dueDate < today) の判定を UI 層・ store 層の両方に展開
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガード（commit 5170401）を二重防壁として温存
 - **2026-06-04 90a69fe**: E-7 catch-all ルート + NotFoundPage 実装 — 未定義 URL で 404 ページを表示
