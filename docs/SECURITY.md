@@ -191,6 +191,36 @@ TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の�
 
 ---
 
+### E-9: ロール切替永続化バグ (a5eb23c — 2026-06-06)
+
+#### 検出経緯
+鸞鳳殳（ux-tester）検証で発覚。デモモードのヘッダーロール切替メニューでロールを切り替えても、ページリロード後に初期値 (`'general'`) に戻るバグが確認された。E-7（NotFoundPage）・ E-8（顧客削除永続化）と同様のバグカテゴリー。
+
+#### 問題
+- `currentRole` / `currentUserId` は Zustand store のインメモリ状態で管理されていたため、ページリロード時に `_initialUser?.role ?? 'general'` で初期化されロール切替が無効化されていた。
+
+#### 修正 (a5eb23c)
+`src/store/auth.ts` に E-8 (`deletedCustomers.ts`) と同様のヘルパー関数を追加：
+
+```typescript
+export const ROLE_SWITCH_STORAGE_KEY = 'nippou.currentRole.v1';
+export const USER_SWITCH_STORAGE_KEY  = 'nippou.currentUserId.v1';
+
+export function loadRoleSwitch(): { role: Role; userId: string } | null
+export function persistRoleSwitch(role: Role | null, userId: string | null): void
+```
+
+`src/store/index.ts` の変更点：
+- store 初期化時に `loadRoleSwitch()` を呼び出し、切替記録があれば auth セッションのロールより優先
+- `setRole(role)` 内で `persistRoleSwitch(role, userId)` を呼び出し、即座に localStorage 保存
+- `login()` / `loginAsUser()` 内で `persistRoleSwitch(null, null)` を呼び出しログイン時に切替記録をクリア
+- `logout()` / `resetAll()` 内でも同様にクリア
+
+#### テスト
+- `src/__tests__/roleSwitch.test.ts` — 14 テスト（`loadRoleSwitch` / `persistRoleSwitch` / `setRole` での保存 / `login`・`logout`・`resetAll` でのクリア）
+
+---
+
 ## P0 検証手順 (staging 環境)
 
 ### リセット手順
@@ -250,6 +280,7 @@ TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の�
 
 ## 改修履歴
 
+- **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — 鸞鳳殳検証で発覚。`src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。テスト 14 件 (`roleSwitch.test.ts`) 追加
 - **2026-06-06 (P0検証強化)**: seed に付帯情報あり顧客を複数化 (c1+c3+c7)(ブロック参照 c3, TODO 参照 c7)。`Todo` 型に `customerId` フィールド追加、`customerAttachment.ts` の型キャストを正規化。`CustomersPage.tsx` に付帯情報ありバッジ (🔗) を追加。`docs/SECURITY.md` に付帯情報判定基準・確定リスト・ P0 検証手順を明記
 - **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本修正。`src/store/deletedCustomers.ts` 新規作成・削除済み顧客 ID を localStorage 永続化、store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア
 - **2026-06-06 e54993b**: P0/P1 本体実装 — CustomersPage.tsx に per-customer 削除権限制御 (canDeleteCustomer + hasCustomerAttachment 適用、disabled + title ツールチップ、編集モーダル危険ゾーンも同様)、LoginPage.tsx に localStorage 永続化・ロックバナー・カウントダウン・ボタン disabled を実装。store/index.ts deleteCustomer に二層防御追加。前回 d8aae47 の汚染 docs を訂正

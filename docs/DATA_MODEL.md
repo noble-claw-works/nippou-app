@@ -627,6 +627,8 @@ updateBlock(report.id, block.id, {
 | `nippou_login_fails` | 数値文字列 | P1 (e54993b 2026-06-06) | ログイン失敗回数。`LoginPage` `useState` 初期値で `parseInt` 読み込み、`Number.isNaN` なら 0 にフォールバック |
 | `nippou_login_lock_until` | Unixミリ秒文字列 | P1 (e54993b 2026-06-06) | ロック解除時刻 (ms)。5回失敗時に `Date.now() + 30分` を保存。`Date.now() > lockUntil` で自動解除 |
 | `nippou.deletedCustomerIds.v1` | JSON (string[]) | E-8 (e54993b/0450936 2026-06-06) | 削除済み顧客 ID の配列。`deleteCustomer` 時に追加。store 初期化時に seed data をフィルタアウト。`resetAll` 時にクリア |
+| `nippou.currentRole.v1` | 文字列 (Role) | E-9 (a5eb23c 2026-06-06) | ロール切替の現在選択ロール。`setRole` 時に保存。`login`/`logout`/`resetAll` 時にクリア |
+| `nippou.currentUserId.v1` | 文字列 (userId) | E-9 (a5eb23c 2026-06-06) | ロール切替の現在選択ユーザー ID。`setRole` 時に同時保存。`login`/`logout`/`resetAll` 時にクリア |
 
 **localStorage 書き込みタイミング (`nippou_login_fails` / `nippou_login_lock_until`)**:
 - **読み込み**: `LoginPage` `useState` lazy initializer で読み込み（マウント時に一度だけ）
@@ -637,6 +639,60 @@ updateBlock(report.id, block.id, {
 - **読み込み**: store モジュール初期化時 (`loadDeletedCustomerIds()`)
 - **削除時**: `deleteCustomer(id)` 内で `persistDeletedCustomerId(id)` が追加・保存
 - **リセット時**: `resetAll()` 内で `localStorage.removeItem('nippou.deletedCustomerIds.v1')`
+
+---
+
+### ロール切替の永続化 (E-9)
+
+`setRole(role)` を実行すると選択ロールが localStorage に保存され、ページリロード後も選択したロールが維持される。
+
+> **修正経緯 (a5eb23c)**: デモモードのヘッダーロール切替メニューで切り替えたロールがページリロード後に初期値に戻るバグが発生していた。鸞鳳殳検証で発覚。localStorage 永続化により修正。
+
+**永続化ヘルパー関数 (`src/store/auth.ts`)**:
+```typescript
+export const ROLE_SWITCH_STORAGE_KEY = 'nippou.currentRole.v1';
+export const USER_SWITCH_STORAGE_KEY = 'nippou.currentUserId.v1';
+
+loadRoleSwitch(): { role: Role; userId: string } | null  // localStorage から復元
+persisteRoleSwitch(role: Role | null, userId: string | null)  // 保存 or 削除
+```
+
+**store 初期化時の優先順位**:
+```typescript
+// E-9: ロール切替が永続化されていればそちら優先、なければ auth ユーザーのロール
+currentRole: _initialRoleSwitch?.role ?? _initialUser?.role ?? 'general',
+currentUserId: _initialRoleSwitch?.userId ?? _initialUser?.id ?? 'u1',
+```
+
+| 優先順位 | ソース | 条件 |
+|---|---|---|
+| 1 | localStorage 切替記録 (`nippou.currentRole.v1`) | 存在する場合 |
+| 2 | auth セッションのロール (`_initialUser?.role`) | 切替記録がない場合 |
+| 3 | デフォルト (`'general'`) | auth 情報がない場合 |
+
+**setRole アクションの挙動**:
+```typescript
+setRole: (role) => {
+  const roleUserMap: Record<Role, string> = {
+    general: 'u1', manager: 'u4', executive: 'u5', admin: 'u6',
+  };
+  const userId = roleUserMap[role];
+  persistRoleSwitch(role, userId);  // E-9: localStorage に保存
+  set({ currentRole: role, currentUserId: userId });
+},
+```
+
+**クリア契機**:
+| 濃作 | 底数 |
+|---|---|
+| `login(email, password)` / `loginAsUser(userId)` | ログイン時はログインユーザー本来のロールを優先するため切替記録を削除 |
+| `logout()` | ログアウト時に切替記録を削除 |
+| `resetAll()` | リセット時に切替記録を削除 |
+
+**E-8 (`nippou.deletedCustomerIds.v1`) とのパターン共有**:
+- 同様に store 機能に専用ヘルパー (`auth.ts`) で永続化を封尻化
+- 初期化時にデータを読み込み、store 初期値として注入
+- `resetAll` 時に一括クリア
 
 ---
 
@@ -666,6 +722,7 @@ updateBlock(report.id, block.id, {
 
 ## 改修履歴
 
+- **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — `src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。localStorage キー一覧に `nippou.currentRole.v1` / `nippou.currentUserId.v1` を追加
 - **2026-06-06 d13c0f6 / cea9756**: ユーザー管理画面拡張 — `User` / `Team` エンティティ定義と組織図構造説明を追加。`Team.managerIds` / `Team.memberIds` / `User.teamIds` による上長・部下判定ログンを明文化
 - **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — `ManagerComment` 型に `authorRole?: 'manager' | 'executive' | 'general'` フィールド追加。`addManagerComment` シグネチャに `authorRole?` 引数追加
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更

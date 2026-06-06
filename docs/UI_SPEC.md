@@ -101,6 +101,19 @@ export function App() {
 - ログアウトボタン: `logout()` + `/login` へ navigate
 - デモリセットも `/login` にリダイレクト
 
+**E-9 ヘッダーロール切替メニューの永続化 (a5eb23c 2026-06-06)**:
+- ロール切替メニューでロールを切り替えると `setRole(role)` が呼ばれ、選択ロールが localStorage (`nippou.currentRole.v1`) に即座保存される
+- ページリロード後も選択したロールが維持される（E-9 修正前はリロードでロール選択が初期値に戻るバグがあった）
+- ログイン直後はログインユーザー本来のロールに戻る（`login()`/`loginAsUser()` 時に localStorage の切替記録をクリア）
+
+| 濃作 | ロール切替記録 |
+|---|---|
+| ロール切替メニューから切替 | `nippou.currentRole.v1` / `nippou.currentUserId.v1` に保存 |
+| ページリロード | localStorage から復元し切替後のロールを維持 |
+| ログイン | localStorage 削除 → ログインユーザー本来のロールを適用 |
+| ログアウト | localStorage 削除 |
+| リセット | localStorage 削除 |
+
 ```tsx
 const handleLogout = () => {
   logout();
@@ -1206,6 +1219,7 @@ AdminPage
 
 ## 改修履歴
 
+- **2026-06-06 a5eb23c**: E-9 ロール切替永続化 — AppShell ヘッダーロール切替メニューで選択したロールを `nippou.currentRole.v1` / `nippou.currentUserId.v1` に localStorage 保存。リロード後もロール維持。ログイン時は切替記録をクリアしログインユーザー本来のロールを適用
 - **2026-06-06 d13c0f6 / cea9756**: ユーザー管理画面拡張 — `UsersTab` / `TeamsTab` / `UserEditModal` / `TeamEditModal` を追加。ユーザー一覧に上長表示 (getManagersOf)。チーム編集にメンバー・上長指定 UI を追加。`executive` ロールの読取専用アクセスと黄色バナーを実装。`AdminPage` をタブ別サブコンポーネントに分割
 - **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — コメントセクション名を「上長コメント」→「コメント」に変更、部下 (general) が自身日報に上長宛コメントを能動投稿可能に。緑系アバター + 「↑ 上長宛」バッジで視覚区別。authorRole フィールドを ManagerComment に追加
 - **2026-06-06 94ed85b**: BUG-A 真の修正 — `ReadOnlyTimeline` (确認用画面) を Today `TimelinePanel` と同一の「◀ 予定 | 実績 ▶」 2 カラム並列レイアウトに統一。sm ブレークポイント（≥640px）で横並び 2 列（時刻軸 40px + 予定 1fr + 1px セパレータ + 実績 1fr）、sm 未満で予定→実績縦積み。`variant='planned'|'actual'` は単一カラムで後方互換維持。ReportDetailPage 外側 `bg-white rounded-xl p-4 + <h2>` ラッパー撤去。`data-testid="timeline-planned-col"` / `"timeline-actual-col"` 追加。e2e `buga-layout.spec.ts` 拡張
