@@ -177,11 +177,8 @@ export function ReportDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Timeline (left 2 columns) */}
         <div className="md:col-span-2 space-y-4">
-          {/* RPT-2 縦軸ピクセルタイムライン */}
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">📅 タイムライン</h2>
-            <ReadOnlyTimeline blocks={report.blocks} customers={customers} />
-          </div>
+          {/* RPT-2 縦軸ピクセルタイムライン — ヘッダーは ReadOnlyTimeline 内で保持 */}
+          <ReadOnlyTimeline blocks={report.blocks} customers={customers} />
         </div>
 
         {/* 右ペイン: TODO + 振り返り + 上長コメント */}
