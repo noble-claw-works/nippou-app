@@ -149,3 +149,153 @@ e2e テスト: `e2e/buga-layout.spec.ts` で予定/実績横並び確認テス�
 | ヘッダーラベル | 「◀ 予定 \| 実績 ▶」 | 「◀ 予定 \| 実績 ▶」 |
 | 時刻軸幅 | 36px | 40px |
 | 編集可否 | ✅ 編集可（D&D 対応） | ❌ 読み取り専用 |
+
+---
+
+## AdminPage (`src/pages/AdminPage.tsx`)
+
+**役割**: ユーザー・チーム・監査ログの管理画面。`/admin` ルートで表示。
+
+### コンポーネント構造ツリー
+
+```
+AdminPage (src/pages/AdminPage.tsx)
+├── UsersTab   (src/components/admin/UsersTab.tsx)      — 👥 ユーザータブ
+│   ├── UserEditModal (src/components/admin/UserEditModal.tsx)
+│   ├── 招待モーダル (内部 Modal)
+│   └── ConfirmDialog (無効化確認)
+├── TeamsTab   (src/components/admin/TeamsTab.tsx)      — 🏢 チームタブ
+│   ├── TeamEditModal (src/components/admin/TeamEditModal.tsx)
+│   ├── チーム作成モーダル (内部 Modal)
+│   └── ConfirmDialog (チーム削除確認 — チーム名入力確認付き)
+└── AuditLogTab (内部コンポーネント)              — 📜 監査ログタブ
+```
+
+**分割方針** (`cea9756` より): 旧 `AdminPage` に直書きされていたユーザー/チーム管理 UI をタブ単位のコンポーネントに分割。`AdminPage` はタブ切り替え・構造制御のみに専念。
+
+**権限制御**: `canEdit = currentRole === 'admin'` を子コンポーネントに `props` として渡す。
+
+---
+
+## UsersTab (`src/components/admin/UsersTab.tsx`)
+
+**役割**: ユーザー一覧・検索・招待・編集・無効化。`AdminPage` の 「👥 ユーザー」タブから渡されるスタンドアロンコンポーネント。
+
+### Props
+
+```typescript
+interface Props {
+  canEdit: boolean; // true: admin ロール / false: executive 読取専用
+}
+```
+
+### 主要機能
+- 検索バー (`pl-9 border border-gray-300 rounded-lg`) で氏名・メールアドレスフィルタリング
+- 各ユーザー行に **上長表示** (`getManagersOf` 経由、`(チーム経由)` サフィックス付き)
+- `canEdit=true` 時: 「✎ 編集」ボタン → `UserEditModal` / 「無効化」ボタン → `ConfirmDialog`
+- `canEdit=false` 時: 編集・無効化ボタンは非表示
+- `useAppStore` から `users, teams, addUser, updateUser, deactivateUser, addToast` を取得
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `cea9756` (2026-06-06) | `AdminPage` から分割。上長表示 (`getManagersOf`) + `UserEditModal` 連携を追加 |
+
+---
+
+## TeamsTab (`src/components/admin/TeamsTab.tsx`)
+
+**役割**: チーム一覧・新規作成・編集・削除。`AdminPage` の 「🏢 チーム」タブから渡されるスタンドアロンコンポーネント。
+
+### Props
+
+```typescript
+interface Props {
+  canEdit: boolean; // true: admin ロール / false: executive 読取専用
+}
+```
+
+### 主要機能
+- 各チーム行にチーム名・説明・上長名・メンバー数・メンバー名一覧を表示
+- `canEdit=true` 時: 「✎ 編集」ボタン → `TeamEditModal` / 「削除」ボタン → `ConfirmDialog` (チーム名入力確認付き)
+- `canEdit=false` 時: 編集・削除ボタンは非表示
+- `useAppStore` から `teams, users, addTeam, updateTeam, deleteTeam, addToast` を取得
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `cea9756` (2026-06-06) | `AdminPage` から分割。`TeamEditModal` 連携を追加 |
+
+---
+
+## UserEditModal (`src/components/admin/UserEditModal.tsx`)
+
+**役割**: ユーザー情報編集モーダル。`UsersTab` から呼び出される。
+
+### Props
+
+```typescript
+interface Props {
+  user: User | null;            // null 時はモーダル非表示
+  teams: Team[];                // 所属チーム選択用
+  onClose: () => void;
+  onSave: (userId: string, updates: Partial<User>) => void;
+}
+```
+
+### フォーム構成
+
+| フィールド | 入力形式 | 備考 |
+|---|---|---|
+| 氏名 | `<input type="text">` （必須） | 先頭文字が `avatarInitials` に自動反映 |
+| メールアドレス | `<input type="email">` （必須） | |
+| ロール | `<select>` | general / manager / executive / admin |
+| 所属チーム | チェックボックス一覧 (max-h-40 スクロール) | 複数チーム選択可 |
+
+- **初期値**: `useEffect` で `user` 変化時に `form` state を初期化
+- **保存ボタン**: 氏名またはメール未入力時は `disabled`
+- **`Modal` サイズ**: `size="sm"`
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `d13c0f6` (2026-06-06) | 新規作成 — 氏名・メール・ロール・所属チームの編集 UI を実装 |
+
+---
+
+## TeamEditModal (`src/components/admin/TeamEditModal.tsx`)
+
+**役割**: チーム情報編集モーダル。`TeamsTab` から呼び出される。
+
+### Props
+
+```typescript
+interface Props {
+  team: Team | null;            // null 時はモーダル非表示
+  users: User[];                // メンバー・上長選択用
+  onClose: () => void;
+  onSave: (teamId: string, updates: Partial<Team>) => void;
+}
+```
+
+### フォーム構成
+
+| フィールド | 入力形式 | 備考 |
+|---|---|---|
+| チーム名 | `<input type="text">` （必須） | |
+| 説明 | `<input type="text">` | |
+| メンバー | チェックボックス一覧 (max-h-44) | `status ∈ { active, invited }` のユーザーのみ |
+| 上長 | チェックボックス一覧 (max-h-36) | **メンバーのみ選択可**。メンバーなし時はプレースホルダーメッセージを表示 |
+
+**連動ルール**:
+- メンバーのチェックを外すと、同ユーザーは `managerIds` からも自動除外される
+- 上長は必ず `memberIds` に含まれているユーザーのみ選択可能
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `d13c0f6` (2026-06-06) | 新規作成 — チーム名・説明・メンバー・上長指定の編集 UI を実装 |

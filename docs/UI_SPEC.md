@@ -1070,8 +1070,143 @@ if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) 
 
 ---
 
+### AdminPage (`src/pages/AdminPage.tsx`)
+
+**役割**: ユーザー・チーム・監査ログの管理画面。`/admin` ルートで表示。
+
+#### アクセス権限マトリクス
+
+| ロール | 閲覧 | 編集 |
+|---|---|---|
+| admin | ✅ | ✅ |
+| executive | ✅ (読取専用、黄色バナー表示) | ❌ |
+| manager | ❌ Forbidden | — |
+| general | ❌ Forbidden | — |
+
+- **admin** はすべてのタブで作成・編集・削除・招待が可能
+- **executive** はすべてのタブを閲覧のみ可能。ページ上部に黄色バナー「経営者ロールでは閲覧のみ可能です。編集・招待・削除は管理者が行ってください。」を表示
+- **manager / general** はアクセス不可。`<ForbiddenState />` コンポーネントを表示
+
+#### タブ構成
+
+```
+AdminPage
+├── 👥 ユーザータブ  (UsersTab)
+├── 🏢 チームタブ   (TeamsTab)
+└── 📜 監査ログタブ (AuditLogTab)
+```
+
+タブ切り替え UI: `bg-gray-100 rounded-xl p-1` の pill 形式ボタンセット。選択中: `bg-white shadow font-medium text-gray-900`
+
+---
+
+#### 👥 ユーザータブ (`src/components/admin/UsersTab.tsx`)
+
+**役割**: ユーザー一覧表示・招待・編集・無効化。
+
+**Props**: `{ canEdit: boolean }`
+
+##### ユーザー一覧行
+
+各ユーザー行に以下の情報を表示:
+- **アバター**: `w-8 h-8 rounded-full bg-blue-100 text-blue-700`、`avatarInitials` を表示
+- **氏名** + メールアドレス + **ロールバッジ** (`bg-gray-100 text-gray-600 rounded-full`)
+- **無効ラベル**: `status === 'inactive'` の場合、赤テキスト「無効」を表示
+- **所属チーム**: `user.teamIds` が存在する場合、`text-xs text-gray-400` でチーム名をカンマ区切り表示
+- **上長表示**: `上長: ○○○ (チーム経由)` または `上長未設定`
+  - `getManagersOf(user.id, users, teams)` を使用して取得
+  - 複数の上長がいる場合はカンマ区切りで列挙し、`(チーム経由)` サフィックスを付与
+
+##### 操作ボタン（canEdit 時のみ表示）
+
+- **「✎ 編集」ボタン**: `px-2.5 py-1 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50` → `UserEditModal` を開く
+- **「無効化」ボタン**: `status === 'active'` のみ表示 → `text-xs text-red-600 border border-red-200` → ConfirmDialog を経由して `deactivateUser()` を呼び出し
+
+##### ユーザー招待モーダル
+
+- 「＋招待」ボタンから開く (`bg-blue-600 text-white`)
+- フィールド: **氏名 (必須)** / **メールアドレス (必須)** / **ロール** (セレクト)
+- 確定: `addUser({ ..., status: 'invited' })` → `addToast('招待メールを送信しました')`
+
+---
+
+#### ✎ ユーザー編集モーダル (`src/components/admin/UserEditModal.tsx`)
+
+**Props**: `{ user: User | null, teams: Team[], onClose, onSave }`
+
+**編集可能フィールド**:
+
+| フィールド | 入力形式 | 備考 |
+|---|---|---|
+| 氏名 | テキスト入力（必須） | 先頭文字が `avatarInitials` に自動反映 |
+| メールアドレス | email 入力（必須） | |
+| ロール | セレクトボックス | general / manager / executive / admin |
+| 所属チーム | チェックボックス一覧 (最大高さ h-40 スクロール) | 複数チーム選択可 |
+
+- **保存ボタン**: 氏名・メール未入力時は `disabled`
+- **確定**: `onSave(user.id, updates)` → `updateUser()` + `addToast('ユーザー情報を更新しました')`
+
+---
+
+#### 🏢 チームタブ (`src/components/admin/TeamsTab.tsx`)
+
+**役割**: チーム一覧表示・新規作成・編集・削除。
+
+**Props**: `{ canEdit: boolean }`
+
+##### チーム一覧行
+
+各チーム行に以下の情報を表示:
+- **チーム名**: `🏢 {team.name}`（font-medium）
+- **説明文**: 存在する場合 `text-xs text-gray-500` で表示
+- **上長 + メンバー数サマリー**: `上長: ○○○ · メンバー: N名`
+- **メンバー名一覧**: `members.join(', ')` を `text-xs text-gray-400` で表示
+
+##### 操作ボタン（canEdit 時のみ表示）
+
+- **「✎ 編集」ボタン**: `text-blue-600 border border-blue-200` → `TeamEditModal` を開く
+- **「削除」ボタン**: `text-red-600 border border-red-200` → ConfirmDialog (チーム名入力確認あり) → `deleteTeam()`
+
+##### チーム新規作成モーダル
+
+- 「＋新規作成」ボタンから開く
+- フィールド: **チーム名 (必須)** / **説明**
+- 確定: `addTeam({ name, description, managerIds: [], memberIds: [] })` → `addToast('チームを作成しました')`
+
+---
+
+#### ✎ チーム編集モーダル (`src/components/admin/TeamEditModal.tsx`)
+
+**Props**: `{ team: Team | null, users: User[], onClose, onSave }`
+
+**編集可能フィールド**:
+
+| フィールド | 入力形式 | 備考 |
+|---|---|---|
+| チーム名 | テキスト入力（必須） | |
+| 説明 | テキスト入力 | |
+| メンバー | チェックボックス一覧 (最大高さ h-44) | `status === 'active' \| 'invited'` のユーザーのみ表示 |
+| 上長 | チェックボックス一覧 (最大高さ h-36) | **メンバーから選択**。メンバー未選択時は「先にメンバーを追加してください」を表示 |
+
+**連動ルール**:
+- メンバーのチェックを外すと、同ユーザーは上長からも自動的に除外される
+- 上長はメンバーに含まれているユーザーのみ選択可能
+
+- **保存ボタン**: チーム名未入力時は `disabled`
+- **確定**: `onSave(team.id, { name, description, memberIds, managerIds })` → `updateTeam()` + `addToast('チーム情報を更新しました')`
+
+---
+
+#### 📜 監査ログタブ (AuditLogTab — AdminPage 内部コンポーネント)
+
+- `auditLogs` を `createdAt` 降順でソートして表示
+- 各行: ユーザーアバター + 氏名 + アクション + 結果バッジ（成功: `bg-green-100 text-green-700` / 失敗: `bg-red-100 text-red-700`）+ 日時 + IP アドレス
+
+---
+
 ## 改修履歴
 
+- **2026-06-06 d13c0f6 / cea9756**: ユーザー管理画面拡張 — `UsersTab` / `TeamsTab` / `UserEditModal` / `TeamEditModal` を追加。ユーザー一覧に上長表示 (getManagersOf)。チーム編集にメンバー・上長指定 UI を追加。`executive` ロールの読取専用アクセスと黄色バナーを実装。`AdminPage` をタブ別サブコンポーネントに分割
 - **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — コメントセクション名を「上長コメント」→「コメント」に変更、部下 (general) が自身日報に上長宛コメントを能動投稿可能に。緑系アバター + 「↑ 上長宛」バッジで視覚区別。authorRole フィールドを ManagerComment に追加
 - **2026-06-06 94ed85b**: BUG-A 真の修正 — `ReadOnlyTimeline` (确認用画面) を Today `TimelinePanel` と同一の「◀ 予定 | 実績 ▶」 2 カラム並列レイアウトに統一。sm ブレークポイント（≥640px）で横並び 2 列（時刻軸 40px + 予定 1fr + 1px セパレータ + 実績 1fr）、sm 未満で予定→実績縦積み。`variant='planned'|'actual'` は単一カラムで後方互換維持。ReportDetailPage 外側 `bg-white rounded-xl p-4 + <h2>` ラッパー撤去。`data-testid="timeline-planned-col"` / `"timeline-actual-col"` 追加。e2e `buga-layout.spec.ts` 拡張
 - **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`src/utils/todoReadOnly.ts` を新規作成し `isTodoReadOnly` / `getTodoReadOnlyReason` を一元管理。SidePanelCards で per-todo 期限切れ判定を追加し UI 層を拡張。store 層 `toggleTodo` / `updateTodo` / `deleteTodo` も期限切れ TODO を二層防御でガード

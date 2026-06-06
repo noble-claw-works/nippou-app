@@ -261,6 +261,75 @@ export function formatGapDuration(mins: number): string {
 
 ---
 
+### User
+
+ユーザーエンティティ。
+
+```typescript
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;              // 'general' | 'manager' | 'executive' | 'admin'
+  status: 'active' | 'invited' | 'inactive';
+  avatarInitials: string;  // アバター表示用イニシャル
+  teamIds: string[];       // 所属チーム ID の配列
+  lastLogin?: string;      // ISO 8601
+}
+```
+
+---
+
+### Team
+
+チームエンティティ。メンバー・上長管理の中心エンティティ。
+
+```typescript
+interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  memberIds: string[];  // チームメンバーの userId 配列
+  managerIds: string[]; // チーム内の上長 userId 配列（memberIds のサブセット）
+}
+```
+
+---
+
+### 組織図構造（User ・ Team の関係）
+
+**概要**: `Team.managerIds` / `Team.memberIds` / `User.teamIds` の 3 フィールドを組み合わせることで、上長・部下の関係を導出する。
+
+```
+User
+  teamIds: ['team-1', 'team-2']
+
+  ↑ このユーザーの上長 = team-1 または team-2 の managerIds に含まれるユーザー
+
+Team (team-1)
+  memberIds: ['u1', 'u2', 'u3']
+  managerIds: ['u2']  ← u2 が team-1 の上長
+```
+
+**上長判定ロジック** (`getManagersOf`):
+1. 対象ユーザーの `user.teamIds` に含まれる全チームを取得
+2. 各チームの `team.managerIds` を集約（自身を除外・重複除山）
+3. 対応する `User` オブジェクトを返す
+
+**部下判定ロジック** (`getSubordinatesOf`):
+1. `team.managerIds` に `userId` が含まれる全チームを検索
+2. 各チームの `team.memberIds` を集約（自身を除外・重複除山）
+3. 対応する `User` オブジェクトを返す
+
+**制約**:
+- 1 ユーザーが複数チームに所属できる（`user.teamIds` は配列）
+- 上長は必ず `memberIds` に含まれている必要がある（`managerIds ⊆ memberIds`）
+- 異なるチーム経由で同一の上長が複数回登場しても重複は `Set` で自動除山
+
+**関連ユーティリティ**: `src/utils/orgChart.ts` — `getManagersOf` / `getSubordinatesOf`（詳細は `UTILITIES.md` を参照）
+
+---
+
 ### Customer
 
 顧客マスタ。
@@ -597,6 +666,7 @@ updateBlock(report.id, block.id, {
 
 ## 改修履歴
 
+- **2026-06-06 d13c0f6 / cea9756**: ユーザー管理画面拡張 — `User` / `Team` エンティティ定義と組織図構造説明を追加。`Team.managerIds` / `Team.memberIds` / `User.teamIds` による上長・部下判定ログンを明文化
 - **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — `ManagerComment` 型に `authorRole?: 'manager' | 'executive' | 'general'` フィールド追加。`addManagerComment` シグネチャに `authorRole?` 引数追加
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
