@@ -59,7 +59,6 @@ function report(over: Partial<DailyReport> & { id: string; date: string; blocks:
     userId: over.userId ?? 'u1',
     date: over.date,
     status: over.status ?? 'planning',
-    submitted: over.submitted ?? false,
     submittedAt: over.submittedAt,
     summary: over.summary ?? '',
     rolledOverFromId: over.rolledOverFromId,

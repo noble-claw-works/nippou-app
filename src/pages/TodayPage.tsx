@@ -288,7 +288,7 @@ export function TodayPage() {
                   onDeleteTodo={id => deleteTodo(report.id, id)}
                 />
                 {/* P0-1: 上長コメント */}
-                <ManagerCommentSection dayKey={report.date} submitted={report.submitted} />
+                <ManagerCommentSection dayKey={report.date} submitted={report.status === 'submitted' || report.status === 'confirmed'} />
               </div>
             </div>
           )}

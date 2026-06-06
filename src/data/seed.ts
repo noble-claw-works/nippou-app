@@ -99,7 +99,6 @@ const makeReport = (
   selfComment: '',
   comments,
   attachments: [],
-  submitted: status === 'submitted' || status === 'confirmed',
   submittedAt: (status === 'submitted' || status === 'confirmed') ? `${date}T18:30:00` : undefined,
   confirmedAt: status === 'confirmed' ? `${date}T19:30:00` : undefined,
   confirmedBy: status === 'confirmed' ? 'u4' : undefined,

@@ -154,11 +154,8 @@ export interface DailyReport {
   selfComment: string;
   comments: Comment[];
   attachments: Attachment[];
-  submitted: boolean; // 日報提出フラグ
   submittedAt?: string;
   confirmedAt?: string;
-  sentBackAt?: string;
-  sentBackReason?: string;
   confirmedBy?: string;
   createdAt: string;
   updatedAt: string;

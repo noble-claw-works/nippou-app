@@ -333,7 +333,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       blocks: [], todos: [], customerVisits: [],
       gratitude: ['', '', ''], morningMood: null, eveningMood: null,
       managerSignal: null, selfComment: '', comments: [], attachments: [],
-      submitted: false,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     set(s => ({ reports: [...s.reports, report] }));
