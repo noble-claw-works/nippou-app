@@ -153,25 +153,17 @@ interface DailyReport {
   attachments: Attachment[];
 
   // 提出管理
-  submitted: boolean;         // 日報提出フラグ
   submittedAt?: string;       // 提出日時（ISO 8601）
 
   // タイムスタンプ（confirm 関連）
   confirmedAt?: string;       // 上長承認日時
   confirmedBy?: string;       // 承認者 userId
-  sentBackAt?: string;        // 差し戻し日時
-  sentBackReason?: string;    // 差し戻し理由
   createdAt: string;
   updatedAt: string;
 }
 ```
 
-**`submitted` フラグについて**:
-
-- `submitted=true` になるのは `submitReport(reportId)` 実行時
-- `status` は `'in_progress' → 'submitted'` へ遷移し、同時に `submitted=true` + `submittedAt` を付与
-- `withdrawReport()` で取り下げ時は `status='submitted' → 'in_progress'` + `submitted=false` に戻す
-- つまり `submitted` フラグと `status='submitted'` は常に連動する（いずれでも判定可能）
+**status による状態管理**: `status` enum が状態の唯一の真実 (single source of truth)。「提出済みか否か」は `status === 'submitted' || status === 'confirmed'` で判定する。`submitted` boolean フラグは廃止済み。
 
 ---
 
@@ -529,8 +521,8 @@ planning ──[予定を確定する]──→ in_progress ──[提出する]
 | アクション | 遷移 | 条件 |
 |---|---|---|
 | `confirmPlanning(reportId)` | `planning → in_progress` | `planning` 時のみ有効 |
-| `submitReport(reportId)` | `in_progress → submitted` + `submitted=true` | `in_progress` 時のみ有効 |
-| `withdrawReport(reportId)` | `submitted → in_progress` + `submitted=false` | `submitted` 時のみ有効（本人取り下げ・上長差し戻し共通） |
+| `submitReport(reportId)` | `in_progress → submitted` | `in_progress` 時のみ有効 |
+| `withdrawReport(reportId)` | `submitted → in_progress` | `submitted` 時のみ有効（本人取り下げ・上長差し戻し共通） |
 | `confirmReport(reportId)` | `submitted → confirmed` | `submitted` 時のみ有効（上長操作） |
 
 ---
@@ -615,7 +607,7 @@ updateBlock(report.id, block.id, {
 
 ## ストレージ
 
-- **LocalStorage**: Zustand の persist middleware は未使用（現在はメモリのみ）
+- **LocalStorage**: Zustand の persist middleware は未使用。**ただし以下のデータはカスタム実装で localStorage に永続化する**（詳細は「localStorage キー一覧」参照）
 - **外部 API**: なし
 - **セキュリティ**: ユーザー入力は React JSX 経由。`dangerouslySetInnerHTML` 不使用
 
@@ -734,3 +726,4 @@ setRole: (role) => {
 - **2026-06-03 b623958**: 提出ヘッダー追加 / YES/NO 返答UI改善 / TODO 3段巡回実装 / 備考常時表示（memo truthy のみ）
 - **2026-06-04 f2cd145**: 保安司 P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
 - **2026-06-04 8ccb832**: 保安司 P0 — `hasCustomerAttachment` / `canDeleteCustomer` ユーティリティを新規作成（UI/Store への組み込みは e54993b で完成）
+- **2026-06-06 3c16dbd**: submitted フラグ廃止 + デッドフィールド sentBackAt/sentBackReason 削除 — `DailyReport.submitted: boolean` を型から削除し `status` enum による一元判定に移行。`sentBackAt` / `sentBackReason` フィールドを削除（src 全体で参照なし）。仕様書 (DATA_MODEL.md / STATUS_FLOW.md) を同コミットに追従

@@ -120,28 +120,27 @@ todo
 
 ## 提出フロー
 
-### submitted フラグと status の関係
+### status による提出状態管理
 
-| 操作 | status 遷移 | submitted 変化 | submittedAt |
-|---|---|---|---|
-| `confirmPlanning()` | `planning` → `in_progress` | — | — |
-| `submitReport()` | `in_progress` → `submitted` | `false` → `true` | セット（現在時刻） |
-| `withdrawReport()` | `submitted` → `in_progress` | `true` → `false` | クリア |
-| `confirmReport()` | `submitted` → `confirmed` | 変化なし（true 維持） | 変化なし |
-| `bulkConfirmReports(reportIds[])` | 複数ε`submitted` → `confirmed` | 変化なし（true 維持） | 変化なし |
+| 操作 | status 遷移 | submittedAt |
+|---|---|---|
+| `confirmPlanning()` | `planning` → `in_progress` | — |
+| `submitReport()` | `in_progress` → `submitted` | セット（現在時刻） |
+| `withdrawReport()` | `submitted` → `in_progress` | クリア |
+| `confirmReport()` | `submitted` → `confirmed` | 変化なし |
+| `bulkConfirmReports(reportIds[])` | 複数 `submitted` → `confirmed` | 変化なし |
 
 **一括確認の実装** (MGR-4):
 - Store action `bulkConfirmReports(reportIds: string[]): number`
 - 入力: status='submitted' の日報 ID 配列
-- 処理: 各 ID に対し `confirmReport()` を内体的に実行
-- 戻り値: 実際に confirmed 状態にさせた件数（丢要値は不追加）
+- 処理: 各 ID に対し `confirmReport()` を内部実行
+- 戻り値: 実際に confirmed 状態にした件数
 
-**重要**: `submitted` フラグと `status='submitted'` は常に同期している。
-実装の都合上、いずれかで「提出済みか」を判定できる。
+**状態判定**: `status` enum で状態判定を行う（boolean フラグは廃止）。「提出済みか否か」は `status === 'submitted' || status === 'confirmed'` で判定する。
 
 ## 差し戻しの扱い
 
-上長による差し戻しは「取り下げ」と同動作（`submitted → in_progress` + `submitted=false`）。
+上長による差し戻しは「取り下げ」と同動作（`status: submitted → in_progress`）。
 担当者は実績を修正し、再度「提出する」で再提出できます。
 
 ## in_progress 時の提出ヘッダーカード (P0-1)
@@ -160,7 +159,7 @@ todo
 
 ## 実装ファイル
 
-- `src/types/index.ts` — `ReportStatus` / `DailyReport.submitted` 型定義
+- `src/types/index.ts` — `ReportStatus` / `DailyReport` 型定義
 - `src/store/index.ts` — `confirmPlanning` / `submitReport` / `withdrawReport` / `confirmReport`
 - `src/pages/TodayPage.tsx` — ブロック操作ガード (`canEditPlanned` / `canEditActual` / `isReadOnly`)
 - `src/components/today/StatusBar.tsx` — ステップインジケーター + ステータス別ボタン
@@ -327,3 +326,4 @@ todo
 - **2026-06-03**: 上長コメント・お褒め記録機能追加対応、submitted フラグの関係を明記
 - **2026-06-03 b623958**: in_progress 時の提出ヘッダーカード追加
 - **2026-06-04 8ccb832**: 保安司 P0 — `customerAttachment.ts` ユーティリティと単体テスト新規作成（UI/Store への組み込みは e54993b で完成）
+- **2026-06-06 3c16dbd**: submitted フラグ廃止を反映 — 「submitted フラグと status の関係」節を「status による提出状態管理」に書き換え。boolean フラグ列削除・status 一元判定を明記。差し戻し記述から `submitted=false` を削除。実装ファイル参照から `DailyReport.submitted` を削除
