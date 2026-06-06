@@ -263,7 +263,7 @@ export function formatGapDuration(mins: number): string {
 
 ### User
 
-ユーザーエンティティ。
+ユーザーエンティティ。各ロールの利用シナリオは `docs/USER_GUIDE.md` を参照。
 
 ```typescript
 interface User {
@@ -282,7 +282,7 @@ interface User {
 
 ### Team
 
-チームエンティティ。メンバー・上長管理の中心エンティティ。
+チームエンティティ。メンバー・上長管理の中心エンティティ。チーム編成管理の機能詳細は `docs/USER_GUIDE.md` 「admin シナリオ」を参照。
 
 ```typescript
 interface Team {

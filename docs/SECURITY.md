@@ -273,6 +273,8 @@ export function persistRoleSwitch(role: Role | null, userId: string | null): voi
 | executive | ✓ | ✓ |
 | admin | ✓ | ✓ |
 
+各ロールの典型的な利用シナリオ・画面アクセス権限の詳細は `docs/USER_GUIDE.md` を参照。
+
 ### 認証・セッション (AUTH-1〜5)
 詳細は `docs/DATA_MODEL.md` の「認証・セッション」セクション、および `docs/UI_SPEC.md` の「App.tsx (認証ガード)」セクションを参照。
 

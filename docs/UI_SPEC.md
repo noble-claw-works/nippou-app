@@ -4,6 +4,13 @@
 
 nippou-app の Today ページは以下のコンポーネントに分割されています。
 
+## 関連ドキュメント
+
+- `docs/USER_GUIDE.md`: ロール別ユースケース (general / manager / executive / admin の典型シナリオ・画面×ロール権限マトリクス)
+- `docs/SECURITY.md`: 権限制御の二層防御パターン
+- `docs/DATA_MODEL.md`: User/Team/Role のデータ構造
+- `docs/STATUS_FLOW.md`: 日報ステータス遷移
+
 ---
 
 ## ページ構成
