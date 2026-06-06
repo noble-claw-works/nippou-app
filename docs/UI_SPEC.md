@@ -452,15 +452,37 @@ TodayPage (src/pages/TodayPage.tsx)
 ├── StatusBar             （下部ステータスバー）
 └── BlockModal            （ブロック追加・編集モーダル）
 ```
-**上長コメント機能** (MGR-4):
+**コメント機能（上長↔部下双方向スレッド）** (MGR-4、40e081e 2026-06-06 で双方向化):
 - **権限**: 上長 (currentRole !== 'general') のみがコメント投稿可
-- **担当者返信**: 一般社員 (general) は自身の報告書に返信・補足をコメント可 (canCommentAsAuthor = currentRole === 'general' && report.userId === currentUserId)
+- **担当者投稿**: 一般社員 (general) は自身の報告書に上長宛コメントを能動的に投稿可 (canCommentAsAuthor = currentRole === 'general' && report.userId === currentUserId)
 - **表示条件**: canPostComment = canComment || canCommentAsAuthor が真であれば、コメント入力欄を表示
-- **削除権**: 担当者はランダムな自投稿のみ削除可 (削除ボタンは comment.authorUserId === currentUserId の時のみ表示)
+- **削除権**: 担当者は自投稿のみ削除可 (削除ボタンは comment.authorUserId === currentUserId の時のみ表示)
 - **Placeholder 区別**: 
   - canCommentAsAuthor が真: 「上長への返信・補足を入力...」
   - それ以外: 「コメントを追加...」
-- **表示順**: 上長氏名値 ➜ 日時 ➜ コメント本文
+- **表示順**: アバター ➜ 氏名 (+ 「↑ 上長宛」バッジ) ➜ 日時 ➜ コメント本文
+- **投稿時**: `addManagerComment(dayKey, userId, body, authorRole)` に `currentRole` を渡す
+
+**コメント投稿者の視覚区別**:
+
+| ロール | 自分日報 | 他人日報 | アバター色 | バッジ |
+|---|---|---|---|---|
+| executive | ✅ | ✅ | 青系 (`bg-blue-100 text-blue-700`) | なし |
+| manager | ✅ | ✅ | 青系 (`bg-blue-100 text-blue-700`) | なし |
+| general | ✅ (上長宛) | ❌ | 緑系 (`bg-green-100 text-green-700`) | 「↑ 上長宛」 |
+
+**「↑ 上長宛」バッジ** (部下コメント時のみ):
+- `authorRole === 'general'` または (authorRole 未設定 & コメント作成者の role が 'general') の場合に表示
+- スタイル: `text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium`
+- 位置: 氏名の右隣
+
+**部下から上長へのメッセージ送信方法**:
+1. 部下 (general ロール) が自身の日報詳細ページ (`/reports/:date?user=自分のID`) を開く
+2. 右ペイン下部「💬 コメント」セクションにあるテキスト入力欄に入力
+   - プレースホルダー: 「上長への返信・補足を入力...」
+3. Enter キーまたは送信ボタン (Send アイコン) で投稿
+4. 投稿されたコメントは緑系アバター + 「↑ 上長宛」バッジで表示される
+5. 上長が同ページを開くと、コメントが確認できる
 
 ---
 
@@ -734,14 +756,17 @@ const isDueToday = (todo: Todo): boolean => {
 - **位置**: 右ペイン内（中）
 - **内容**: mood selector + reflection textarea
 
-**上長コメント** (RPT-1、BUG-A後は通常カード):
+**コメント (双方向)** (RPT-1、BUG-A後は通常カード、40e081e で双方向化):
 - **位置**: 右ペイン内（下）
 - **スタイル**: 通常カード（`<div className="...rounded-xl border...">`）
-- **見出し**: 上長コメント ({dayComments.length})
+- **見出し**: 💬 コメント ({dayComments.length})
 - **空状態**: 「コメントがありません」
-- **コメント列**: 従来の message + author info + timestamp
-- **追加フォーム**: 権限者のみ、textarea + submit ボタン
+- **コメント列**: アバター (ロール別カラー) + 氏名 + バッジ (部下投稿時) + タイムスタンプ + コメント本文
+  - 上長/役員投稿: 青系アバター (`bg-blue-100 text-blue-700`)
+  - 部下投稿: 緑系アバター (`bg-green-100 text-green-700`) + 「↑ 上長宛」バッジ
+- **追加フォーム**: 権限者 (上長) または canCommentAsAuthor (部下本人) のみ表示、テキスト入力 + 送信ボタン (Send アイコン)
 - **備考**: 旧 sticky aside (`lg:sticky lg:top-4 lg:self-start`) → 新 通常カード（右ペイン内に統合）
+- **セクション名変更**: 「上長コメント」→「コメント」(40e081e)
 
 ---
 
@@ -1047,6 +1072,7 @@ if (!todo || isTodoReadOnly(todo, report.status as TodoReportStatus, todayStr)) 
 
 ## 改修履歴
 
+- **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — コメントセクション名を「上長コメント」→「コメント」に変更、部下 (general) が自身日報に上長宛コメントを能動投稿可能に。緑系アバター + 「↑ 上長宛」バッジで視覚区別。authorRole フィールドを ManagerComment に追加
 - **2026-06-06 94ed85b**: BUG-A 真の修正 — `ReadOnlyTimeline` (确認用画面) を Today `TimelinePanel` と同一の「◀ 予定 | 実績 ▶」 2 カラム並列レイアウトに統一。sm ブレークポイント（≥640px）で横並び 2 列（時刻軸 40px + 予定 1fr + 1px セパレータ + 実績 1fr）、sm 未満で予定→実績縦積み。`variant='planned'|'actual'` は単一カラムで後方互換維持。ReportDetailPage 外側 `bg-white rounded-xl p-4 + <h2>` ラッパー撤去。`data-testid="timeline-planned-col"` / `"timeline-actual-col"` 追加。e2e `buga-layout.spec.ts` 拡張
 - **2026-06-04 db741db**: BUG-B 残存修正 — Today 画面の期限切れ/提出済み由来 TODO を完全読み取り専用化。`src/utils/todoReadOnly.ts` を新規作成し `isTodoReadOnly` / `getTodoReadOnlyReason` を一元管理。SidePanelCards で per-todo 期限切れ判定を追加し UI 層を拡張。store 層 `toggleTodo` / `updateTodo` / `deleteTodo` も期限切れ TODO を二層防御でガード
 - **2026-06-04 ae0ce12**: BUG-B [P0] submitted/confirmed 日報の TODO を UI 層で完全読み取り専用化 — チェックボックス disabled / ＋ボタン非表示 / 削除ボタン非描画 / 🔒 読み取り専用バッジ表示。store 層の既存ガードを二重防壁として温存

@@ -373,7 +373,7 @@ interface Todo {
 
 ### ManagerComment
 
-上長からのコメント・フィードバック。
+上長からのコメント・フィードバック、および部下から上長への能動コメント。
 
 ```typescript
 interface ManagerCommentReply {
@@ -385,17 +385,25 @@ interface ManagerCommentReply {
 interface ManagerComment {
   id: string;
   dayKey: string;           // YYYY-MM-DD（日報を特定）
-  authorUserId: string;     // 上長 ID
+  authorUserId: string;     // 投稿者 ID（上長または部下）
+  /** 表示用ロール — 上長コメント: 'manager'|'executive', 部下コメント: 'general' (optional for backward compat) */
+  authorRole?: 'manager' | 'executive' | 'general';
   body: string;             // コメント本文
   createdAt: string;        // ISO 8601
   replies: ManagerCommentReply[];  // 部下からの返答群
 }
 ```
 
+**`authorRole` について**:
+- `addManagerComment(dayKey, userId, body, authorRole?)` 呼び出し時に `currentRole` を渡す
+- 設定されない場合 (下位互換) は `commentUser?.role` でフォールバック
+- `resolvedRole === 'general'` の場合、UI が緑系アバター + 「↑ 上長宛」バッジを表示
+
 **機能フロー**:
-1. 上長が `dayKey` 指定の日報に対し、`addManagerComment(dayKey, userId, body)` でコメント追加
-2. 部下は `replyToManagerComment(commentId, userId, choice)` で ✅YES / ❌NO 返答
-3. 返答後は返答者ステータス + 日時が表示され、ボタンは非活性化
+1. 上長が `dayKey` 指定の日報に対し、`addManagerComment(dayKey, userId, body, authorRole)` でコメント追加
+2. 部下 (general) が自身の日報に対して能動的に上長宛コメントを投稿可能
+3. 部下は `replyToManagerComment(commentId, userId, choice)` で ✅YES / ❌NO 返答
+4. 返答後は返答者ステータス + 日時が表示され、ボタンは非活性化
 
 ---
 
@@ -511,9 +519,9 @@ updateBlock(report.id, block.id, {
 
 | アクション | 説明 |
 |---|---|
-| `addManagerComment(dayKey, authorUserId, body)` | コメント追加 |
+| `addManagerComment(dayKey, authorUserId, body, authorRole?)` | コメント追加 (上長・部下共用) |
 | `replyToManagerComment(commentId, userId, choice)` | コメントへの返答（yes/no） |
-| `deleteManagerComment(commentId)` | コメント削除（上長のみ） |
+| `deleteManagerComment(commentId)` | コメント削除（自分の投稿のみ） |
 
 ### Compliment 操作
 
@@ -589,6 +597,7 @@ updateBlock(report.id, block.id, {
 
 ## 改修履歴
 
+- **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — `ManagerComment` 型に `authorRole?: 'manager' | 'executive' | 'general'` フィールド追加。`addManagerComment` シグネチャに `authorRole?` 引数追加
 - **2026-06-03 319e32c**: AUTH-1/AUTH-2/AUTH-3/AUTH-4/AUTH-5 認証機能追加 — ログインガード・セッション失効・パスワード変更
 - **2026-06-03 573fe49**: CAL-1/CUS-1 鳳凰殿 P2 改修 — カレンダー視認性・顧客一覧件数表示+ソート
 - **2026-06-03**: ManagerComment/Compliment 型追加、Todo 拡張（status/priority/dueDate）、DailyReport に submitted フラグと mainTheme を追加、上長コメント・お褒め記録機能に対応
