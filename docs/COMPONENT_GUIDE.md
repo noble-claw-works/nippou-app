@@ -266,6 +266,103 @@ interface Props {
 
 ---
 
+## CustomerCombobox (`src/components/ui/CustomerCombobox.tsx`)
+
+**役割**: 顧客選択用コンボボックス。検索フィルタ・キーボード操作・表示順序制御・ ARIA 対応を一体化した汎用コンポーネント。
+
+**追加コミット**: `11e82a7` (2026-06-08)
+
+### Props
+
+```typescript
+interface CustomerComboboxProps {
+  value: string | undefined;          // customerId
+  onChange: (customerId: string | undefined) => void;
+  customers: Customer[];
+  placeholder?: string;               // デフォルト: '顧客を検索...'
+  required?: boolean;
+  disabled?: boolean;
+  allowClear?: boolean;               // 「選択しない」を許容
+  autoFocus?: boolean;
+  onAddNew?: () => void;              // 「+ 新規顧客を追加」ボタンのハンドラ。未指定時はボタン非表示
+}
+```
+
+### 使用例
+
+#### 基本（顧客選択必須）
+
+```tsx
+<CustomerCombobox
+  value={blockForm.customerId}
+  onChange={(id) => setBlockForm(f => ({ ...f, customerId: id }))}
+  customers={customers}
+  required
+/>
+```
+
+#### allowClear 仙8き（必須でない場合）
+
+```tsx
+<CustomerCombobox
+  value={selectedCustomerId}
+  onChange={setSelectedCustomerId}
+  customers={customers}
+  allowClear
+  placeholder="顧客を選んでください..."
+/>
+```
+
+#### 新規顧客追加ボタン付き
+
+```tsx
+<CustomerCombobox
+  value={selectedCustomerId}
+  onChange={setSelectedCustomerId}
+  customers={customers}
+  onAddNew={() => navigate('/customers/new')}
+/>
+```
+
+### 表示順序ロジック
+
+| 状態 | 表示順序 |
+|---|---|
+| query 空 | お気に入り (score +1000) > 最近接触 30 日以内 (score +200〜+500) > active (score +100) > その他 |
+| query あり | `searchCustomers()` スコア順（詳細は `docs/UTILITIES.md` 参照）|
+
+### ARIA 仕様
+
+| 属性 | 値 |
+|---|---|
+| `role="combobox"` | input 要素に付与 |
+| `aria-expanded` | ドロップダウン開閉状態 |
+| `aria-controls` | listbox 要素の `id`（`useId()` で生成）|
+| `aria-activedescendant` | フォーカス中の item `id` |
+| `aria-autocomplete` | `"list"` |
+| `role="listbox"` | ul 要素に付与 |
+| `role="option"` + `aria-selected` | 各 li 要素 |
+
+### 旧 `<select>` ベース実装からの移行ノート
+
+`11e82a7` にて以下 3 箇所の `<select>` を `<CustomerCombobox>` に置換した:
+
+| ファイル | 変更前 | 変更後 |
+|---|---|---|
+| `src/components/today/BlockModal.tsx` | `<select>` + `option` 列挙 | `<CustomerCombobox value=... onChange=... customers=...>` |
+| `src/components/today/ComplimentsCard.tsx` | `<select>` | `<CustomerCombobox>` |
+| `src/pages/TodayPage.tsx` | `<select>` | `<CustomerCombobox>` |
+
+旧実装では `customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)` 形式だったが、新実装では `CustomerCombobox` をインポートしてデータと value/onChange を渡すだけでよい。
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `11e82a7` (2026-06-08) | 新規作成 — 検索フィルタ / キーボード / 表示順序 / ARIA 実装。BlockModal / ComplimentsCard / TodayPage の `<select>` 置換完了 |
+
+---
+
 ## TeamEditModal (`src/components/admin/TeamEditModal.tsx`)
 
 **役割**: チーム情報編集モーダル。`TeamsTab` から呼び出される。

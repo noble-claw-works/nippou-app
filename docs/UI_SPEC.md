@@ -887,6 +887,67 @@ interface TimelinePanelProps {
 
 ---
 
+### 顧客選択 UI — CustomerCombobox (BlockModal / ComplimentsCard / TodayPage 共通)
+
+**背景**: 11e82a7 にてブロックモーダル・お褒め記録・TodayPage の顧客選択を `<select>` から `<CustomerCombobox>` へ移行。1000 件規模の顧客マスタに対応したインクリメンタル検索を提供する。
+
+#### 表示順序
+
+検索クエリが空の場合、以下の優先度で顧客を並べる:
+
+| 優先度 | 条件 |
+|---|---|
+| 1 位 | お気に入り (`isFavorite: true`) |
+| 2 位 | 最近接触 30 日以内 (`lastContactDate >= 30日前`) |
+| 3 位 | アクティブ (`status: 'active'`) |
+| 4 位 | その他 |
+
+検索クエリがある場合はスコアリング順（詳細は `docs/UTILITIES.md` 参照）。
+
+#### 各行の表示フォーマット
+
+**1 行目**: `⭐ 顧客名 (エリア)` 
+- お気に入り顧客には先頭に ⭐ を表示
+- 最近接触（30 日以内）には 🕒 アイコンを追加
+- エリア情報がある場合: `顧客名 (エリア)` 形式
+
+**2 行目（サブテキスト）**: `タグ ・ 最終接触: YYYY/MM/DD`
+- タグが存在する場合は `tag1 / tag2` 形式で表示
+- タグと最終接触日が両方ある場合は「・」で区切る
+- どちらも存在しない場合、2行目は非表示
+
+#### 50 件超過時フッタ
+
+検索結果が 50 件を超える場合、ドロップダウン下部に以下を表示:
+
+```
+他 N 件は検索を絞ってください
+```
+
+#### キーボード操作
+
+| キー | 動作 |
+|---|---|
+| `↓` | 次の候補に移動 (ドロップダウン未展開時は展開) |
+| `↑` | 前の候補に移動 |
+| `Enter` | フォーカス中の候補を選択 |
+| `Escape` | ドロップダウンを閉じる |
+| `Tab` | ドロップダウンを閉じてフォーカス移動 |
+
+#### ARIA 仕様
+
+| 属性 | 値 |
+|---|---|
+| `role` | `combobox` (input 要素に付与) |
+| `aria-expanded` | ドロップダウン開閉状態 (`true` / `false`) |
+| `aria-controls` | listbox 要素の `id`（`useId()` で生成）|
+| `aria-activedescendant` | フォーカス中の listbox item の `id` |
+| `aria-autocomplete` | `"list"` |
+| `aria-required` | `required` prop の値を反映 |
+| リスト側 | `role="listbox"`, 各 item は `role="option"` + `aria-selected` |
+
+---
+
 ### SettingsPage (`src/pages/SettingsPage.tsx`)
 
 **役割**: ユーザー設定画面。プロフィール、パスワード、クイックチップなど。
@@ -1226,6 +1287,8 @@ AdminPage
 
 ## 改修履歴
 
+- **2026-06-08 11e82a7**: 顧客選択 UI を `<select>` から `CustomerCombobox` へ移行 (BlockModal / ComplimentsCard / TodayPage) — 検索フィルタ・スコアリング・キーボード操作・ ARIA 対応。表示順序: お気に入り > 最近接触 30 日以内 > active > その他
+- **2026-06-08 335394c**: プロジェクト名称を 305-hrl-nippou-app に統一 (index.html / AppShell / LoginPage 等 UI 表記 + docs 冒頭自称表現)
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化 — AppShell ヘッダーロール切替メニューで選択したロールを `nippou.currentRole.v1` / `nippou.currentUserId.v1` に localStorage 保存。リロード後もロール維持。ログイン時は切替記録をクリアしログインユーザー本来のロールを適用
 - **2026-06-06 d13c0f6 / cea9756**: ユーザー管理画面拡張 — `UsersTab` / `TeamsTab` / `UserEditModal` / `TeamEditModal` を追加。ユーザー一覧に上長表示 (getManagersOf)。チーム編集にメンバー・上長指定 UI を追加。`executive` ロールの読取専用アクセスと黄色バナーを実装。`AdminPage` をタブ別サブコンポーネントに分割
 - **2026-06-06 40e081e**: 部下→上長への能動コメント機能追加 — コメントセクション名を「上長コメント」→「コメント」に変更、部下 (general) が自身日報に上長宛コメントを能動投稿可能に。緑系アバター + 「↑ 上長宛」バッジで視覚区別。authorRole フィールドを ManagerComment に追加
