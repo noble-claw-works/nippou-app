@@ -4,6 +4,7 @@ import { BLOCK_EMOJIS, BLOCK_LABELS } from '../../utils';
 import type { Customer, TimeBlock } from '../../types';
 import { BLOCK_TYPES } from '../timeline/DragAndChip';
 import { ChevronDown } from 'lucide-react';
+import { CustomerCombobox } from '../ui/CustomerCombobox';
 
 // ─── BlockModalState ──────────────────────────────────────────────────────────
 export interface BlockModalState {
@@ -34,7 +35,7 @@ export function BlockModal({
   continueInput, setContinueInput,
   onSave, onDelete, onClose, onChange,
 }: BlockModalProps) {
-  const customerSelectRef = useRef<HTMLSelectElement>(null);
+  const customerComboboxRef = useRef<HTMLDivElement>(null);
   const typeChipRef = useRef<HTMLButtonElement>(null);
   const [visitResultOpen, setVisitResultOpen] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -44,7 +45,7 @@ export function BlockModal({
     if (!state.open) return;
     const id = setTimeout(() => {
       if (state.focusCustomer) {
-        customerSelectRef.current?.focus();
+        customerComboboxRef.current?.querySelector('input')?.focus();
       } else {
         typeChipRef.current?.focus();
       }
@@ -168,22 +169,18 @@ export function BlockModal({
         </div>
 
         {/* Customer select - Optional */}
-        <div>
+        <div ref={customerComboboxRef}>
           <label className="block text-xs font-medium text-gray-600 mb-1">顧客 <span className="text-gray-400">(任意)</span></label>
-          <select
-            ref={customerSelectRef}
-            value={state.block.customerId ?? ''}
-            onChange={e => onChange(s => ({
+          <CustomerCombobox
+            value={state.block.customerId}
+            onChange={customerId => onChange(s => ({
               ...s,
-              block: { ...s.block, customerId: e.target.value || undefined },
+              block: { ...s.block, customerId },
             }))}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="">選択しない</option>
-            {customers.filter(c => c.status === 'active').map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+            customers={customers.filter(c => c.status === 'active')}
+            placeholder="顧客を検索..."
+            allowClear={true}
+          />
         </div>
 
         {/* Title - Optional */}

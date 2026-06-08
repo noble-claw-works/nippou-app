@@ -16,6 +16,7 @@ import { SidePanelCards } from '../components/today/SidePanelCards';
 import { ManagerCommentSection } from '../components/today/ManagerCommentSection';
 import { TrackingBanner } from '../components/today/TrackingBanner';
 import { StatusBar, StatusStepper, SubmitModalContent } from '../components/today/StatusBar';
+import { CustomerCombobox } from '../components/ui/CustomerCombobox';
 
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => window.innerWidth < 768);
@@ -348,10 +349,13 @@ export function TodayPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">顧客（任意）</label>
-            <select value={trackCustomer} onChange={e => setTrackCustomer(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">選択しない</option>
-              {customers.filter(c => c.status === 'active').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <CustomerCombobox
+              value={trackCustomer || undefined}
+              onChange={id => setTrackCustomer(id ?? '')}
+              customers={customers.filter(c => c.status === 'active')}
+              placeholder="顧客を検索..."
+              allowClear={true}
+            />
           </div>
         </div>
       </Modal>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useAppStore } from '../../store';
+import { CustomerCombobox } from '../ui/CustomerCombobox';
 
 interface Props {
   dayKey: string;
@@ -60,25 +61,20 @@ export function ComplimentsCard({ dayKey, isReadOnly }: Props) {
 
       {!isReadOnly && (
         <div className="bg-white rounded p-3 border border-gray-300">
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <select
-              value={customerId}
-              onChange={e => setCustomerId(e.target.value)}
-              className="text-xs border rounded px-2 py-1"
-            >
-              <option value="">👤 顧客選択</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-2 mb-2">
+            <CustomerCombobox
+              value={customerId || undefined}
+              onChange={id => setCustomerId(id ?? '')}
+              customers={customers}
+              placeholder="👤 顧客選択"
+              allowClear={true}
+            />
             <input
               type="text"
               placeholder="顧客名（自由記述）"
               value={customerName}
               onChange={e => setCustomerName(e.target.value)}
-              className="text-xs border rounded px-2 py-1"
+              className="text-xs border rounded px-2 py-1 w-full"
             />
           </div>
           <div className="flex gap-2 mb-2">
