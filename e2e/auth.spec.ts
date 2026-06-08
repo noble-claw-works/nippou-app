@@ -5,7 +5,7 @@ test.describe('AUTH (ログイン認証ガード)', () => {
     await page.context().clearCookies();
     await page.goto('/');
     await expect(page).toHaveURL(/\/login$/);
-    await expect(page.getByRole('heading', { name: /日報管理/ })).toBeVisible({ timeout: 3000 });
+    await expect(page.getByRole('heading', { name: /305-hrl-nippou-app/ })).toBeVisible({ timeout: 3000 });
   });
 
   test('🎮 デモでお試しボタンでログインし /today に到達できる', async ({ page }) => {

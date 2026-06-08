@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Sidebar (PC) */}
       <aside className="hidden lg:flex lg:flex-col w-56 bg-white border-r border-gray-200 flex-shrink-0">
         <div className="px-4 py-4 border-b border-gray-100">
-          <span className="text-base font-bold text-gray-900">📋 日報管理</span>
+          <span className="text-base font-bold text-gray-900">📋 305-hrl-nippou-app</span>
         </div>
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
           {visibleNav.map(item => (
@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-4 border-b">
-              <span className="font-bold">📋 日報管理</span>
+              <span className="font-bold">📋 305-hrl-nippou-app</span>
               <button onClick={() => setMobileNavOpen(false)}><XIcon className="w-5 h-5" /></button>
             </div>
             <nav className="flex-1 px-2 py-3 space-y-0.5">

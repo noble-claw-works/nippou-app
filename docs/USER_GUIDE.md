@@ -2,7 +2,7 @@
 
 ## 概要
 
-nippou-app の 4 ロール (general / manager / executive / admin) ごとの典型的な利用シナリオと使う画面・機能をまとめる。
+305-hrl-nippou-app の 4 ロール (general / manager / executive / admin) ごとの典型的な利用シナリオと使う画面・機能をまとめる。
 
 ---
 

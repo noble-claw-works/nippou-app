@@ -126,7 +126,7 @@ export function LoginPage() {
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm p-8">
         <div className="text-center mb-6">
           <div className="text-3xl mb-2">📋</div>
-          <h1 className="text-xl font-bold text-gray-900">日報管理</h1>
+          <h1 className="text-xl font-bold text-gray-900">305-hrl-nippou-app</h1>
           <p className="text-xs text-gray-500 mt-1">ログインしてください</p>
         </div>
 

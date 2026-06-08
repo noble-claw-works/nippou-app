@@ -1,5 +1,5 @@
 // =====================================================
-// Zustand Store - 日報管理システム
+// Zustand Store - 305-hrl-nippou-app
 // =====================================================
 import { create } from 'zustand';
 import type {

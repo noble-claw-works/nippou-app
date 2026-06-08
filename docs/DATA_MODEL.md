@@ -2,7 +2,7 @@
 
 ## 概要
 
-nippou-app は LocalStorage ベースの Zustand Store でデータを管理します。
+305-hrl-nippou-app は LocalStorage ベースの Zustand Store でデータを管理します。
 外部 API 通信は一切ありません。
 
 ---
