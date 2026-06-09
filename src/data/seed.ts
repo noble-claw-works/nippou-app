@@ -738,7 +738,7 @@ const pol5 = mkPolicy(pid(), {
   payPeriodYears: 25,
   hasCashValue: true,
   cashValue: 3500000,
-  tags: ['終身保険', '払済'],
+  tags: ['終身保険'],
   memo: '払込完了。解約返戻金350万',
 });
 pol5.coverages = [
@@ -872,7 +872,7 @@ const pol10 = mkPolicy(pid(), {
   monthlyPremium: 3200,
   payMode: 'monthly',
   hasCashValue: false,
-  tags: ['医療保険', '申込中'],
+  tags: ['医療保険'],
   memo: '申込書提出済み。査定中',
 });
 pol10.coverages = [
@@ -951,7 +951,7 @@ const pol13 = mkPolicy(pid(), {
   payMode: 'monthly',
   hasCashValue: false,
   sourceOpportunityId: 'opp5',
-  tags: ['がん保険', '申込中'],
+  tags: ['がん保険'],
   memo: '申込中。告知中',
 });
 pol13.coverages = [
