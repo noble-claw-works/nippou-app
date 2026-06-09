@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
 import { ToastContainer } from './components/ui/Toast';
 import { LoginPage } from './pages/LoginPage';
@@ -10,12 +10,20 @@ import { SearchPage } from './pages/SearchPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { CustomerDetailPage } from './pages/CustomerDetailPage';
+import { HouseholdsPage } from './pages/HouseholdsPage';
+import { HouseholdDetailPage } from './pages/HouseholdDetailPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useAppStore } from './store';
+
+/** /customers/:customerId → /households/:customerId リダイレクト */
+function RedirectCustomerToHousehold() {
+  const { customerId } = useParams<{ customerId: string }>();
+  return <Navigate to={`/households/${customerId}`} replace />;
+}
 
 /** 認証ガード: 未ログインなら /login へリダイレクト */
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -69,8 +77,12 @@ function AppLayout() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/customers" element={<CustomersPage />} />
-        <Route path="/customers/:customerId" element={<CustomerDetailPage />} />
+        {/* Household routes (Phase 1) */}
+        <Route path="/households" element={<HouseholdsPage />} />
+        <Route path="/households/:customerId" element={<HouseholdDetailPage />} />
+        {/* Legacy /customers/* → /households/* リダイレクト */}
+        <Route path="/customers" element={<Navigate to="/households" replace />} />
+        <Route path="/customers/:customerId" element={<RedirectCustomerToHousehold />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />

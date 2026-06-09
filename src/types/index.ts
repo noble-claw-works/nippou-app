@@ -7,6 +7,13 @@ export type ReportStatus = 'planning' | 'in_progress' | 'submitted' | 'confirmed
 export type BlockType = 'visit' | 'office' | 'phone' | 'travel' | 'break' | 'meeting' | 'lunch';
 export type CustomerType = 'individual' | 'corporate' | 'prospect';
 export type CustomerStatus = 'active' | 'inactive';
+
+// === Household (世帯) 型 — CustomerType/Status と互換 ===
+export type HouseholdType = CustomerType;
+export type HouseholdStatus = CustomerStatus;
+
+export type PersonRelation = 'head' | 'spouse' | 'child' | 'parent' | 'sibling' | 'other';
+export type PersonGender = 'M' | 'F' | 'other';
 export type UserStatus = 'active' | 'inactive' | 'invited';
 
 export interface User {
@@ -28,18 +35,40 @@ export interface Team {
   memberIds: string[];
 }
 
-export interface Customer {
+export interface Household {
   id: string;
-  name: string;
-  type: CustomerType;
+  name: string;              // 「田中家」「ABC商事」
+  type: HouseholdType;
   area: string;
-  primaryUserId: string;
+  primaryUserId: string;     // 担当者
+  headPersonId?: string;     // 世帯主 (Person.id, 個人世帯のみ意味あり)
+  address?: string;
+  familyMemo: string;        // 家族構成メモ
   tags: string[];
   memo: string;
-  status: CustomerStatus;
+  status: HouseholdStatus;
   lastContactDate?: string;
   nextAppointment?: string;
   isFavorite?: boolean;
+}
+
+// 互換エイリアス — 既存コードを壊さない (deprecated)
+export type Customer = Household;
+
+export interface Person {
+  id: string;
+  householdId: string;
+  name: string;
+  kana?: string;
+  relation: PersonRelation;
+  birthDate?: string;        // YYYY-MM-DD
+  gender?: PersonGender;
+  occupation?: string;
+  smoker?: boolean;
+  healthNotes?: string;
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TimeBlock {

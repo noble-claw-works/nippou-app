@@ -5,11 +5,12 @@ import { create } from 'zustand';
 import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment,
-  Role, TrackingSession, BlockType, ManagerComment, Compliment
+  Role, TrackingSession, BlockType, ManagerComment, Compliment,
+  Person,
 } from '../types';
 import {
   USERS, TEAMS, CUSTOMERS, REPORTS, TEMPLATES,
-  DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS
+  DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS, PERSONS,
 } from '../data/seed';
 import { format } from 'date-fns';
 
@@ -69,6 +70,7 @@ interface AppState {
   users: User[];
   teams: Team[];
   customers: Customer[];
+  persons: Person[];
   reports: DailyReport[];
   templates: Template[];
   quickChips: QuickChip[];
@@ -129,6 +131,12 @@ interface AppState {
   updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
   deactivateCustomer: (customerId: string, reason?: string) => void;
   deleteCustomer: (customerId: string) => boolean;
+
+  // Actions: Person (世帯員)
+  addPerson: (householdId: string, partial: Omit<Person, 'id' | 'householdId' | 'createdAt' | 'updatedAt'>) => Person;
+  updatePerson: (personId: string, patch: Partial<Person>) => void;
+  deletePerson: (personId: string) => { ok: boolean; error?: string };
+  getPersonsByHousehold: (householdId: string) => Person[];
 
   // Actions: User
   addUser: (user: Omit<User, 'id'>) => User;
@@ -204,6 +212,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   users: USERS,
   teams: TEAMS,
   customers: _initialCustomers,
+  persons: PERSONS,
   reports: REPORTS,
   templates: TEMPLATES,
   quickChips: DEFAULT_QUICK_CHIPS,
@@ -601,6 +610,62 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(s => ({ customers: s.customers.map(c => c.id === customerId ? { ...c, ...updates } : c) }));
   },
 
+  // --- Person アクション ---
+  addPerson: (householdId, partial) => {
+    const now = new Date().toISOString();
+    const newPerson: Person = { ...partial, id: uid(), householdId, createdAt: now, updatedAt: now };
+    set(s => ({ persons: [...s.persons, newPerson] }));
+    return newPerson;
+  },
+
+  updatePerson: (personId, patch) => {
+    set(s => ({
+      persons: s.persons.map(p => p.id === personId
+        ? { ...p, ...patch, updatedAt: new Date().toISOString() }
+        : p
+      ),
+    }));
+  },
+
+  deletePerson: (personId) => {
+    const s = get();
+    const person = s.persons.find(p => p.id === personId);
+    if (!person) return { ok: false, error: '世帯員が見つかりません' };
+    if (person.relation === 'head') {
+      // 世帯主削除: 別の世帯員を世帯主に自動繰り上げ
+      const siblings = s.persons.filter(p => p.householdId === person.householdId && p.id !== personId);
+      if (siblings.length > 0) {
+        const next = siblings[0];
+        set(state => ({
+          persons: state.persons
+            .filter(p => p.id !== personId)
+            .map(p => p.id === next.id
+              ? { ...p, relation: 'head' as const, updatedAt: new Date().toISOString() }
+              : p
+            ),
+          customers: state.customers.map(c =>
+            c.id === person.householdId ? { ...c, headPersonId: next.id } : c
+          ),
+        }));
+      } else {
+        // 世帯員が自分のみの場合は削除して headPersonId もクリア
+        set(state => ({
+          persons: state.persons.filter(p => p.id !== personId),
+          customers: state.customers.map(c =>
+            c.id === person.householdId ? { ...c, headPersonId: undefined } : c
+          ),
+        }));
+      }
+    } else {
+      set(state => ({ persons: state.persons.filter(p => p.id !== personId) }));
+    }
+    return { ok: true };
+  },
+
+  getPersonsByHousehold: (householdId) => {
+    return get().persons.filter(p => p.householdId === householdId);
+  },
+
   deleteCustomer: (customerId) => {
     // P0 二層防御: 付帯情報あり顧客は admin/executive のみ削除可
     const s = get();
@@ -613,7 +678,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     // CUS-3: 完全削除。過去日報からの参照は customerId が dangling になるが、UI 側で fallback 表示する
     // E-8 修正: 削除した顧客 ID を localStorage に永続化し、ページリロード後も削除状態を保持する
     persistDeletedCustomerId(customerId);
-    set(s => ({ customers: s.customers.filter(c => c.id !== customerId) }));
+    set(s => ({
+      customers: s.customers.filter(c => c.id !== customerId),
+      persons: s.persons.filter(p => p.householdId !== customerId),
+    }));
     return true;
   },
 
@@ -768,7 +836,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentRole: 'general', currentUserId: 'u1',
       authSession: null,
       passwords: Object.fromEntries(USERS.map(u => [u.id, DEFAULT_DEMO_PASSWORD])),
-      users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
+      users: USERS, teams: TEAMS, customers: CUSTOMERS, persons: PERSONS, reports: REPORTS,
       templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
       notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
       trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [], toasts: [],

@@ -3,7 +3,7 @@
 // =====================================================
 import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
-  Notification, AuditLog, TimeBlock, Todo, Comment
+  Notification, AuditLog, TimeBlock, Todo, Comment, Person,
 } from '../types';
 import { format, subDays, addDays } from 'date-fns';
 
@@ -32,19 +32,54 @@ export const TEAMS: Team[] = [
 ];
 
 // =====================================================
-// 顧客
+// 世帯 (Household / Customer alias)
 // =====================================================
 export const CUSTOMERS: Customer[] = [
-  { id: 'c1', name: 'KOORO GILSON', type: 'individual', area: '袋井', primaryUserId: 'u1', tags: ['自動車保険', '継続', '2026更新'], memo: 'ピアさん引継ぎ案件。7月更新案件あり。', status: 'active', lastContactDate: today, nextAppointment: f(53), isFavorite: true },
-  { id: 'c2', name: '齋藤 和久', type: 'individual', area: '磐田', primaryUserId: 'u1', tags: ['生命保険'], memo: '', status: 'active', lastContactDate: today },
-  { id: 'c3', name: '暁和化学ゴム', type: 'corporate', area: '磐田', primaryUserId: 'u1', tags: ['法人', '火災保険'], memo: '担当: 山田部長', status: 'active', lastContactDate: today, nextAppointment: f(3) },
-  { id: 'c4', name: '水野 幸重', type: 'individual', area: '袋井', primaryUserId: 'u1', tags: ['自動車保険'], memo: '', status: 'active', lastContactDate: d(3) },
-  { id: 'c5', name: '山田工業', type: 'corporate', area: '袋井', primaryUserId: 'u1', tags: ['法人', '損害保険'], memo: '社長直接対応', status: 'active', lastContactDate: d(7) },
-  { id: 'c6', name: '鈴木 花代', type: 'individual', area: '掛川', primaryUserId: 'u2', tags: ['生命保険', '見直し'], memo: '', status: 'active', lastContactDate: d(2) },
-  { id: 'c7', name: 'テクノ精工', type: 'corporate', area: '浜松', primaryUserId: 'u2', tags: ['法人', '労災'], memo: '年1回更新', status: 'active', lastContactDate: d(5) },
-  { id: 'c8', name: '高橋 誠', type: 'prospect', area: '磐田', primaryUserId: 'u1', tags: ['見込み', '自動車'], memo: '紹介案件', status: 'active', lastContactDate: d(10) },
-  { id: 'c9', name: '大鉄工業', type: 'corporate', area: '袋井', primaryUserId: 'u3', tags: ['法人'], memo: '', status: 'inactive', lastContactDate: d(60) },
-  { id: 'c10', name: '伊藤 幸子', type: 'individual', area: '掛川', primaryUserId: 'u3', tags: ['医療保険'], memo: '', status: 'active', lastContactDate: d(14) },
+  { id: 'c1', name: 'KOORO GILSON', type: 'individual', area: '袋井', primaryUserId: 'u1', headPersonId: 'p_c1_head', familyMemo: '家族: 配偶者、孟２名あり', tags: ['自動車保険', '継続', '2026更新'], memo: 'ピアさん引継ぎ案件。7月更新案件あり。', status: 'active', lastContactDate: today, nextAppointment: f(53), isFavorite: true },
+  { id: 'c2', name: '齋藤 和久', type: 'individual', area: '磐田', primaryUserId: 'u1', headPersonId: 'p_c2_head', familyMemo: '家族: 富婦、子１名', tags: ['生命保険'], memo: '', status: 'active', lastContactDate: today },
+  { id: 'c3', name: '暁和化学ゴム', type: 'corporate', area: '磐田', primaryUserId: 'u1', familyMemo: '', tags: ['法人', '火災保険'], memo: '担当: 山田部長', status: 'active', lastContactDate: today, nextAppointment: f(3) },
+  { id: 'c4', name: '水野 幸重', type: 'individual', area: '袋井', primaryUserId: 'u1', headPersonId: 'p_c4_head', familyMemo: '', tags: ['自動車保険'], memo: '', status: 'active', lastContactDate: d(3) },
+  { id: 'c5', name: '山田工業', type: 'corporate', area: '袋井', primaryUserId: 'u1', familyMemo: '', tags: ['法人', '損害保険'], memo: '社長直接対応', status: 'active', lastContactDate: d(7) },
+  { id: 'c6', name: '鈴木 花代', type: 'individual', area: '掛川', primaryUserId: 'u2', headPersonId: 'p_c6_head', familyMemo: '家族: 小学3名', tags: ['生命保険', '見直し'], memo: '', status: 'active', lastContactDate: d(2) },
+  { id: 'c7', name: 'テクノ精工', type: 'corporate', area: '浜松', primaryUserId: 'u2', familyMemo: '', tags: ['法人', '労災'], memo: '年1回更新', status: 'active', lastContactDate: d(5) },
+  { id: 'c8', name: '高橋 誠', type: 'prospect', area: '磐田', primaryUserId: 'u1', headPersonId: 'p_c8_head', familyMemo: '', tags: ['見込み', '自動車'], memo: '紹介案件', status: 'active', lastContactDate: d(10) },
+  { id: 'c9', name: '大鉄工業', type: 'corporate', area: '袋井', primaryUserId: 'u3', familyMemo: '', tags: ['法人'], memo: '', status: 'inactive', lastContactDate: d(60) },
+  { id: 'c10', name: '伊藤 幸子', type: 'individual', area: '掛川', primaryUserId: 'u3', headPersonId: 'p_c10_head', familyMemo: '', tags: ['医療保険'], memo: '', status: 'active', lastContactDate: d(14) },
+];
+
+// =====================================================
+// 世帯員 (Person) - シードデータ
+// =====================================================
+const _now = new Date().toISOString();
+export const PERSONS: Person[] = [
+  // c1: KOORO GILSON 世帯
+  { id: 'p_c1_head', householdId: 'c1', name: 'KOORO GILSON', kana: 'コーロ ギルソン', relation: 'head', gender: 'M', birthDate: '1975-04-15', occupation: '会社員', smoker: false, memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c1_spouse', householdId: 'c1', name: 'ギルソン メアリー', kana: 'ギルソン メアリー', relation: 'spouse', gender: 'F', birthDate: '1978-09-20', occupation: 'パート', smoker: false, memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c1_child1', householdId: 'c1', name: 'ギルソン タロウ', kana: 'ギルソン タロウ', relation: 'child', gender: 'M', birthDate: '2005-07-03', memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c1_child2', householdId: 'c1', name: 'ギルソン ハナコ', kana: 'ギルソン ハナコ', relation: 'child', gender: 'F', birthDate: '2008-03-12', memo: '', createdAt: _now, updatedAt: _now },
+  // c2: 齋藤 和久 世帯
+  { id: 'p_c2_head', householdId: 'c2', name: '齋藤 和久', kana: 'さいとう かずひさ', relation: 'head', gender: 'M', birthDate: '1968-11-25', occupation: '自営業', smoker: true, memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c2_spouse', householdId: 'c2', name: '齋藤 子', kana: 'さいとう こ', relation: 'spouse', gender: 'F', birthDate: '1972-06-14', memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c2_child1', householdId: 'c2', name: '齋藤 一郎', kana: 'さいとう いちろう', relation: 'child', gender: 'M', birthDate: '2003-02-28', memo: '', createdAt: _now, updatedAt: _now },
+  // c3: 曉和化学ゴム (法人)
+  { id: 'p_c3_head', householdId: 'c3', name: '曉和化学ゴム 代表', kana: '', relation: 'other', occupation: '代表取締役', memo: '主管: 山田部長', createdAt: _now, updatedAt: _now },
+  // c4: 水野 幸重
+  { id: 'p_c4_head', householdId: 'c4', name: '水野 幸重', kana: 'みずの こうじゅう', relation: 'head', gender: 'M', birthDate: '1980-08-10', occupation: '会社員', smoker: false, memo: '', createdAt: _now, updatedAt: _now },
+  // c5: 山田工業 (法人)
+  { id: 'p_c5_head', householdId: 'c5', name: '山田工業 社長', kana: '', relation: 'other', occupation: '代表取締役', memo: '社長直接対応', createdAt: _now, updatedAt: _now },
+  // c6: 鈴木 花代
+  { id: 'p_c6_head', householdId: 'c6', name: '鈴木 花代', kana: 'すずき はなよ', relation: 'head', gender: 'F', birthDate: '1970-01-07', occupation: 'PEナース', smoker: false, healthNotes: '花粉症あり', memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c6_child1', householdId: 'c6', name: '鈴木 大輔', kana: 'すずき だいすけ', relation: 'child', gender: 'M', birthDate: '2001-05-20', memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c6_child2', householdId: 'c6', name: '鈴木 二郎', kana: 'すずき にろう', relation: 'child', gender: 'M', birthDate: '2004-11-15', memo: '', createdAt: _now, updatedAt: _now },
+  { id: 'p_c6_child3', householdId: 'c6', name: '鈴木 海奈', kana: 'すずき みなな', relation: 'child', gender: 'F', birthDate: '2010-03-08', memo: '', createdAt: _now, updatedAt: _now },
+  // c7: テクノ精工 (法人)
+  { id: 'p_c7_head', householdId: 'c7', name: 'テクノ精工 代表', kana: '', relation: 'other', occupation: '代表取締役', memo: '', createdAt: _now, updatedAt: _now },
+  // c8: 高橋 誠
+  { id: 'p_c8_head', householdId: 'c8', name: '高橋 誠', kana: 'たかはし まこと', relation: 'head', gender: 'M', birthDate: '1990-12-01', occupation: '会社員', smoker: false, memo: '紹介案件', createdAt: _now, updatedAt: _now },
+  // c9: 大鉄工業 (法人, inactive)
+  { id: 'p_c9_head', householdId: 'c9', name: '大鉄工業 代表', kana: '', relation: 'other', memo: '', createdAt: _now, updatedAt: _now },
+  // c10: 伊藤 幸子
+  { id: 'p_c10_head', householdId: 'c10', name: '伊藤 幸子', kana: 'いとう さちこ', relation: 'head', gender: 'F', birthDate: '1955-03-22', occupation: '無職', smoker: false, healthNotes: '高血圧', memo: '', createdAt: _now, updatedAt: _now },
 ];
 
 // =====================================================

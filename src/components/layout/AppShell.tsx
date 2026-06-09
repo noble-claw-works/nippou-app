@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { to: '/calendar',  icon: Calendar,   label: 'カレンダー',  roles: ['general','manager','executive','admin'] },
   { to: '/search',    icon: Search,     label: '検索',        roles: ['general','manager','executive','admin'] },
   { to: '/dashboard', icon: BarChart3,  label: 'ダッシュボード', roles: ['manager','executive'] },
-  { to: '/customers', icon: Users,      label: '顧客',        roles: ['general','manager','executive','admin'] },
+  { to: '/households', icon: Users,      label: '世帯',        roles: ['general','manager','executive','admin'] },
   { to: '/templates', icon: FileText,   label: 'テンプレート', roles: ['admin'] },
   { to: '/admin',     icon: ShieldCheck,label: '管理',        roles: ['admin'] },
   { to: '/settings',  icon: Settings,   label: '設定',        roles: ['general','manager','executive','admin'] },
