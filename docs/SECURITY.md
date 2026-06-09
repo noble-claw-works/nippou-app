@@ -260,6 +260,34 @@ export function persistRoleSwitch(role: Role | null, userId: string | null): voi
 
 ---
 
+## Phase 2: Opportunity 参照・編集権限
+
+**コミット**: `97cabc9`
+
+`Opportunity`（商談案件）は必ず `householdId` で `Household` に紐付く。参照・編集権限はロールによって制御される。
+
+### Opportunity 権限マトリクス
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| 一覧履歴 (`getOpportunitiesByHousehold`) | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 |
+| `/opportunities` ページ閲覧 | ✅ 自分担当のみ | ✅ 全件 | ✅ 全社 | ✅ 全社 |
+| 案件作成 (`addOpportunity`) | ✅ | ✅ | ✅ | ✅ |
+| 案件更新 (`updateOpportunity`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+| ステージ変更 (`changeOpportunityStage`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+| 案件削除 (`deleteOpportunity`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+
+> **注意**: 現フェーズでは Store 層に権限制御を実装していない。UI 層のアクセス制御（general には自分担当案件のみ表示）は `OpportunitiesPage` 内で実施される。将来フェーズで Store 層での完全な二層防御を導入予定。
+
+### Opportunity データの機微性
+
+Opportunity には利益情報（`totalMonthlyPremium`）・顧客の健康情報参照（被保険者 `insuredPersonId`）を含む提案商品情報が含まれる。
+
+- **LocalStorage 保存**: `SECURITY.md` の基本方针（暗号化なし）を踏襲。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+
+---
+
 ## Phase 1: Person データの参照権限
 
 ### Person データと世帯の担当者制
@@ -309,6 +337,7 @@ Person データには生年月日・健康情報（`healthNotes`）・喫煙有
 
 ## 改修履歴
 
+- **2026-06-09 97cabc9**: Phase 2 商談案件管理 — Opportunity 参照・編集権限マトリクス追加。general は `/opportunities` ページで自分担当のみ表示、manager は全件、executive / admin は全社閲覧。商務筆資速報の機微性と将来の Store 層二層防御導入予定を明記
 - **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `Person` データの参照権限節追加。Person は Household と同一担当者制（全ロールで参照可）。healthNotes 等の機微情報の取扱い方針を明記
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — 鸞鳳殳検証で発覚。`src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。テスト 14 件 (`roleSwitch.test.ts`) 追加
 - **2026-06-06 (P0検証強化)**: seed に付帯情報あり顧客を複数化 (c1+c3+c7)(ブロック参照 c3, TODO 参照 c7)。`Todo` 型に `customerId` フィールド追加、`customerAttachment.ts` の型キャストを正規化。`CustomersPage.tsx` に付帯情報ありバッジ (🔗) を追加。`docs/SECURITY.md` に付帯情報判定基準・確定リスト・ P0 検証手順を明記

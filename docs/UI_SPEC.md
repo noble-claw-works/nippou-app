@@ -1421,8 +1421,119 @@ AdminPage
 
 ---
 
+### OpportunitiesPage (`src/pages/OpportunitiesPage.tsx`) — Phase 2
+
+**役割**: 商談案件（Opportunity）一覧表示。`/opportunities` ルート。
+
+#### 主要機能
+
+- **案件一覧テーブル**: 装餁 / 案件名 / ステージ / 対象世帯員 / 検討カテゴリ / 合計月払 / 次アクション / 期日
+- **フィルター**: ステージ / 担当者 / 進行中のみ表示 (openOnly) / カテゴリ
+- **ソート**: ステージ順 / 見込みクローズ日近順 / 合計月払鞏順 / 更新時刻降順（各列ヘッダクリックで昇降切り替え）
+- **新規作成**: 「+ 新規案件」ボタン → `QuickOpportunityModal` を開く
+
+#### テーブル列
+
+| 列 | 表示内容 |
+|---|---|
+| 世帯 | `Household.name` (リンククリックで世帯詳細へ) |
+| 案件名 | `Opportunity.title` |
+| ステージ | `StageBadge` (絵文字 + ラベル + 色バッジ) |
+| 対象世帯員 | `targetPersonIds` から名前リスト (N 名）|
+| 検討カテゴリ | `productCategories` ラベル一覧 |
+| 合計月払 | `totalMonthlyPremium` 円表示（未設定時は —）|
+| 次アクション | `nextAction` テキスト |
+| 期日 | `nextActionDate` (YYYY/MM/DD) |
+
+#### ロール別表示制御
+
+| ロール | 表示範囲 |
+|---|---|
+| `general` | 自分担当 (`ownerId === currentUserId`) のみ |
+| `manager` | 全て（デモ简略化）|
+| `executive` / `admin` | 全社全て |
+
+---
+
+### OpportunityDetailPage (`src/pages/OpportunityDetailPage.tsx`) — Phase 2
+
+**役割**: 商談案件詳細表示。`/opportunities/:id` ルート。
+
+#### ヘッダー
+
+- 案件名 + StageBadge + ステータスバッジ + 担当者
+- 「← 一覧に戻る」リンク
+- 「受注」ボタン (`stage: 'issued'`へ変更、ステージが終端でない時に表示)
+- 「失注」ボタン (`stage: 'lost'`へ変更、ステージが終端でない時に表示)
+- 「削除」ボタン
+
+#### 4 タブ構成
+
+| タブ | こと | 内容 |
+|---|---|---|
+| `overview` | 概要 | 案件基本情報 / 世帯リンク / 対象世帯員 / ステージ履歴 / メモ・タグ |
+| `products` | 提案商品 | ProposalProduct 一覧 + 追加・編集・削除 (`ProposalProductEditModal`使用) |
+| `activities` | 活動履歴 | 案件に紐付いた TimeBlock 一覧（日付・時刻・タイプ・メモ） |
+| `todos` | TODO | 案件に紐付いた Todo 一覧（日付・テキスト・ステータス） |
+
+**ステージ変更 (overview タブ)**:
+- 「ステージを変更」ボタンで `StageSelector` をインライン展開
+- `StageSelector` でステージ選択 → 「ステージを更新」ボタンで `changeOpportunityStage()` 呼び出し
+
+---
+
+### BlockModal 次世帯選択 → 商談案件連動 (Phase 2 最重要機能)
+
+**追加フィールド**: `BlockModal` 内に「商談案件 (任意)」ラベルで `OpportunityCombobox` を追加。
+
+**操作フロー**:
+
+```
+1. BlockModal で世帯（顧客）を選択
+   ↳ 世帯選択後、同世帯の商談案件のみを OpportunityCombobox に表示
+
+2. OpportunityCombobox で案件を選択 (く または新規モーダル)
+   ↳ TimeBlock.opportunityId にセット
+
+3. 案件選択時、「→ ステージを変更する（現在: {stage}）」ボタンが表示される
+   ↳ クリックで StageSelector がインライン展開
+
+4. StageSelector でステージ選択 → 「ステージを更新」で即時変更
+   ↳ changeOpportunityStage() の呼び出し、stageHistory に自動追記
+
+5. ブロック保存で TimeBlock.opportunityId が小報に永続化される
+```
+
+**詳細**:
+- 顧客選択欄は `CustomerCombobox`、商談案件選択欄は `OpportunityCombobox` を使用
+- 世帯を変更すると `opportunityId` は自動リセット
+- このフローにより「訪問記録 → ステージ進捗」が 1 ツの UI 操作で完結する（日報内ステージ進捗更新 UX）
+
+---
+
+### HouseholdDetailPage 商談タブ (Phase 2)
+
+**追加タブ**: `HouseholdDetailPage` のタブに **💼 商談 (N 件)** を追加。
+
+**表示内容**:
+- `getOpportunitiesByHousehold(householdId)` で当該世帯の全案件を取得
+- 案件カード列: 案件名 / StageBadge / 合計月払 / 次アクション / 期日
+- 各カードの「詳細 →」ボタンで `/opportunities/:id` へ遷移
+- 「+ 新規案件」ボタンで `QuickOpportunityModal` を開く
+
+---
+
+### サイドバー (AppShell) 商談メニュー追加 (Phase 2)
+
+**追加エントリ**: `{ to: '/opportunities', icon: Handshake, label: '商談', roles: ['general','manager','executive','admin'] }`
+
+全ロールで表示される（general は自分担当案件のみ必要なためページ内権限で制御）。
+
+---
+
 ## 改修履歴
 
+- **2026-06-09 97cabc9**: Phase 2 商談案件管理 — `OpportunitiesPage` (テーブル一覧・フィルター・ロール別表示制御) / `OpportunityDetailPage` (4 タブ: 概要・提案商品・活動履歴・ TODO) 新設。BlockModal 拡張 — 世帯→商談案件→StageSelector 展開フロー。HouseholdDetailPage に 💼 商談タブ (N 件) 追加。サイドバーに 🤝 商談メニュー追加。StageBadge ステージ色対応表定義
 - **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `HouseholdsPage` 新設（世帯一覧 + 世帯員数バッジ）、`HouseholdDetailPage` 新設（世帯員セクション + PersonEditModal + 世帯主付け替え）、サイドバー「顧客」→「世帯」ラベル変更、`/customers` → `/households` リダイレクト対応
 - **2026-06-08 11e82a7**: 顧客選択 UI を `<select>` から `CustomerCombobox` へ移行 (BlockModal / ComplimentsCard / TodayPage) — 検索フィルタ・スコアリング・キーボード操作・ ARIA 対応。表示順序: お気に入り > 最近接触 30 日以内 > active > その他
 - **2026-06-08 335394c**: プロジェクト名称を 305-hrl-nippou-app に統一 (index.html / AppShell / LoginPage 等 UI 表記 + docs 冒頭自称表現)

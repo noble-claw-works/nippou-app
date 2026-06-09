@@ -71,59 +71,74 @@ interface Person {             // 世帯員
 
 ---
 
-## Phase 2: Opportunity（案件管理）+ Today 連携 — 予定
+## Phase 2: Opportunity（案件管理）+ Today 連携 ✅ 完了 (2026-06-09 `97cabc9`)
 
 ### 目的
 
-保険営業の「案件」（Opportunity）を管理し、提案〜成約に向けたパイプラインを構築する。
-Today ページのタイムブロックと連動させ、訪問 visit ブロックと案件を自動紐付けする。
+保険営業の「商談案件」（Opportunity）を世帯単位で管理し、アプローチから証券発行まで 9 ステージのパイプラインを構築する。
+Today ページのタイムブロックと連動させ、訪問記録時にステージを即時更新できる UX を実現した。
 
 ### 主要型
 
 ```typescript
 type OpportunityStage =
-  | 'lead'           // 見込み創出
-  | 'needs_analysis' // ニーズ確認
-  | 'proposal'       // 提案中
-  | 'negotiation'    // 交渉中
-  | 'underwriting'   // 引受審査
-  | 'closed_won'     // 成約
-  | 'closed_lost'    // 失注
-  | 'on_hold';       // 保留
+  | 'approach'        // 🌱 アプローチ
+  | 'fact_finding'    // 🔍 ヒアリング
+  | 'needs_analysis'  // 📊 ニーズ分析
+  | 'proposal'        // 📄 設計書提示
+  | 'negotiation'     // 💬 検討中
+  | 'application'     // ✍️ 申込書記入
+  | 'underwriting'    // 🏥 査定中
+  | 'issued'          // 🎉 証券発行 (終端)
+  | 'lost';           // ❌ 失注 (終端)
+
+type OpportunityStatus = 'open' | 'won' | 'partial_won' | 'lost' | 'on_hold';
 
 interface Opportunity {
   id: string;
-  householdId: string;       // 対象世帯
-  personId?: string;         // 主な対象 Person（任意）
-  productType: string;       // 保険種別（生命・医療・自動車 等）
-  stage: OpportunityStage;   // 8 ステージ
-  estimatedPremium?: number; // 見込み保険料（円）
-  closeDate?: string;        // 見込みクローズ日 (YYYY-MM-DD)
-  memo: string;
-  createdAt: string;
-  updatedAt: string;
+  householdId: string;              // 対象世帯 (必須)
+  ownerId: string;                  // 担当者 userId
+  title: string;                    // 案件名
+  targetPersonIds: string[];        // 提案対象世帯員
+  stage: OpportunityStage;          // 9 ステージ
+  status: OpportunityStatus;        // 5 ステータス
+  productCategories: ProductCategory[];  // 10 カテゴリ
+  proposalProducts: ProposalProduct[];   // 提案商品一覧
+  totalMonthlyPremium?: number;     // 合計月払額（自動計算）
+  expectedCloseDate?: string;       // 見込みクローズ日 (YYYY-MM-DD)
+  actualCloseDate?: string;         // 実際クローズ日（won/lost 時自動セット）
+  lostReason?: LostReason;          // 失注理由 (10 種)
+  stageHistory: OpportunityStageHistory[];  // ステージ履歴
+  // ... その他全フィールドは DATA_MODEL.md 参照
 }
 ```
 
-### Store アクション（予定）
+### Store アクション
 
 | アクション | 説明 |
 |---|---|
-| `addOpportunity(householdId, partial)` | 案件追加 |
-| `updateOpportunity(opportunityId, patch)` | 案件更新（ステージ変更含む） |
-| `deleteOpportunity(opportunityId)` | 案件削除 |
-| `getOpportunitiesByHousehold(householdId)` | 世帯の案件一覧取得 |
+| `addOpportunity(partial)` | 案件追加 (id / stageHistory / createdAt / updatedAt / totalMonthlyPremium 自動付与) |
+| `updateOpportunity(id, patch)` | 案件更新 |
+| `deleteOpportunity(id)` | 案件削除 |
+| `changeOpportunityStage(id, newStage, note?, userId?)` | ステージ変更 (履歴自動追記 / issued → won / lost → lost 自動遷移) |
+| `getOpportunitiesByHousehold(householdId, options?)` | 世帯 ID で案件一覧取得 |
+| `getOpportunityById(id)` | ID で案件取得 |
 
-### UI（予定）
+### UI
 
-- `HouseholdDetailPage` に「📋 案件」セクション追加
-- Today ページの visit ブロックに案件紐付けフィールド追加
-- 案件一覧ページ（`/opportunities`）または Dashboard 内案件ウィジェット
+- `/opportunities` — `OpportunitiesPage` (テーブル一覧 + フィルター + ステージ/担当者/カテゴリで絞り込み)
+- `/opportunities/:id` — `OpportunityDetailPage` (4 タブ: 概要 / 提案商品 / 活動履歴 / TODO)
+- `HouseholdDetailPage` に "💼 商談 (N 件)" タブ追加
+- `AppShell` サイドバーに "🤝 商談" メニュー追加 (全ロール)
 
 ### Today 連携
 
-- visit ブロック保存時に `opportunityId?` を指定可能
-- 訪問後の案件ステージ変更を visit ブロックから直接操作
+- `BlockModal` 内に `OpportunityCombobox` を追加 (世帯選択後に商談案件選択)
+- 商談案件選択時に `StageSelector` を展開 → 1 つの UI 操作で「訪問記録 + ステージ進捗」が完結
+
+### Seed
+
+- OPPORTUNITIES: c1〜c10 世帯に分散した 11 件（全 9 ステージ網羅）
 
 ### 依存関係
 
@@ -242,7 +257,7 @@ interface UnderwritingRequest {
 ### 依存関係
 
 - Phase 1（Person の健康情報）
-- Phase 2（Opportunity + underwriting ステージ）
+- Phase 2（Opportunity + underwriting ステージ — ステージは Phase 2 で実装済み）
 - Phase 3（Policy への昇格フロー）
 
 ---
@@ -252,7 +267,7 @@ interface UnderwritingRequest {
 ```
 Phase 1: 世帯 + Person (基盤) ✅
     │
-    ├── Phase 2: Opportunity + Today 連携
+    ├── Phase 2: Opportunity + Today 連携 ✅
     │       │
     │       ├── Phase 3: Policy / Coverage
     │       │
@@ -266,4 +281,5 @@ Phase 1: 世帯 + Person (基盤) ✅
 
 ## 改修履歴
 
-- **2026-06-09**: `PHASE_ROADMAP.md` 新設 — Phase 1 完了に合わせて Phase 1-5 のロードマップを策定
+- **2026-06-09 97cabc9**: Phase 2 完了記録 — 商談案件管理 (Opportunity + 9 ステージ + 5 ステータス) 実装完了。依存関係図更新。Phase 3-5 のスコープから Phase 2 で実装済みの OpportunityStage / ステージ遷移を除外。Phase 2 節を ✅ Complete に変更
+- **2026-06-09 6db6e91**: Phase 1 完了記録 — `PHASE_ROADMAP.md` 新設。Phase 1 完了に合わせて Phase 1-5 のロードマップを策定
