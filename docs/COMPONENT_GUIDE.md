@@ -363,7 +363,135 @@ interface CustomerComboboxProps {
 
 ---
 
-## TeamEditModal (`src/components/admin/TeamEditModal.tsx`)
+## PersonEditModal (`src/components/household/PersonEditModal.tsx`) — Phase 1
+
+**役割**: 世帯員（Person）の追加・編集モーダル。HouseholdDetailPage から呼び出される。
+
+**追加コミット**: `6db6e91` (2026-06-09)
+
+### Props
+
+```typescript
+interface Props {
+  householdId: string;       // 所属世帯 ID
+  person?: Person | null;    // null または未指定の場合は新規追加モード
+  household: Household;      // 世帯主付け替えのため
+  onClose: () => void;
+  onSaved?: () => void;      // 保存完了コールバック（オプション）
+}
+```
+
+### フォーム構成
+
+| フィールド | 入力形式 | 必須 | 備考 |
+|---|---|---|---|
+| 氏名 | `<input type="text">` | ✅ | |
+| かな | `<input type="text">` | — | |
+| 続柄 | `<select>` | ✅ | head / spouse / child / parent / sibling / other |
+| 生年月日 | `<input type="date">` | — | YYYY-MM-DD；年齢を自動計算して隣に表示 |
+| 性別 | ラジオボタン | — | M / F / other |
+| 職業 | `<input type="text">` | — | |
+| 喫煙 | `<input type="checkbox">` | — | |
+| 健康情報 | `<textarea>` | — | |
+| メモ | `<textarea>` | — | |
+| 世帯主に設定 | `<input type="checkbox">` | — | 続柄が `head` 以外の場合のみ表示 |
+
+### バリデーション
+
+- 氏名未入力: 保存ボタン `disabled`
+- 続柄未選択: 保存ボタン `disabled`
+
+### 世帯主付け替えロジック
+
+「この世帯員を世帯主に設定する」チェックボックスをオンにして保存すると:
+
+1. 対象 Person の `relation` を `'head'` に変更
+2. `Household.headPersonId` を対象 Person の id に更新
+3. 旧世帯主（元の `relation: 'head'` だった Person）の `relation` を `'other'` に自動降格
+
+### 使用例
+
+```tsx
+// 新規追加
+<PersonEditModal
+  householdId="c1"
+  household={household}
+  onClose={() => setModal(false)}
+  onSaved={() => refetch()}
+/>
+
+// 既存 Person 編集
+<PersonEditModal
+  householdId="c1"
+  person={selectedPerson}
+  household={household}
+  onClose={() => setModal(false)}
+/>
+```
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `6db6e91` (2026-06-09) | Phase 1 新規作成 — 続柄 / 生年月日 / 性別 / 喫煙 / 健康情報フォーム実装。世帯主付け替え機能追加 |
+
+---
+
+## HouseholdsPage (`src/pages/HouseholdsPage.tsx`) — Phase 1
+
+**役割**: 世帯一覧表示ページ。旧 CustomersPage の保険営業ドメイン対応版。`/households` ルートで表示。
+
+**追加コミット**: `6db6e91` (2026-06-09)
+
+### 概要
+
+- 既存 CUS-1 のソート・フィルタ・件数表示を継承
+- 各世帯に「👨‍👩‍👧 N 名」世帯員数バッジを追加表示
+- `persons` state から `householdId` でフィルタして人数を算出
+- 法人世帯（`type === 'corporate'`）は `familyMemo` フィールドが空でも「法人」バッジで識別
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `6db6e91` (2026-06-09) | Phase 1 新規作成 — 世帯一覧 + 世帯員数バッジ。旧 CustomersPage を継承 |
+
+---
+
+## HouseholdDetailPage (`src/pages/HouseholdDetailPage.tsx`) — Phase 1
+
+**役割**: 世帯詳細表示。基本情報 + 世帯員セクション + 対応履歴。`/households/:customerId` ルートで表示。
+
+**追加コミット**: `6db6e91` (2026-06-09)
+
+### 概要
+
+- 旧 CustomerDetailPage を世帯モデル対応に拡張
+- 「👨‍👩‍👧 世帯員」セクションを新設: Person カード一覧 + PersonEditModal 連携
+- 対応履歴セクション（`#history`）は旧 CustomerDetailPage と同等
+
+### コンポーネント構造
+
+```
+HouseholdDetailPage
+├── ヘッダー (世帯名 / タイプバッジ / エリア / 担当者)
+├── 世帯基本情報カード (familyMemo / tags / 世帯主 Person 名)
+├── 👨‍👩‍👧 世帯員セクション
+│   ├── Person カード × N
+│   │   └── 「✎ 編集」「✕ 削除」ボタン
+│   └── 「＋ 世帯員を追加」ボタン
+└── 📅 対応履歴セクション (id="history")
+```
+
+### 改修履歴
+
+| commit | 内容 |
+|---|---|
+| `6db6e91` (2026-06-09) | Phase 1 新規作成 — 世帯員セクション追加。PersonEditModal 連携。世帯主バッジ・喫煙バッジ・続柄バッジカラー実装 |
+
+---
+
+## ## TeamEditModal (`src/components/admin/TeamEditModal.tsx`)
 
 **役割**: チーム情報編集モーダル。`TeamsTab` から呼び出される。
 

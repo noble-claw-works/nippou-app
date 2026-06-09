@@ -269,6 +269,142 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
 
 ---
 
+### HouseholdsPage (`src/pages/HouseholdsPage.tsx`) — Phase 1
+
+**役割**: 世帯（Household）一覧表示。旧 CustomersPage の保険営業ドメイン対応版。`/households` ルートで表示。
+
+> **ルート変更**: `/customers` は `/households` にリダイレクト。`/customers/:id` は `/households/:id` にリダイレクト。
+
+**ナビゲーション**: サイドバーのラベルが「顧客」→「世帯」に変更。
+
+#### 主要機能
+
+- **世帯一覧**: 名前・エリア・タグ・最終接触日・次回アポを表示
+- **世帯員数バッジ**: 各世帯カード / 行に「👨‍👩‍👧 N 名」バッジを表示（`persons` State から `householdId` でフィルタして算出）
+- **検索・フィルタ**: 既存 CUS-1 のソート機能（名前昇降順・最終接触新順・次回AP近順・登録新順）を継承
+- **件数表示**: 「全 N 件（全世帯 M 件中）」（フィルタ時に表示）
+- **お気に入り表示**: ⭐ お気に入り世帯を上位表示
+
+#### 世帯カード行の表示フォーマット
+
+```
+[⭐] 世帯名 (エリア) | 世帯タイプバッジ | 👨‍👩‍👧 N 名 | 最終接触: YYYY/MM/DD | 次回AP: MM/DD
+```
+
+**法人世帯 (corporate)** はラベル「法人」、`familyMemo` をメモとして表示。法人世帯は Phase 1 以降も存続する。
+
+#### アクション列
+
+- **「詳細 →」ボタン**: `/households/:id` へ navigate
+- **「✎ 編集」ボタン**: 世帯情報編集モーダル
+- **「削除」ボタン**: 既存 CUS-3 権限制御を継承（admin/executive のみ、付帯情報なし or 高権限）
+
+---
+
+### HouseholdDetailPage (`src/pages/HouseholdDetailPage.tsx`) — Phase 1
+
+**役割**: 世帯詳細表示。世帯基本情報 + 世帯員（Person）セクション + 対応履歴。`/households/:customerId` ルートで表示。
+
+#### レイアウト構成
+
+```
+HouseholdDetailPage
+├── ヘッダー: 世帯名 + タイプバッジ + エリア + 担当者 + アクション
+├── 世帯基本情報カード
+│   ├── familyMemo (家族構成メモ)
+│   ├── tags / memo / nextAppointment 等
+│   └── 世帯主: headPersonId → Person.name を解決して表示
+├── 👨‍👩‍👧 世帯員セクション
+│   ├── Person カード一覧
+│   └── 「＋ 世帯員を追加」ボタン
+└── 📅 対応履歴セクション (旧 CustomerDetailPage と同等)
+```
+
+#### 👨‍👩‍👧 世帯員セクション
+
+**Person カード一覧**:
+- 各カードに: 氏名 / かな / 続柄バッジ / 生年月日（年齢を計算して表示）/ 性別 / 職業 / 喫煙有無 / 健康情報メモ
+- **続柄バッジカラー**:
+  - `head`: bg-blue-100 text-blue-700（世帯主）
+  - `spouse`: bg-pink-100 text-pink-700（配偶者）
+  - `child`: bg-green-100 text-green-700（子）
+  - `parent`: bg-amber-100 text-amber-700（親）
+  - `sibling`: bg-purple-100 text-purple-700（兄弟姉妹）
+  - `other`: bg-gray-100 text-gray-700（その他）
+- **世帯主マーク**: `relation === 'head'` かつ `household.headPersonId === person.id` の場合に「👑 世帯主」バッジを表示
+- **喫煙バッジ**: `smoker === true` で 🚬 バッジを表示
+
+**操作ボタン**:
+- **「✎ 編集」ボタン**: 各 Person カードに表示 → `PersonEditModal` を開く
+- **「✕ 削除」ボタン**: 各 Person カードに表示 → ConfirmDialog → `deletePerson(personId)`
+- **「＋ 世帯員を追加」ボタン**: セクション末尾 → `PersonEditModal` を空フォームで開く
+
+---
+
+### PersonEditModal (`src/components/household/PersonEditModal.tsx`) — Phase 1
+
+**役割**: Person（世帯員）の追加・編集モーダル。
+
+#### Props
+
+```typescript
+interface Props {
+  householdId: string;       // 所属世帯 ID
+  person?: Person | null;    // null の場合は新規追加モード
+  household: Household;      // 世帯主付け替えのため
+  onClose: () => void;
+  onSaved?: () => void;
+}
+```
+
+#### フィールド一覧
+
+| フィールド | 入力形式 | 必須 | 備考 |
+|---|---|---|---|
+| 氏名 | テキスト入力 | ✅ | |
+| かな | テキスト入力 | — | |
+| 続柄 | セレクトボックス | ✅ | head / spouse / child / parent / sibling / other |
+| 生年月日 | date 入力 | — | YYYY-MM-DD |
+| 性別 | ラジオボタン | — | M / F / other |
+| 職業 | テキスト入力 | — | |
+| 喫煙 | チェックボックス | — | |
+| 健康情報 | テキストエリア | — | |
+| メモ | テキストエリア | — | |
+
+#### 世帯主付け替え機能
+
+- 編集対象 Person の続柄が `head` でない場合に「この世帯員を世帯主に設定する」チェックボックスを表示
+- チェックオン: 保存時に `updatePerson(person.id, { relation: 'head' })` + `updateCustomer(householdId, { headPersonId: person.id })` を実行
+- 旧世帯主の `relation` は `'other'` に変更（自動降格）
+
+#### バリデーション
+
+- 氏名必須（空文字列で保存不可）
+- 続柄必須（セレクト未選択で保存不可）
+
+#### 使用例
+
+```tsx
+// 新規追加
+<PersonEditModal
+  householdId="c1"
+  person={null}
+  household={household}
+  onClose={() => setModalOpen(false)}
+  onSaved={() => refetch()}
+/>
+
+// 編集
+<PersonEditModal
+  householdId="c1"
+  person={existingPerson}
+  household={household}
+  onClose={() => setModalOpen(false)}
+/>
+```
+
+---
+
 ### CustomersPage (件数表示・ソート・削除機能)
 
 **CUS-1 顧客一覧**:
@@ -1287,6 +1423,7 @@ AdminPage
 
 ## 改修履歴
 
+- **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `HouseholdsPage` 新設（世帯一覧 + 世帯員数バッジ）、`HouseholdDetailPage` 新設（世帯員セクション + PersonEditModal + 世帯主付け替え）、サイドバー「顧客」→「世帯」ラベル変更、`/customers` → `/households` リダイレクト対応
 - **2026-06-08 11e82a7**: 顧客選択 UI を `<select>` から `CustomerCombobox` へ移行 (BlockModal / ComplimentsCard / TodayPage) — 検索フィルタ・スコアリング・キーボード操作・ ARIA 対応。表示順序: お気に入り > 最近接触 30 日以内 > active > その他
 - **2026-06-08 335394c**: プロジェクト名称を 305-hrl-nippou-app に統一 (index.html / AppShell / LoginPage 等 UI 表記 + docs 冒頭自称表現)
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化 — AppShell ヘッダーロール切替メニューで選択したロールを `nippou.currentRole.v1` / `nippou.currentUserId.v1` に localStorage 保存。リロード後もロール維持。ログイン時は切替記録をクリアしログインユーザー本来のロールを適用

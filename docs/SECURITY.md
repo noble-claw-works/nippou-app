@@ -260,7 +260,34 @@ export function persistRoleSwitch(role: Role | null, userId: string | null): voi
 
 ---
 
-## セキュリティ原則
+## Phase 1: Person データの参照権限
+
+### Person データと世帯の担当者制
+
+`Person`（世帯員）データへのアクセス権限は、所属する `Household`（世帯）の担当者制と同一である。
+
+**原則**: Person は Household に従属する。Household にアクセスできるユーザーは、その Household に属するすべての Person を参照・編集・削除できる。
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| Person 一覧取得 (`getPersonsByHousehold`) | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 |
+| Person 追加 (`addPerson`) | ✅ | ✅ | ✅ | ✅ |
+| Person 編集 (`updatePerson`) | ✅ | ✅ | ✅ | ✅ |
+| Person 削除 (`deletePerson`) | ✅ | ✅ | ✅ | ✅ |
+
+> **注意**: 現フェーズでは担当者絞り込みは実装しない。将来フェーズで `primaryUserId` による参照制限を導入予定。
+
+### Person データの機微性
+
+Person データには生年月日・健康情報（`healthNotes`）・喫煙有無（`smoker`）など個人情報が含まれる。
+
+- **LocalStorage 保存**: `SECURITY.md` の基本方針（暗号化なし）を踏襲。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+- **表示制限**: 現時点では healthNotes 等を全ロールで閲覧可能とするが、将来的に担当者のみ閲覧に制限する予定。
+
+---
+
+## ## セキュリティ原則
 
 ### 二層防御 (Defense in Depth)
 権限制御は **UI 層** と **ストア層** の両方で実施する。UI バグや直接呼び出しによる迂回を防ぐ。
@@ -282,6 +309,7 @@ export function persistRoleSwitch(role: Role | null, userId: string | null): voi
 
 ## 改修履歴
 
+- **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `Person` データの参照権限節追加。Person は Household と同一担当者制（全ロールで参照可）。healthNotes 等の機微情報の取扱い方針を明記
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — 鸞鳳殳検証で発覚。`src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。テスト 14 件 (`roleSwitch.test.ts`) 追加
 - **2026-06-06 (P0検証強化)**: seed に付帯情報あり顧客を複数化 (c1+c3+c7)(ブロック参照 c3, TODO 参照 c7)。`Todo` 型に `customerId` フィールド追加、`customerAttachment.ts` の型キャストを正規化。`CustomersPage.tsx` に付帯情報ありバッジ (🔗) を追加。`docs/SECURITY.md` に付帯情報判定基準・確定リスト・ P0 検証手順を明記
 - **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本修正。`src/store/deletedCustomers.ts` 新規作成・削除済み顧客 ID を localStorage 永続化、store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア
