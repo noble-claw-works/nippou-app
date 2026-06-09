@@ -1531,8 +1531,161 @@ AdminPage
 
 ---
 
+## Phase 3: 保険契約管理 UI
+
+### PoliciesPage (`src/pages/PoliciesPage.tsx`) — Phase 3
+
+**役割**: 保険契約（Policy）一覧表示。`/policies` ルートで表示。
+
+**追加コミット**: `97cf2b1` (2026-06-09)
+
+#### ページ構成
+
+```
+PoliciesPage
+├── ヘッダー（有効中 N 件 / 月払合計 ¥X）+ 「+ 契約追加」ボタン
+├── フィルターバー（ステータス / カテゴリ / 担当者 / ウキをテキスト検索）
+└── 契約テーブル（ソート対応: 契約日 / 月払额 / 満期日）
+```
+
+#### テーブル列一覧
+
+| 列 | 内容 | ソート対応 |
+|---|---|---|
+| 世帯 | `Household.name` | — |
+| 契約者 | `Person.name` (contractorPersonId より解決) | — |
+| 商品名 | `Policy.productName` | — |
+| 保険会社 | `Policy.insurer` | — |
+| カテゴリ | `Policy.productCategory` (ラベル変換) | — |
+| ステータス | `PolicyStatusBadge` | — |
+| 月払 | `Policy.monthlyPremium` (コンマ区切り) | ✓ |
+| 契約日 | `Policy.startDate` (YYYY-MM-DD) | ✓ |
+| 満期日 | `Policy.maturityDate` (未設定の場合は —) | — |
+| 次回更新 | `Policy.renewalDate` (未設定の場合は —) | — |
+
+#### フィルター
+
+- **ステータスフィルター**: `inforce` / `pending` / `lapsed` / `surrendered` / `matured` / `paid_up` / `reduced` から選択
+- **カテゴリフィルター**: 10 種の `ProductCategory` から選択
+- **担当者フィルター**: ユーザー一覧から選択
+- **テキスト検索**: 商品名 / 保険会社 / 証券番号 / 世帯名で絞り込み
+
+#### ロール別表示
+
+| ロール | 表示内容 |
+|---|---|
+| `general` | 自分 (`ownerId === currentUserId`) の契約のみ |
+| `manager` | 自分 + 同じチームの契約 |
+| `executive` / `admin` | 全社契約 |
+
+---
+
+### PolicyDetailPage (`src/pages/PolicyDetailPage.tsx`) — Phase 3
+
+**役割**: 契約詳細表示。`/policies/:id` ルートで表示。
+
+**追加コミット**: `97cf2b1` (2026-06-09)
+
+#### 4 タブ構成
+
+| タブ | 内容 |
+|---|---|
+| **基本情報** | 保険会社 / 商品名 / カテゴリ / 契約者 Person / 払込方法 / 契約日 / 満期日 / 月払 / 証券番号 / 発行元 Opportunity リンク |
+| **保障内容** | `Coverage` 一覧（主契約・特約区分）+ `CoverageEditModal` で追加/編集 |
+| **ステータス履歴** | `PolicyStatusHistory` タイムライン（変更日時・操作者・メモ）|
+| **関連活動** | 世帯 (`householdId`) に紐付く TimeBlock 一覧 |
+
+#### アクションボタン
+
+- **「払済」ボタン**: `changePolicyStatus(id, 'paid_up')` — `inforce` 時のみ表示
+- **「解約」ボタン**: `changePolicyStatus(id, 'surrendered')` — `inforce` 時のみ表示
+- **「満期」ボタン**: `changePolicyStatus(id, 'matured')` — `inforce` 時のみ表示
+- **「証券番号を入力」** (pending 時): `activatePolicy()` 呼び出しダイアログ
+- **編集ボタン**: `PolicyEditModal` を開く（権限: admin or 担当者本人）
+
+#### 発行元 Opportunity リンク
+
+`sourceOpportunityId` が設定されている場合、基本情報タブに **「📋 発行元商談案件」** リンクを表示。クリックで `/opportunities/:sourceOpportunityId` に遷移。
+
+---
+
+### HouseholdDetailPage 契約・保障マトリクス拡張 (Phase 3)
+
+**拡張コミット**: `97cf2b1` (2026-06-09)
+
+#### 追加セクション
+
+```
+HouseholdDetailPage
+├── ヘッダー (月払統計追加)
+│   │  「月払合計: ¥XX,XXX / 年換算: ¥XXX,XXX」
+│   └── 有効中 (inforce) 契約の `monthlyPremium` 合計により自動計算
+├── 👨‍👩‍👧 世帯員セクション (既存 Phase 1)
+├── 📜 契約 (N 件) セクション [新規]
+│   ├── 契約カード一覧 (PolicyStatusBadge + 商品名 + 保険会社 + 月払)
+│   ├── 各カードの「詳細 →」ボタン → `/policies/:id` に遷移
+│   └── 「+ 契約発行」ボタン → `QuickPolicyIssueModal` を開く
+└── 🛡️ 保障マトリクスセクション [新規]
+    └── `CoverageMatrix` コンポーネント (compact=true モード)
+```
+
+#### 月払統計ヘッダー
+
+- **表示条件**: `inforce` 契約が 1 件以上ある場合に表示
+- **月払合計**: `policies.filter(p => p.householdId === id && p.status === 'inforce').reduce((s, p) => s + p.monthlyPremium, 0)`
+- **年換算**: 月払合計 × 12
+
+---
+
+### OpportunityDetailPage 契約発行拡張 (Phase 3)
+
+**拡張コミット**: `97cf2b1` (2026-06-09)
+
+既存の `OpportunityDetailPage` (フェーズ 2) に以下の拡張を追加。
+
+#### 「🎉 契約発行（受注）」ボタン
+
+- **表示条件**: `opportunity.stage !== 'issued'` かつ `opportunity.status !== 'won'` の場合に表示
+- **クリック**: `QuickPolicyIssueModal` を開く
+- **スタイル**: `bg-green-600 text-white hover:bg-green-700`
+
+#### 「📜 契約発行」タブ
+
+4 タブ構成に「📜 契約発行」タブを追加。
+
+| タブ内容 |
+|---|
+| 発行完了時: 発行済み Policy カード一覧 (PolicyStatusBadge + 商品名 + 保険会社 + 月払) |
+| 未発行時: `QuickPolicyIssueModal` への導入アニメーション (`ProposalProducts` 一覧を表示し「契約発行」ボタン) |
+
+---
+
+### DashboardPage 契約パネル追加 (Phase 3)
+
+**拡張コミット**: `97cf2b1` (2026-06-09)
+
+**表示ロール**: `executive` / `admin` のみ
+
+#### 追加パネル一覧
+
+| パネル名 | 内容 |
+|---|---|
+| 契約ステータス分布 | PolicyStatus 別の卑円グラフ（inforce / pending / lapsed / surrendered / matured / paid_up / reduced）|
+| 保険会社別契約数 | 保険会社名別の契約件数横棒グラフ |
+
+---
+
+### サイドバー (AppShell) 契約メニュー追加 (Phase 3)
+
+**追加エントリ**: `{ to: '/policies', icon: ScrollText, label: '契約', roles: ['general','manager','executive','admin'] }`
+
+全ロールで表示される（general は自分担当契約のみページ内権限で制御）。
+
+---
+
 ## 改修履歴
 
+- **2026-06-09 97cf2b1**: Phase 3 保険契約管理 — `PoliciesPage` (テーブル一覧・フィルター・ロール別表示制御) / `PolicyDetailPage` (4 タブ: 基本情報・保障内容・ステータス履歴・関連活動) 新設。OpportunityDetailPage 拡張— 「🎉 契約発行（受注）」ボタン + 「📜 契約発行」タブ追加。HouseholdDetailPage 拡張— 「📜 契約 (N 件)」セクション + 「🛡️ 保障マトリクス」セクション + 月払統計ヘッダー追加。DashboardPage 拡張— 「契約ステータス分布」「保険会社別契約数」パネル (executive/admin のみ)。AppShell に 📜 契約メニュー追加
 - **2026-06-09 97cabc9**: Phase 2 商談案件管理 — `OpportunitiesPage` (テーブル一覧・フィルター・ロール別表示制御) / `OpportunityDetailPage` (4 タブ: 概要・提案商品・活動履歴・ TODO) 新設。BlockModal 拡張 — 世帯→商談案件→StageSelector 展開フロー。HouseholdDetailPage に 💼 商談タブ (N 件) 追加。サイドバーに 🤝 商談メニュー追加。StageBadge ステージ色対応表定義
 - **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `HouseholdsPage` 新設（世帯一覧 + 世帯員数バッジ）、`HouseholdDetailPage` 新設（世帯員セクション + PersonEditModal + 世帯主付け替え）、サイドバー「顧客」→「世帯」ラベル変更、`/customers` → `/households` リダイレクト対応
 - **2026-06-08 11e82a7**: 顧客選択 UI を `<select>` から `CustomerCombobox` へ移行 (BlockModal / ComplimentsCard / TodayPage) — 検索フィルタ・スコアリング・キーボード操作・ ARIA 対応。表示順序: お気に入り > 最近接触 30 日以内 > active > その他

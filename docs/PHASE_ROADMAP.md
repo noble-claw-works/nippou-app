@@ -146,54 +146,84 @@ interface Opportunity {
 
 ---
 
-## Phase 3: Policy / Coverage（契約管理）— 予定
+## Phase 3: Policy / Coverage（契約管理）✅ 完了 (2026-06-09 `97cf2b1`)
 
 ### 目的
 
-実際に成約した保険契約（Policy）と補償内容（Coverage）を管理する。
-Opportunity が `closed_won` になると Policy に昇格する設計。
+実際に成約した保険契約（Policy）と保障内容（Coverage）を世帯・世帯員単位で管理する。
+Opportunity の `issued` ステージ到達時に `issuePoliciesFromOpportunity` で Policy に自動昇格する設計。
+`sourceOpportunityId` により Opportunity → Policy の系譜を追跡できる。
 
 ### 主要型
 
+詳細は `docs/DATA_MODEL.md` 「保険営業ドメイン Phase 3: 保険契約管理」セクション参照。
+
 ```typescript
+type PolicyStatus = 'inforce' | 'lapsed' | 'surrendered' | 'matured' | 'paid_up' | 'reduced' | 'pending';
+type PayMode = 'monthly' | 'semi_annual' | 'annual' | 'lump_sum';
+type CoverageType = 'death' | 'living_benefit' | 'medical_hospital' | 'medical_surgery'
+  | 'cancer' | 'critical_illness' | 'disability' | 'nursing' | 'savings' | 'liability'
+  | 'asset_damage' | 'other';  // 12 種
+
 interface Policy {
   id: string;
-  householdId: string;
-  personId?: string;           // 被保険者 Person
-  opportunityId?: string;      // 元となった案件
-  policyNumber: string;        // 証券番号
-  insurer: string;             // 保険会社名
-  productName: string;         // 商品名
-  premiumAnnual: number;       // 年間保険料（円）
-  startDate: string;           // 保険期間開始 (YYYY-MM-DD)
-  endDate?: string;            // 保険期間終了 (YYYY-MM-DD)
-  renewalDate?: string;        // 次回更新日 (YYYY-MM-DD)
-  status: 'active' | 'expired' | 'cancelled';
-  memo: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Coverage {
-  id: string;
-  policyId: string;            // 所属 Policy
-  type: string;                // 補償種別（死亡・入院・車両 等）
-  amount: number;              // 補償金額（円）
-  deductible?: number;         // 免責金額（円）
-  memo: string;
+  householdId: string;               // 所属世帯（必須）— Person を介して世帯員に紐付く
+  contractorPersonId: string;        // 契約者 Person.id
+  insuredPersonIds: string[];        // 被保険者 Person.id[]
+  sourceOpportunityId?: string;      // 発行元 Opportunity.id（系譜追跡キー）
+  status: PolicyStatus;              // 7 ステータス
+  payMode: PayMode;                  // 4 種
+  coverages: Coverage[];             // 保障内容（embedded）
+  // ... 全フィールドは DATA_MODEL.md 参照
 }
 ```
 
-### UI（予定）
+### Store アクション
 
-- `HouseholdDetailPage` に「🗂 契約」セクション追加
-- 更新日アラート（renewalDate が近い契約を Today/Dashboard でハイライト）
-- 証券番号検索
+| アクション | 説明 |
+|---|---|
+| `addPolicy` / `updatePolicy` / `deletePolicy` | CRUD |
+| `addCoverage` / `updateCoverage` / `deleteCoverage` | Coverage CRUD |
+| `issuePoliciesFromOpportunity(opportunityId, userId)` | ProposalProducts → Policy 自動生成 + Opportunity を issued/won へ遷移 |
+| `activatePolicy(policyId, policyNumber, startDate, userId)` | pending → inforce + 証券番号設定 |
+| `changePolicyStatus(id, newStatus, note?, userId?)` | ステータス変更 + 履歴追記 |
+| `getPoliciesByHousehold` / `getPoliciesByPerson` | 一覧取得 |
+| `getCoverageMatrix(householdId)` | 世帯員 × 保障種別マトリクス生成 |
+
+### UI
+
+- `/policies` — `PoliciesPage` (テーブル一覧 + フィルター + ロール別表示)
+- `/policies/:id` — `PolicyDetailPage` (4 タブ: 基本情報 / 保障内容 / ステータス履歴 / 関連活動)
+- `HouseholdDetailPage` に "📜 契約 (N 件)" セクション + "🛡️ 保障マトリクス" セクション + 月払統計ヘッダー追加
+- `OpportunityDetailPage` に "🎉 契約発行（受注）" ボタン + "📜 契約発行" タブ追加
+- `AppShell` サイドバーに "📜 契約" メニュー追加 (全ロール)
+- `DashboardPage` に「契約ステータス分布」「保険会社別契約数」パネル追加 (executive/admin のみ)
+
+### コンポーネント
+
+- `PolicyStatusBadge` — 7 ステータス色対応
+- `CoverageMatrix` — 世帯員 × 12 保障種別マトリクス (compact モードは 6 種)
+- `PolicyEditModal` — 契約追加・編集フォーム
+- `CoverageEditModal` — 保障内容追加・編集フォーム
+- `QuickPolicyIssueModal` — Opportunity → Policy 2 ステップ発行 UI
+
+### Seed
+
+- POLICIES: 15 件（全 7 ステータス網羅）
+- COVERAGES: 25 件以上
+
+### LocalStorage
+
+- `nippou.policies.v1` / `nippou.policyHistory.v1`
+
+### テスト
+
+- `policy.test.ts` 26 件 + `coverage.test.ts` 14 件 = +40 件（累計 329 件）
 
 ### 依存関係
 
 - Phase 1（世帯 + Person）
-- Phase 2（Opportunity）推奨（なくても実装可）
+- Phase 2（Opportunity — `sourceOpportunityId` 連携）
 
 ---
 
@@ -269,17 +299,18 @@ Phase 1: 世帯 + Person (基盤) ✅
     │
     ├── Phase 2: Opportunity + Today 連携 ✅
     │       │
-    │       ├── Phase 3: Policy / Coverage
+    │       ├── Phase 3: Policy / Coverage ✅
     │       │
     │       └── Phase 4: カンバン UI + Dashboard パイプライン
     │               │
     │               └── Phase 5: 引受査定統合 (1+2+3+4 依存)
-    └── Phase 3: Policy / Coverage (Phase 2 なしでも可)
+    └── Phase 3: Policy / Coverage ✅ (Phase 2 と連携: sourceOpportunityId)
 ```
 
 ---
 
 ## 改修履歴
 
+- **2026-06-09 97cf2b1**: Phase 3 完了記録 — 保険契約管理 (Policy 7 ステータス + Coverage 12 種 + issuePoliciesFromOpportunity + CoverageMatrix) 実装完了。Phase 3 節を ✅ Complete に更新。Phase 4-5 から Phase 3 で実装済みの Policy/Coverage 基盤を除外
 - **2026-06-09 97cabc9**: Phase 2 完了記録 — 商談案件管理 (Opportunity + 9 ステージ + 5 ステータス) 実装完了。依存関係図更新。Phase 3-5 のスコープから Phase 2 で実装済みの OpportunityStage / ステージ遷移を除外。Phase 2 節を ✅ Complete に変更
 - **2026-06-09 6db6e91**: Phase 1 完了記録 — `PHASE_ROADMAP.md` 新設。Phase 1 完了に合わせて Phase 1-5 のロードマップを策定

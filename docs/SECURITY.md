@@ -288,6 +288,46 @@ Opportunity には利益情報（`totalMonthlyPremium`）・顧客の健康情�
 
 ---
 
+## Phase 3: Policy 参照・編集権限
+
+**コミット**: `97cf2b1` (2026-06-09)
+
+`Policy`（保険契約）は必ず `householdId` で `Household` に紐付く。契約者・被保険者はその Household に所属する `Person` である。参照・編集権限はロールと `ownerId` により制御される。
+
+### Policy 権限マトリクス
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| Policy 一覧取得 (`PoliciesPage`) | ✅ 自分担当のみ | ✅ 同チーム全件 | ✅ 全社 | ✅ 全社 |
+| Policy 詳細閲覧 (`PolicyDetailPage`) | ✅ 自分担当 | ✅ | ✅ | ✅ |
+| Policy 追加 (`addPolicy`) | ✅ | ✅ | ✅ | ✅ |
+| Policy 編集 (`updatePolicy`) | ✅ 自担当 (`ownerId`) | ✅ | ✅ | ✅ |
+| Policy 削除 (`deletePolicy`) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| Coverage 追加・編集・削除 | ✅ 自担当 | ✅ | ✅ | ✅ |
+| `issuePoliciesFromOpportunity` (契約発行) | ✅ | ✅ | ✅ | ✅ |
+| `activatePolicy` (証券番号入力・有効化) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| `changePolicyStatus` (解約・払済・満期) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| Dashboard 契約ステータス分布・保険会社別パネル | ❌ | ❌ | ✅ | ✅ |
+
+> **注意**: Policy 編集・報命が general 形式上全件実行可能な默定実装だが、UI 層で `canEdit = currentRole === 'admin' || policy.ownerId === currentUserId` で編集ボタンを制御。将来フェーズで Store 層二層防衛を導入予定。
+
+### Policy データの機微性
+
+Policy には以下の機微情報が含まれる。
+
+| フィールド | 機微分類 | 備考 |
+|---|---|---|
+| `policyNumber` (証券番号) | 高 | 保険契約を特定する主要 ID |
+| `monthlyPremium` (月払保険料) | 高 | 个人財務情報 |
+| `cashValue` (解約返戻金) | 高 | 資産情報 |
+| `insuredPersonIds` (被保険者) | 中 | 個人問連結 |
+| `sourceOpportunityId` | 中 | Opportunity→Policy 系譜（営業機密）|
+
+- **LocalStorage 保存**: `nippou.policies.v1` / `nippou.policyHistory.v1`。暗号化なし。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+
+---
+
 ## Phase 1: Person データの参照権限
 
 ### Person データと世帯の担当者制
@@ -337,6 +377,7 @@ Person データには生年月日・健康情報（`healthNotes`）・喫煙有
 
 ## 改修履歴
 
+- **2026-06-09 97cf2b1**: Phase 3 保険契約管理 — Policy 参照・編集権限マトリクス追加。general は自担当のみ閲覧・編集、manager はチーム全件、executive/admin は全社閲覧。契約発行 (QuickPolicyIssue) は全ロール可。証券番号/月払/解約返戻金等の機微情報取扱方針を明記
 - **2026-06-09 97cabc9**: Phase 2 商談案件管理 — Opportunity 参照・編集権限マトリクス追加。general は `/opportunities` ページで自分担当のみ表示、manager は全件、executive / admin は全社閲覧。商務筆資速報の機微性と将来の Store 層二層防御導入予定を明記
 - **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `Person` データの参照権限節追加。Person は Household と同一担当者制（全ロールで参照可）。healthNotes 等の機微情報の取扱い方針を明記
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — 鸞鳳殳検証で発覚。`src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。テスト 14 件 (`roleSwitch.test.ts`) 追加
