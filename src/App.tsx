@@ -14,6 +14,8 @@ import { HouseholdsPage } from './pages/HouseholdsPage';
 import { HouseholdDetailPage } from './pages/HouseholdDetailPage';
 import { OpportunitiesPage } from './pages/OpportunitiesPage';
 import { OpportunityDetailPage } from './pages/OpportunityDetailPage';
+import { PoliciesPage } from './pages/PoliciesPage';
+import { PolicyDetailPage } from './pages/PolicyDetailPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -88,6 +90,9 @@ function AppLayout() {
         {/* Opportunity routes (Phase 2) */}
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
+        {/* Policy routes (Phase 3) */}
+        <Route path="/policies" element={<PoliciesPage />} />
+        <Route path="/policies/:id" element={<PolicyDetailPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />

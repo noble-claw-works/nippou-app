@@ -5,6 +5,7 @@ import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment, Person,
   Opportunity, OpportunityStage, OpportunityStatus,
+  Policy, PolicyStatusHistory, Coverage,
 } from '../types';
 import { format, subDays, addDays } from 'date-fns';
 
@@ -549,4 +550,475 @@ export const OPPORTUNITIES: Opportunity[] = [
     tags: ['生命保険', '新規'],
     expectedCloseDate: f(90),
   }),
+];
+
+// =====================================================
+// Policy (保険契約) シードデータ — Phase 3
+// =====================================================
+let _policyIdCounter = 1;
+const pid = () => `pol_${String(_policyIdCounter++).padStart(3, '0')}`;
+let _covIdCounter = 1;
+const cid = () => `cov_${String(_covIdCounter++).padStart(3, '0')}`;
+
+function mkPolicy(
+  id: string,
+  overrides: Partial<Policy> & {
+    householdId: string;
+    ownerId: string;
+    contractorPersonId: string;
+    insurer: string;
+    productName: string;
+    productCategory: Policy['productCategory'];
+    status: Policy['status'];
+    monthlyPremium: number;
+    startDate: string;
+  }
+): Policy {
+  return {
+    id,
+    policyNumber: undefined,
+    insuredPersonIds: [overrides.contractorPersonId],
+    payMode: 'monthly',
+    hasCashValue: false,
+    coverages: [],
+    tags: [],
+    memo: '',
+    createdAt: _now,
+    updatedAt: _now,
+    ...overrides,
+  };
+}
+
+function mkCoverage(
+  id: string,
+  policyId: string,
+  overrides: Partial<Coverage> & {
+    type: Coverage['type'];
+    label: string;
+    insuredPersonId: string;
+    isMain: boolean;
+  }
+): Coverage {
+  return {
+    id,
+    policyId,
+    unit: 'JPY',
+    memo: '',
+    ...overrides,
+  };
+}
+
+// ── c1: KOORO GILSON 世帯 ────────────────────────────
+const pol1 = mkPolicy(pid(), {
+  householdId: 'c1', ownerId: 'u1',
+  contractorPersonId: 'p_c1_head',
+  insuredPersonIds: ['p_c1_head'],
+  insurer: '日本生命',
+  productName: 'ニッセイ終身保険',
+  productCategory: 'life',
+  status: 'inforce',
+  policyNumber: 'L-0001234',
+  startDate: '2018-04-01',
+  maturityDate: '2058-04-01',
+  monthlyPremium: 28000,
+  payMode: 'monthly',
+  hasCashValue: true,
+  cashValue: 1200000,
+  tags: ['生命保険', '終身'],
+  memo: '死亡保険金3000万。受取人: 配偶者',
+});
+pol1.coverages = [
+  mkCoverage(cid(), pol1.id, {
+    type: 'death', label: '死亡保険金', insuredPersonId: 'p_c1_head', isMain: true,
+    faceAmount: 30000000, unit: 'JPY', beneficiaryPersonId: 'p_c1_spouse',
+  }),
+  mkCoverage(cid(), pol1.id, {
+    type: 'living_benefit', label: '生前給付特約', insuredPersonId: 'p_c1_head', isMain: false,
+    faceAmount: 30000000, unit: 'JPY', riderName: '生前給付特約',
+  }),
+];
+
+const pol2 = mkPolicy(pid(), {
+  householdId: 'c1', ownerId: 'u1',
+  contractorPersonId: 'p_c1_head',
+  insuredPersonIds: ['p_c1_spouse'],
+  insurer: '第一生命',
+  productName: 'ファインセーブ 医療保険',
+  productCategory: 'medical',
+  status: 'inforce',
+  policyNumber: 'M-0005678',
+  startDate: '2019-07-01',
+  monthlyPremium: 4500,
+  payMode: 'monthly',
+  hasCashValue: false,
+  tags: ['医療保険'],
+  memo: '妻の医療保険。入院日額5000円',
+});
+pol2.coverages = [
+  mkCoverage(cid(), pol2.id, {
+    type: 'medical_hospital', label: '入院給付金日額', insuredPersonId: 'p_c1_spouse', isMain: true,
+    unitAmount: 5000, unit: 'day',
+  }),
+  mkCoverage(cid(), pol2.id, {
+    type: 'medical_surgery', label: '手術給付金', insuredPersonId: 'p_c1_spouse', isMain: false,
+    unitAmount: 50000, unit: 'time', riderName: '手術特約',
+  }),
+];
+
+const pol3 = mkPolicy(pid(), {
+  householdId: 'c1', ownerId: 'u1',
+  contractorPersonId: 'p_c1_head',
+  insuredPersonIds: ['p_c1_child1'],
+  insurer: '明治安田生命',
+  productName: 'じぶんの積立 学資保険',
+  productCategory: 'savings',
+  status: 'inforce',
+  policyNumber: 'S-0009012',
+  startDate: '2016-09-01',
+  maturityDate: '2023-04-01',
+  monthlyPremium: 12000,
+  payMode: 'monthly',
+  hasCashValue: true,
+  cashValue: 800000,
+  tags: ['学資保険', '積立'],
+  memo: '長男 大学入学時満期。満期金200万',
+});
+pol3.coverages = [
+  mkCoverage(cid(), pol3.id, {
+    type: 'savings', label: '満期保険金', insuredPersonId: 'p_c1_child1', isMain: true,
+    faceAmount: 2000000, unit: 'JPY',
+  }),
+];
+
+// c1 自動車保険 (opp7 から発行済)
+const pol4 = mkPolicy(pid(), {
+  householdId: 'c1', ownerId: 'u1',
+  contractorPersonId: 'p_c1_head',
+  insuredPersonIds: ['p_c1_head'],
+  insurer: '東京海上日動',
+  productName: 'タフ・くるまの保険',
+  productCategory: 'auto',
+  status: 'inforce',
+  policyNumber: 'A-0011111',
+  startDate: d(14),
+  renewalDate: f(351),
+  monthlyPremium: 8900,
+  payMode: 'annual',
+  annualPremium: 106800,
+  hasCashValue: false,
+  sourceOpportunityId: 'opp7',
+  tags: ['自動車保険'],
+  memo: '弁護士費用特約+車両保険',
+});
+pol4.coverages = [
+  mkCoverage(cid(), pol4.id, {
+    type: 'liability', label: '対人・対物賠償', insuredPersonId: 'p_c1_head', isMain: true,
+  }),
+  mkCoverage(cid(), pol4.id, {
+    type: 'asset_damage', label: '車両保険', insuredPersonId: 'p_c1_head', isMain: false,
+    faceAmount: 1800000, unit: 'JPY', riderName: '車両保険',
+  }),
+];
+
+// ── c2: 齋藤 和久 世帯 ─────────────────────────────
+const pol5 = mkPolicy(pid(), {
+  householdId: 'c2', ownerId: 'u1',
+  contractorPersonId: 'p_c2_head',
+  insuredPersonIds: ['p_c2_head'],
+  insurer: '住友生命',
+  productName: '終身保険 スミセイ',
+  productCategory: 'life',
+  status: 'paid_up',
+  policyNumber: 'L-0022334',
+  startDate: '1998-06-01',
+  maturityDate: '2048-06-01',
+  monthlyPremium: 0,
+  payMode: 'lump_sum',
+  premiumPaidUntil: '2023-06-01',
+  payPeriodYears: 25,
+  hasCashValue: true,
+  cashValue: 3500000,
+  tags: ['終身保険', '払済'],
+  memo: '払込完了。解約返戻金350万',
+});
+pol5.coverages = [
+  mkCoverage(cid(), pol5.id, {
+    type: 'death', label: '死亡保険金', insuredPersonId: 'p_c2_head', isMain: true,
+    faceAmount: 10000000, unit: 'JPY',
+  }),
+];
+
+const pol6 = mkPolicy(pid(), {
+  householdId: 'c2', ownerId: 'u1',
+  contractorPersonId: 'p_c2_head',
+  insuredPersonIds: ['p_c2_head'],
+  insurer: 'あいおいニッセイ同和',
+  productName: 'タフ・くるまの保険',
+  productCategory: 'auto',
+  status: 'inforce',
+  policyNumber: 'A-0022222',
+  startDate: d(180),
+  renewalDate: f(185),
+  monthlyPremium: 7200,
+  payMode: 'annual',
+  annualPremium: 86400,
+  hasCashValue: false,
+  tags: ['自動車保険'],
+  memo: '',
+});
+pol6.coverages = [
+  mkCoverage(cid(), pol6.id, {
+    type: 'liability', label: '対人・対物賠償', insuredPersonId: 'p_c2_head', isMain: true,
+  }),
+];
+
+// ── c3: 暁和化学ゴム (法人) ─────────────────────────
+const pol7 = mkPolicy(pid(), {
+  householdId: 'c3', ownerId: 'u1',
+  contractorPersonId: 'p_c3_head',
+  insuredPersonIds: ['p_c3_head'],
+  insurer: '損保ジャパン',
+  productName: '企業総合保険 (工場火災)',
+  productCategory: 'fire',
+  status: 'inforce',
+  policyNumber: 'F-0033333',
+  startDate: '2024-04-01',
+  renewalDate: f(295),
+  monthlyPremium: 38000,
+  payMode: 'annual',
+  annualPremium: 456000,
+  hasCashValue: false,
+  tags: ['法人', '火災保険'],
+  memo: '工場・在庫一式。山田部長承認済み',
+});
+pol7.coverages = [
+  mkCoverage(cid(), pol7.id, {
+    type: 'asset_damage', label: '建物・設備損害', insuredPersonId: 'p_c3_head', isMain: true,
+    faceAmount: 200000000, unit: 'JPY',
+  }),
+];
+
+const pol8 = mkPolicy(pid(), {
+  householdId: 'c3', ownerId: 'u1',
+  contractorPersonId: 'p_c3_head',
+  insuredPersonIds: ['p_c3_head'],
+  insurer: '第一生命',
+  productName: '経営者保険 プレミア',
+  productCategory: 'life',
+  status: 'inforce',
+  policyNumber: 'L-0033444',
+  startDate: '2022-10-01',
+  maturityDate: '2042-10-01',
+  monthlyPremium: 65000,
+  payMode: 'monthly',
+  hasCashValue: true,
+  cashValue: 5200000,
+  tags: ['法人', '経営者保険'],
+  memo: '役員退職金積立。解約返戻金型',
+});
+pol8.coverages = [
+  mkCoverage(cid(), pol8.id, {
+    type: 'death', label: '死亡保険金', insuredPersonId: 'p_c3_head', isMain: true,
+    faceAmount: 50000000, unit: 'JPY',
+  }),
+  mkCoverage(cid(), pol8.id, {
+    type: 'savings', label: '解約返戻金', insuredPersonId: 'p_c3_head', isMain: false,
+    memo: '退職金積立目的',
+  }),
+];
+
+// ── c6: 鈴木 花代 世帯 ─────────────────────────────
+const pol9 = mkPolicy(pid(), {
+  householdId: 'c6', ownerId: 'u2',
+  contractorPersonId: 'p_c6_head',
+  insuredPersonIds: ['p_c6_head'],
+  insurer: 'アフラック',
+  productName: 'EVER PRIME 医療保険',
+  productCategory: 'medical',
+  status: 'inforce',
+  policyNumber: 'M-0066001',
+  startDate: '2020-03-01',
+  monthlyPremium: 6800,
+  payMode: 'monthly',
+  hasCashValue: false,
+  tags: ['医療保険'],
+  memo: '看護師なので手厚い保障',
+});
+pol9.coverages = [
+  mkCoverage(cid(), pol9.id, {
+    type: 'medical_hospital', label: '入院給付金日額', insuredPersonId: 'p_c6_head', isMain: true,
+    unitAmount: 10000, unit: 'day',
+  }),
+  mkCoverage(cid(), pol9.id, {
+    type: 'cancer', label: 'がん診断一時金', insuredPersonId: 'p_c6_head', isMain: false,
+    faceAmount: 1000000, unit: 'JPY', riderName: 'がん特約',
+  }),
+  mkCoverage(cid(), pol9.id, {
+    type: 'medical_surgery', label: '手術給付金', insuredPersonId: 'p_c6_head', isMain: false,
+    unitAmount: 50000, unit: 'time', riderName: '手術特約',
+  }),
+];
+
+// ── c8: 高橋 誠 (見込み案件 → pending 契約) ──────────
+const pol10 = mkPolicy(pid(), {
+  householdId: 'c8', ownerId: 'u1',
+  contractorPersonId: 'p_c8_head',
+  insuredPersonIds: ['p_c8_head'],
+  insurer: 'ソニー生命',
+  productName: 'スマート医療保険',
+  productCategory: 'medical',
+  status: 'pending',
+  startDate: d(5),
+  monthlyPremium: 3200,
+  payMode: 'monthly',
+  hasCashValue: false,
+  tags: ['医療保険', '申込中'],
+  memo: '申込書提出済み。査定中',
+});
+pol10.coverages = [
+  mkCoverage(cid(), pol10.id, {
+    type: 'medical_hospital', label: '入院給付金日額', insuredPersonId: 'p_c8_head', isMain: true,
+    unitAmount: 5000, unit: 'day',
+  }),
+];
+
+// ── c10: 伊藤 幸子 ──────────────────────────────────
+const pol11 = mkPolicy(pid(), {
+  householdId: 'c10', ownerId: 'u3',
+  contractorPersonId: 'p_c10_head',
+  insuredPersonIds: ['p_c10_head'],
+  insurer: 'かんぽ生命',
+  productName: 'かんぽ 特別養老保険',
+  productCategory: 'medical',
+  status: 'inforce',
+  policyNumber: 'K-0010101',
+  startDate: '2010-05-01',
+  maturityDate: '2030-05-01',
+  monthlyPremium: 8500,
+  payMode: 'monthly',
+  hasCashValue: true,
+  cashValue: 1100000,
+  tags: ['養老保険', '入院'],
+  memo: '高齢者向け。入院保障付き',
+});
+pol11.coverages = [
+  mkCoverage(cid(), pol11.id, {
+    type: 'death', label: '死亡保険金', insuredPersonId: 'p_c10_head', isMain: true,
+    faceAmount: 2000000, unit: 'JPY',
+  }),
+  mkCoverage(cid(), pol11.id, {
+    type: 'medical_hospital', label: '入院給付金日額', insuredPersonId: 'p_c10_head', isMain: false,
+    unitAmount: 4500, unit: 'day', riderName: '入院特約',
+  }),
+];
+
+// ── c4: 水野 幸重 ────────────────────────────────────
+const pol12 = mkPolicy(pid(), {
+  householdId: 'c4', ownerId: 'u1',
+  contractorPersonId: 'p_c4_head',
+  insuredPersonIds: ['p_c4_head'],
+  insurer: 'チューリッヒ',
+  productName: 'チューリッヒ 自動車保険',
+  productCategory: 'auto',
+  status: 'inforce',
+  policyNumber: 'A-0044444',
+  startDate: d(90),
+  renewalDate: f(275),
+  monthlyPremium: 6500,
+  payMode: 'annual',
+  annualPremium: 78000,
+  hasCashValue: false,
+  tags: ['自動車保険'],
+  memo: '',
+});
+pol12.coverages = [
+  mkCoverage(cid(), pol12.id, {
+    type: 'liability', label: '対人・対物賠償', insuredPersonId: 'p_c4_head', isMain: true,
+  }),
+];
+
+// c1: 追加 — がん保険 (pending: opp5 から発行想定)
+const pol13 = mkPolicy(pid(), {
+  householdId: 'c1', ownerId: 'u1',
+  contractorPersonId: 'p_c1_head',
+  insuredPersonIds: ['p_c1_head'],
+  insurer: 'メットライフ生命',
+  productName: 'フレキシィ がん保険',
+  productCategory: 'cancer',
+  status: 'pending',
+  startDate: d(3),
+  monthlyPremium: 4200,
+  payMode: 'monthly',
+  hasCashValue: false,
+  sourceOpportunityId: 'opp5',
+  tags: ['がん保険', '申込中'],
+  memo: '申込中。告知中',
+});
+pol13.coverages = [
+  mkCoverage(cid(), pol13.id, {
+    type: 'cancer', label: 'がん診断一時金', insuredPersonId: 'p_c1_head', isMain: true,
+    faceAmount: 2000000, unit: 'JPY',
+  }),
+];
+
+// c2: 医療保険
+const pol14 = mkPolicy(pid(), {
+  householdId: 'c2', ownerId: 'u1',
+  contractorPersonId: 'p_c2_head',
+  insuredPersonIds: ['p_c2_head'],
+  insurer: '東京海上日動あんしん生命',
+  productName: '医療保険 スーパーがん',
+  productCategory: 'cancer',
+  status: 'inforce',
+  policyNumber: 'C-0022001',
+  startDate: '2015-01-01',
+  monthlyPremium: 5200,
+  payMode: 'monthly',
+  hasCashValue: false,
+  tags: ['がん保険'],
+  memo: '喫煙者のため保険料高め',
+});
+pol14.coverages = [
+  mkCoverage(cid(), pol14.id, {
+    type: 'cancer', label: 'がん入院給付金日額', insuredPersonId: 'p_c2_head', isMain: true,
+    unitAmount: 10000, unit: 'day',
+  }),
+];
+
+// c3: 賠償責任保険
+const pol15 = mkPolicy(pid(), {
+  householdId: 'c3', ownerId: 'u1',
+  contractorPersonId: 'p_c3_head',
+  insuredPersonIds: ['p_c3_head'],
+  insurer: '東京海上日動',
+  productName: '生産物賠償責任保険 (PL保険)',
+  productCategory: 'liability',
+  status: 'inforce',
+  policyNumber: 'B-0033001',
+  startDate: '2023-04-01',
+  renewalDate: f(295),
+  monthlyPremium: 22000,
+  payMode: 'annual',
+  annualPremium: 264000,
+  hasCashValue: false,
+  tags: ['法人', '賠償責任'],
+  memo: 'PL保険。ゴム製品製造',
+});
+pol15.coverages = [
+  mkCoverage(cid(), pol15.id, {
+    type: 'liability', label: '賠償保険金', insuredPersonId: 'p_c3_head', isMain: true,
+    faceAmount: 100000000, unit: 'JPY',
+  }),
+];
+
+export const POLICIES: Policy[] = [
+  pol1, pol2, pol3, pol4, pol5, pol6, pol7, pol8,
+  pol9, pol10, pol11, pol12, pol13, pol14, pol15,
+];
+
+export const POLICY_STATUS_HISTORY: PolicyStatusHistory[] = [
+  { id: 'ph_001', policyId: pol1.id, status: 'inforce', changedAt: '2018-04-01T00:00:00.000Z', changedByUserId: 'u1', note: '契約発行' },
+  { id: 'ph_002', policyId: pol5.id, status: 'paid_up', changedAt: '2023-06-01T00:00:00.000Z', changedByUserId: 'u1', note: '払込期間終了' },
+  { id: 'ph_003', policyId: pol10.id, status: 'pending', changedAt: d(5) + 'T10:00:00.000Z', changedByUserId: 'u1', note: '申込書提出' },
+  { id: 'ph_004', policyId: pol13.id, status: 'pending', changedAt: d(3) + 'T10:00:00.000Z', changedByUserId: 'u1', note: '申込書提出・告知中' },
 ];

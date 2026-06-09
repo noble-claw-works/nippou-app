@@ -12,6 +12,9 @@ import { BLOCK_EMOJIS, BLOCK_LABELS } from '../utils';
 import type { Customer, CustomerType, Person, PersonRelation, PersonGender } from '../types';
 import { StageBadge } from '../components/opportunity/StageBadge';
 import { QuickOpportunityModal } from '../components/opportunity/QuickOpportunityModal';
+import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
+import { CoverageMatrix } from '../components/policy/CoverageMatrix';
+import { PolicyEditModal } from '../components/policy/PolicyEditModal';
 
 const TYPE_LABELS: Record<CustomerType, string> = { individual: '個人', corporate: '法人', prospect: '見込み' };
 const RELATION_LABELS: Record<PersonRelation, string> = {
@@ -86,9 +89,9 @@ export function HouseholdDetailPage() {
   }, [location.hash]);
 
   const {
-    customers, users, reports, persons, opportunities,
+    customers, users, reports, persons, opportunities, policies,
     currentRole, updateCustomer, deactivateCustomer, addToast,
-    addPerson, updatePerson, deletePerson,
+    addPerson, updatePerson, deletePerson, getPoliciesByHousehold,
   } = useAppStore();
 
   const [showEdit, setShowEdit] = useState(false);
@@ -98,6 +101,8 @@ export function HouseholdDetailPage() {
   const [deletePersonId, setDeletePersonId] = useState<string | null>(null);
   const [oppTab, setOppTab] = useState<'open' | 'closed'>('open');
   const [showQuickAddOpp, setShowQuickAddOpp] = useState(false);
+  const [policyTab, setPolicyTab] = useState<'active' | 'closed'>('active');
+  const [showAddPolicy, setShowAddPolicy] = useState(false);
 
   const customer = customers.find(c => c.id === customerId);
   if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="世帯が見つかりません" /></div>;
@@ -144,6 +149,17 @@ export function HouseholdDetailPage() {
   );
   const openOpportunities = householdOpportunities.filter(o => o.status === 'open');
   const closedOpportunities = householdOpportunities.filter(o => o.status !== 'open');
+
+  // Phase 3: Policies for this household
+  const householdPolicies = useMemo(
+    () => getPoliciesByHousehold(customerId!),
+    [policies, customerId]
+  );
+  const activePolicies = householdPolicies.filter(p => p.status === 'inforce' || p.status === 'pending');
+  const closedPolicies = householdPolicies.filter(p => p.status !== 'inforce' && p.status !== 'pending');
+  const totalMonthlyPremium = activePolicies
+    .filter(p => p.status === 'inforce')
+    .reduce((s, p) => s + p.monthlyPremium, 0);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4">
@@ -223,6 +239,24 @@ export function HouseholdDetailPage() {
           <div className="mt-4">
             <span className="text-xs text-gray-500 block mb-1">メモ:</span>
             <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3">{customer.memo}</p>
+          </div>
+        )}
+
+        {/* Phase 3: 保険料統計 */}
+        {householdPolicies.length > 0 && (
+          <div className="mt-4 flex gap-4 text-sm">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2">
+              <p className="text-xs text-blue-600">総月払</p>
+              <p className="text-base font-bold text-blue-900">￥{totalMonthlyPremium.toLocaleString()}</p>
+            </div>
+            <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-2">
+              <p className="text-xs text-green-600">年換算</p>
+              <p className="text-base font-bold text-green-900">￥{(totalMonthlyPremium * 12).toLocaleString()}</p>
+            </div>
+            <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2">
+              <p className="text-xs text-gray-600">強効中契約</p>
+              <p className="text-base font-bold text-gray-800">{activePolicies.filter(p => p.status === 'inforce').length}件</p>
+            </div>
           </div>
         )}
       </div>
@@ -361,6 +395,80 @@ export function HouseholdDetailPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Phase 3: 契約セクション */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">
+            📜 契約 ({householdPolicies.length}件)
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAddPolicy(true)}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+            >
+              <span>+</span>新規契約
+            </button>
+          </div>
+        </div>
+
+        {/* active / closed tab */}
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => setPolicyTab('active')}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+              policyTab === 'active' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
+            }`}
+          >
+            強効中 ({activePolicies.length})
+          </button>
+          <button
+            onClick={() => setPolicyTab('closed')}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+              policyTab === 'closed' ? 'bg-gray-100 border-gray-300 text-gray-700' : 'border-gray-200 text-gray-500'
+            }`}
+          >
+            その他 ({closedPolicies.length})
+          </button>
+        </div>
+
+        {(policyTab === 'active' ? activePolicies : closedPolicies).length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">
+            {policyTab === 'active' ? '強効中の契約はありません' : '該当する契約はありません'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(policyTab === 'active' ? activePolicies : closedPolicies).map(policy => (
+              <a
+                key={policy.id}
+                href={`/policies/${policy.id}`}
+                className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors block"
+              >
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <PolicyStatusBadge status={policy.status} size="sm" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-800">{policy.productName}</p>
+                  <p className="text-xs text-gray-500">{policy.insurer}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-gray-900">
+                    {policy.monthlyPremium > 0 ? `￥${policy.monthlyPremium.toLocaleString()}/月` : '払済'}
+                  </p>
+                  <p className="text-xs text-gray-500">{policy.startDate}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Phase 3: 保障マトリクス */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">🛡️ 保障マトリクス</h2>
+        <CoverageMatrix householdId={customerId!} />
       </section>
 
       {/* 対応履歴 */}
@@ -543,6 +651,14 @@ export function HouseholdDetailPage() {
             navigate(`/opportunities/${_id}`);
           }}
           onClose={() => setShowQuickAddOpp(false)}
+        />
+      )}
+
+      {/* Policy Add Modal */}
+      {showAddPolicy && (
+        <PolicyEditModal
+          householdId={customer.id}
+          onClose={() => setShowAddPolicy(false)}
         />
       )}
     </div>

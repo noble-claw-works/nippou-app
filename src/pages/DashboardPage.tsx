@@ -9,10 +9,10 @@ import { TodoProgressPanel } from '../components/dashboard/TodoProgressPanel';
 import { SummaryReportPanel } from '../components/dashboard/SummaryReportPanel';
 
 export function DashboardPage() {
-  const { currentRole, reports, users, addToast } = useAppStore();
+  const { currentRole, reports, users, policies, addToast } = useAppStore();
   const navigate = useNavigate();
 
-  if (currentRole !== 'manager' && currentRole !== 'executive') {
+  if (currentRole !== 'manager' && currentRole !== 'executive' && currentRole !== 'admin') {
     return <div className="px-4 py-8"><ForbiddenState /></div>;
   }
 
@@ -134,6 +134,57 @@ export function DashboardPage() {
 
       {/* MGR-6: 週次・月次サマリーレポート */}
       <SummaryReportPanel reports={reports} users={users} />
+
+      {/* Phase 3: 契約統計 (executive/admin のみ) */}
+      {(currentRole === 'executive' || currentRole === 'admin') ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          {/* 契約ステータス分布 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">📜 契約ステータス分布</h2>
+            {(['inforce', 'pending', 'paid_up', 'lapsed', 'surrendered', 'matured', 'reduced'] as const).map(status => {
+              const count = policies.filter(p => p.status === status).length;
+              const total = policies.length;
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+              const labels: Record<string, string> = {
+                inforce: '✅ 有効中', pending: '⏳ 申込中', paid_up: '💰 払済',
+                lapsed: '⚠️ 失効', surrendered: '❌ 解約', matured: '🎉 満期', reduced: '📉 減額',
+              };
+              if (count === 0) return null;
+              return (
+                <div key={status} className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-600 w-20 shrink-0">{labels[status]}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                    <div className="bg-blue-400 h-2 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs text-gray-500 w-8 text-right">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 保険会社別契約数 */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">🏢 保険会社別契約数</h2>
+            {(() => {
+              const counts: Record<string, number> = {};
+              for (const p of policies.filter(q => q.status === 'inforce')) {
+                counts[p.insurer] = (counts[p.insurer] ?? 0) + 1;
+              }
+              const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+              const max = sorted[0]?.[1] ?? 1;
+              return sorted.map(([insurer, count]) => (
+                <div key={insurer} className="flex items-center gap-2 mb-2">
+                  <span className="text-xs text-gray-600 w-28 shrink-0 truncate">{insurer}</span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                    <div className="bg-green-400 h-2 rounded-full" style={{ width: `${(count / max) * 100}%` }} />
+                  </div>
+                  <span className="text-xs text-gray-500 w-6 text-right">{count}</span>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

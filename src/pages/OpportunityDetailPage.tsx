@@ -6,6 +6,8 @@ import type { ProposalProduct } from '../types';
 import { StageBadge, STAGE_META } from '../components/opportunity/StageBadge';
 import { StageSelector } from '../components/opportunity/StageSelector';
 import { ProposalProductEditModal } from '../components/opportunity/ProposalProductEditModal';
+import { QuickPolicyIssueModal } from '../components/policy/QuickPolicyIssueModal';
+import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
 
 // =====================================================
 // OpportunityDetailPage — 商談案件詳細
@@ -24,13 +26,13 @@ const LOST_REASON_LABELS: Record<string, string> = {
   lost_contact: '連絡が取れなくなった', other: 'その他',
 };
 
-type Tab = 'overview' | 'products' | 'activities' | 'todos';
+type Tab = 'overview' | 'products' | 'activities' | 'todos' | 'issued_policies';
 
 export function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    opportunities, customers, users, reports,
+    opportunities, customers, users, reports, policies,
     updateOpportunity, deleteOpportunity, getPersonsByHousehold,
   } = useAppStore();
 
@@ -40,6 +42,7 @@ export function OpportunityDetailPage() {
   const [editProduct, setEditProduct] = useState<ProposalProduct | null | undefined>(undefined); // undefined = not open
   const [editingFields, setEditingFields] = useState(false);
   const [fieldDraft, setFieldDraft] = useState<Record<string, string>>({});
+  const [showQuickIssue, setShowQuickIssue] = useState(false);
 
   if (!opp) {
     return (
@@ -118,11 +121,14 @@ export function OpportunityDetailPage() {
     setEditingFields(true);
   };
 
+  const issuedPolicies = policies.filter(p => p.sourceOpportunityId === opp.id);
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'overview', label: '📊 概要' },
     { key: 'products', label: `📄 提案商品 (${opp.proposalProducts.length})` },
     { key: 'activities', label: `📅 活動履歴 (${relatedBlocks.length})` },
     { key: 'todos', label: `✅ TODO (${relatedTodos.length})` },
+    { key: 'issued_policies', label: `📜 契約発行 (${issuedPolicies.length})` },
   ];
 
   return (
@@ -178,6 +184,14 @@ export function OpportunityDetailPage() {
           >
             {editingStage ? 'キャンセル' : 'ステージを変更'}
           </button>
+          {opp.stage !== 'issued' && opp.stage !== 'lost' && opp.proposalProducts.length > 0 && (
+            <button
+              onClick={() => setShowQuickIssue(true)}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              🎉 契約発行（受注）
+            </button>
+          )}
           {opp.nextAction && (
             <span className="text-sm text-gray-500">
               次: {opp.nextAction}
@@ -473,6 +487,54 @@ export function OpportunityDetailPage() {
         </div>
       )}
 
+      {/* 契約発行タブ */}
+      {tab === 'issued_policies' && (
+        <div className="space-y-3">
+          {issuedPolicies.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-3xl mb-2">📜</p>
+              <p className="text-sm">この案件から発行された契約はありません</p>
+              {opp.stage !== 'issued' && opp.proposalProducts.length > 0 && (
+                <button
+                  onClick={() => setShowQuickIssue(true)}
+                  className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-xl hover:bg-green-700"
+                >
+                  🎉 契約を発行する
+                </button>
+              )}
+            </div>
+          ) : (
+            issuedPolicies.map(policy => (
+              <div key={policy.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <PolicyStatusBadge status={policy.status} size="sm" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-800">{policy.productName}</p>
+                    <p className="text-xs text-gray-500">{policy.insurer}</p>
+                    {policy.policyNumber && (
+                      <p className="text-xs text-gray-400 font-mono">{policy.policyNumber}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">
+                      ￥{policy.monthlyPremium.toLocaleString()}/月
+                    </p>
+                    <a
+                      href={`/policies/${policy.id}`}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      詳細を見る →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Product edit modal */}
       {editProduct !== undefined && (
         <ProposalProductEditModal
@@ -481,6 +543,14 @@ export function OpportunityDetailPage() {
           householdId={opp.householdId}
           onClose={() => setEditProduct(undefined)}
           onSave={handleSaveProduct}
+        />
+      )}
+
+      {/* Quick Policy Issue Modal */}
+      {showQuickIssue && (
+        <QuickPolicyIssueModal
+          opportunity={opp}
+          onClose={() => setShowQuickIssue(false)}
         />
       )}
     </div>
