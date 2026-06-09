@@ -5,6 +5,10 @@ import type { Customer, TimeBlock } from '../../types';
 import { BLOCK_TYPES } from '../timeline/DragAndChip';
 import { ChevronDown } from 'lucide-react';
 import { CustomerCombobox } from '../ui/CustomerCombobox';
+import { OpportunityCombobox } from '../opportunity/OpportunityCombobox';
+import { StageSelector } from '../opportunity/StageSelector';
+import { QuickOpportunityModal } from '../opportunity/QuickOpportunityModal';
+import { useAppStore } from '../../store';
 
 // ─── BlockModalState ──────────────────────────────────────────────────────────
 export interface BlockModalState {
@@ -35,10 +39,21 @@ export function BlockModal({
   continueInput, setContinueInput,
   onSave, onDelete, onClose, onChange,
 }: BlockModalProps) {
+  const { getOpportunitiesByHousehold, getOpportunityById } = useAppStore();
   const customerComboboxRef = useRef<HTMLDivElement>(null);
   const typeChipRef = useRef<HTMLButtonElement>(null);
   const [visitResultOpen, setVisitResultOpen] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showStageSelector, setShowStageSelector] = useState(false);
+
+  // Open opportunities for selected household
+  const selectedOpportunities = state.block.customerId
+    ? getOpportunitiesByHousehold(state.block.customerId, { openOnly: true })
+    : [];
+  const selectedOpportunity = state.block.opportunityId
+    ? getOpportunityById(state.block.opportunityId)
+    : undefined;
 
   // Auto-focus after open
   useEffect(() => {
@@ -77,7 +92,7 @@ export function BlockModal({
     ? (state.col === 'planned' ? '📋 予定を追加' : '✅ 実績を追加')
     : (state.col === 'planned' ? '📋 予定を編集' : '✅ 実績を編集');
 
-  return (
+  return (<>
     <Modal
       open={state.open}
       onClose={onClose}
@@ -175,12 +190,48 @@ export function BlockModal({
             value={state.block.customerId}
             onChange={customerId => onChange(s => ({
               ...s,
-              block: { ...s.block, customerId },
+              block: { ...s.block, customerId, opportunityId: undefined },
             }))}
             customers={customers.filter(c => c.status === 'active')}
             placeholder="顧客を検索..."
             allowClear={true}
           />
+        </div>
+
+        {/* Opportunity select - shown when customer is selected */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">商談案件 <span className="text-gray-400">(任意)</span></label>
+          <OpportunityCombobox
+            value={state.block.opportunityId}
+            onChange={opportunityId => {
+              onChange(s => ({ ...s, block: { ...s.block, opportunityId } }));
+              setShowStageSelector(false);
+            }}
+            opportunities={selectedOpportunities}
+            disabled={!state.block.customerId}
+            onQuickAdd={() => setShowQuickAdd(true)}
+          />
+          {/* StageSelector shown when opportunity is selected */}
+          {state.block.opportunityId && selectedOpportunity && (
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowStageSelector(v => !v)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {showStageSelector ? 'ステージ変更を閉じる' : `→ ステージを変更する（現在: ${selectedOpportunity ? selectedOpportunity.stage : ''}）`}
+              </button>
+              {showStageSelector && (
+                <div className="mt-2">
+                  <StageSelector
+                    opportunity={selectedOpportunity}
+                    onClose={() => setShowStageSelector(false)}
+                    compact
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Title - Optional */}
@@ -294,5 +345,21 @@ export function BlockModal({
         )}
       </div>
     </Modal>
-  );
+
+    {/* Quick Opportunity creation modal */}
+    {showQuickAdd && state.block.customerId && (() => {
+      const household = customers.find(c => c.id === state.block.customerId);
+      return (
+        <QuickOpportunityModal
+          householdId={state.block.customerId!}
+          householdName={household?.name ?? ''}
+          onCreated={(opportunityId) => {
+            onChange(s => ({ ...s, block: { ...s.block, opportunityId } }));
+            setShowQuickAdd(false);
+          }}
+          onClose={() => setShowQuickAdd(false)}
+        />
+      );
+    })()}
+  </>);
 }

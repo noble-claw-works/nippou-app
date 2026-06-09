@@ -71,6 +71,76 @@ export interface Person {
   updatedAt: string;
 }
 
+// =====================================================
+// Opportunity (商談案件) 型 — Phase 2
+// =====================================================
+
+export type OpportunityStage =
+  | 'approach'        // 🌱 アプローチ (関係構築)
+  | 'fact_finding'    // 🔍 ヒアリング (家族構成・既契約棚卸)
+  | 'needs_analysis'  // 📊 ニーズ分析
+  | 'proposal'        // 📄 設計書提示
+  | 'negotiation'     // 💬 検討中 (質問対応)
+  | 'application'     // ✍️ 申込書記入
+  | 'underwriting'    // 🏥 引受査定中
+  | 'issued'          // 🎉 証券発行 (won)
+  | 'lost';           // ❌ 失注
+
+export type OpportunityStatus = 'open' | 'won' | 'partial_won' | 'lost' | 'on_hold';
+
+export type LostReason =
+  | 'price' | 'competitor' | 'family_oppose' | 'health_decline'
+  | 'no_need' | 'timing' | 'budget' | 'undecided'
+  | 'lost_contact' | 'other';
+
+export type ProductCategory =
+  | 'life' | 'medical' | 'cancer' | 'income' | 'nursing'
+  | 'savings' | 'auto' | 'fire' | 'liability' | 'other';
+
+export interface ProposalProduct {
+  id: string;
+  productCategory: ProductCategory;
+  productName: string;
+  insurer: string;              // 保険会社
+  insuredPersonId: string;      // 被保険者
+  monthlyPremium: number;       // 月払額
+  faceAmount?: number;          // 保険金額
+  memo: string;
+}
+
+export interface OpportunityStageHistory {
+  stage: OpportunityStage;
+  changedAt: string;
+  changedByUserId: string;
+  note?: string;
+}
+
+export interface Opportunity {
+  id: string;
+  householdId: string;
+  ownerId: string;
+  title: string;
+  targetPersonIds: string[];      // 提案対象世帯員
+  stage: OpportunityStage;
+  status: OpportunityStatus;
+  productCategories: ProductCategory[];
+  proposalProducts: ProposalProduct[];
+  totalMonthlyPremium?: number;   // 合計月払 (proposalProducts から自動計算)
+  expectedCloseDate?: string;
+  actualCloseDate?: string;
+  lostReason?: LostReason;
+  lostReasonDetail?: string;
+  nextAction?: string;
+  nextActionDate?: string;
+  needsAnalysisDone: boolean;
+  illustrationProvided: boolean;
+  stageHistory: OpportunityStageHistory[];  // ステージ変更履歴
+  tags: string[];
+  memo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TimeBlock {
   id: string;
   reportId: string;
@@ -78,6 +148,7 @@ export interface TimeBlock {
   startTime: string; // HH:MM
   endTime: string;   // HH:MM
   customerId?: string;
+  opportunityId?: string;  // 紐付け案件 (Phase 2)
   title: string;
   memo: string;
   isPlanned: boolean;
@@ -103,6 +174,7 @@ export interface Todo {
   priority: 'high' | 'medium' | 'low';
   /** 付帯情報判定用: 当該 TODO が紐づく顧客 ID */
   customerId?: string;
+  opportunityId?: string;  // 紐付け案件 (Phase 2)
 }
 
 export interface CustomerVisit {
@@ -160,6 +232,7 @@ export interface Compliment {
   dayKey: string; // YYYY-MM-DD
   customerId?: string;
   customerName?: string;
+  opportunityId?: string;  // 紐付け案件 (Phase 2)
   type: 'praise' | 'request';
   body: string;
   createdAt: string;

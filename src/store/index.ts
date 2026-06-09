@@ -6,11 +6,11 @@ import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment,
   Role, TrackingSession, BlockType, ManagerComment, Compliment,
-  Person,
+  Person, Opportunity, OpportunityStage, LostReason,
 } from '../types';
 import {
   USERS, TEAMS, CUSTOMERS, REPORTS, TEMPLATES,
-  DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS, PERSONS,
+  DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS, PERSONS, OPPORTUNITIES,
 } from '../data/seed';
 import { format } from 'date-fns';
 
@@ -168,6 +168,17 @@ interface AppState {
   addCompliment: (dayKey: string, customerId: string | undefined, customerName: string | undefined, type: 'praise' | 'request', body: string) => void;
   deleteCompliment: (complimentId: string) => void;
 
+  // Data: Opportunity
+  opportunities: Opportunity[];
+
+  // Actions: Opportunity
+  addOpportunity: (partial: Omit<Opportunity, 'id' | 'stageHistory' | 'createdAt' | 'updatedAt' | 'totalMonthlyPremium'>) => Opportunity;
+  updateOpportunity: (id: string, patch: Partial<Opportunity>) => void;
+  deleteOpportunity: (id: string) => void;
+  changeOpportunityStage: (id: string, newStage: OpportunityStage, note?: string, userId?: string) => void;
+  getOpportunitiesByHousehold: (householdId: string, options?: { openOnly?: boolean }) => Opportunity[];
+  getOpportunityById: (id: string) => Opportunity | undefined;
+
   // Actions: Notification
   markNotificationRead: (notifId: string) => void;
   markAllNotificationsRead: () => void;
@@ -222,6 +233,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   emailChangeRequests: [],
   managerComments: [],
   compliments: [],
+  opportunities: (() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = window.localStorage.getItem('nippou.opportunities.v1');
+        if (raw) return JSON.parse(raw) as Opportunity[];
+      } catch { /* ignore */ }
+    }
+    return OPPORTUNITIES;
+  })(),
   toasts: [],
 
   setRole: (role) => {
@@ -764,6 +784,101 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(s => ({ quickChips: s.quickChips.filter(c => c.id !== chipId) }));
   },
 
+  // ----------------------------------------------------
+  // Opportunity
+  // ----------------------------------------------------
+  addOpportunity: (partial) => {
+    const now = new Date().toISOString();
+    const totalMonthlyPremium = (partial.proposalProducts ?? []).reduce((sum, p) => sum + p.monthlyPremium, 0);
+    const opp: Opportunity = {
+      ...partial,
+      id: uid(),
+      totalMonthlyPremium: totalMonthlyPremium > 0 ? totalMonthlyPremium : undefined,
+      stageHistory: [{ stage: partial.stage, changedAt: now, changedByUserId: partial.ownerId }],
+      createdAt: now,
+      updatedAt: now,
+    };
+    set(s => {
+      const updated = [...s.opportunities, opp];
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.opportunities.v1', JSON.stringify(updated));
+      }
+      return { opportunities: updated };
+    });
+    return opp;
+  },
+
+  updateOpportunity: (id, patch) => {
+    set(s => {
+      const updated = s.opportunities.map(o => {
+        if (o.id !== id) return o;
+        const merged = { ...o, ...patch, updatedAt: new Date().toISOString() };
+        // 自動計算: totalMonthlyPremium
+        if (patch.proposalProducts !== undefined) {
+          const total = (merged.proposalProducts ?? []).reduce((sum, p) => sum + p.monthlyPremium, 0);
+          merged.totalMonthlyPremium = total > 0 ? total : undefined;
+        }
+        return merged;
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.opportunities.v1', JSON.stringify(updated));
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  deleteOpportunity: (id) => {
+    set(s => {
+      const updated = s.opportunities.filter(o => o.id !== id);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.opportunities.v1', JSON.stringify(updated));
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  changeOpportunityStage: (id, newStage, note?, userId?) => {
+    const now = new Date().toISOString();
+    const currentUserId = userId ?? get().currentUserId;
+    set(s => {
+      const updated = s.opportunities.map(o => {
+        if (o.id !== id) return o;
+        const historyEntry = { stage: newStage, changedAt: now, changedByUserId: currentUserId, note };
+        let status = o.status;
+        let actualCloseDate = o.actualCloseDate;
+        if (newStage === 'issued') {
+          status = 'won';
+          actualCloseDate = actualCloseDate ?? now.slice(0, 10);
+        } else if (newStage === 'lost') {
+          status = 'lost';
+          actualCloseDate = actualCloseDate ?? now.slice(0, 10);
+        }
+        return {
+          ...o,
+          stage: newStage,
+          status,
+          actualCloseDate,
+          stageHistory: [...o.stageHistory, historyEntry],
+          updatedAt: now,
+        };
+      });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.opportunities.v1', JSON.stringify(updated));
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  getOpportunitiesByHousehold: (householdId, options?) => {
+    const opps = get().opportunities.filter(o => o.householdId === householdId);
+    if (options?.openOnly) return opps.filter(o => o.status === 'open');
+    return opps;
+  },
+
+  getOpportunityById: (id) => {
+    return get().opportunities.find(o => o.id === id);
+  },
+
   markNotificationRead: (notifId) => {
     set(s => ({ notifications: s.notifications.map(n => n.id === notifId ? { ...n, isRead: true } : n) }));
   },
@@ -831,6 +946,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     // E-8 修正: リセット時は削除済み顧客 ID もクリア
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.removeItem('nippou.deletedCustomerIds.v1');
+      window.localStorage.removeItem('nippou.opportunities.v1');
     }
     set({
       currentRole: 'general', currentUserId: 'u1',
@@ -839,7 +955,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       users: USERS, teams: TEAMS, customers: CUSTOMERS, persons: PERSONS, reports: REPORTS,
       templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
       notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
-      trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [], toasts: [],
+      trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [],
+      opportunities: OPPORTUNITIES, toasts: [],
     });
   },
 }));

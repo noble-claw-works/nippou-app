@@ -1,8 +1,8 @@
-// HouseholdDetailPage.tsx — 世帯詳細 (Phase 1: 世帯員セクション追加)
+// HouseholdDetailPage.tsx — 世帯詳細 (Phase 1: 世帯員セクション追加 / Phase 2: 商談タブ追加)
 
 import { useState, useMemo, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, MapPin, Tag, Edit, Clock, User as UserIcon, FileText, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowLeft, MapPin, Tag, Edit, Clock, User as UserIcon, FileText, CheckCircle2, Calendar as CalendarIcon, Plus } from 'lucide-react';
 import { useAppStore } from '../store';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
@@ -10,6 +10,8 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PersonEditModal } from '../components/household/PersonEditModal';
 import { BLOCK_EMOJIS, BLOCK_LABELS } from '../utils';
 import type { Customer, CustomerType, Person, PersonRelation, PersonGender } from '../types';
+import { StageBadge } from '../components/opportunity/StageBadge';
+import { QuickOpportunityModal } from '../components/opportunity/QuickOpportunityModal';
 
 const TYPE_LABELS: Record<CustomerType, string> = { individual: '個人', corporate: '法人', prospect: '見込み' };
 const RELATION_LABELS: Record<PersonRelation, string> = {
@@ -84,7 +86,7 @@ export function HouseholdDetailPage() {
   }, [location.hash]);
 
   const {
-    customers, users, reports, persons,
+    customers, users, reports, persons, opportunities,
     currentRole, updateCustomer, deactivateCustomer, addToast,
     addPerson, updatePerson, deletePerson,
   } = useAppStore();
@@ -94,6 +96,8 @@ export function HouseholdDetailPage() {
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [editPersonId, setEditPersonId] = useState<string | null>(null);
   const [deletePersonId, setDeletePersonId] = useState<string | null>(null);
+  const [oppTab, setOppTab] = useState<'open' | 'closed'>('open');
+  const [showQuickAddOpp, setShowQuickAddOpp] = useState(false);
 
   const customer = customers.find(c => c.id === customerId);
   if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="世帯が見つかりません" /></div>;
@@ -132,6 +136,14 @@ export function HouseholdDetailPage() {
   const canEdit = currentRole === 'manager' || currentRole === 'admin';
   const canDeactivate = currentRole === 'admin';
   const editingPerson = editPersonId ? householdPersons.find(p => p.id === editPersonId) : null;
+
+  // Phase 2: Opportunities for this household
+  const householdOpportunities = useMemo(
+    () => opportunities.filter(o => o.householdId === customerId),
+    [opportunities, customerId]
+  );
+  const openOpportunities = householdOpportunities.filter(o => o.status === 'open');
+  const closedOpportunities = householdOpportunities.filter(o => o.status !== 'open');
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-4">
@@ -276,6 +288,76 @@ export function HouseholdDetailPage() {
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 商談案件 — Phase 2 */}
+      <section className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">
+            💼 商談 ({householdOpportunities.length}件)
+          </h2>
+          <button
+            type="button"
+            onClick={() => setShowQuickAddOpp(true)}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            新規案件
+          </button>
+        </div>
+
+        {/* open / closed tab */}
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={() => setOppTab('open')}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+              oppTab === 'open' ? 'bg-blue-100 border-blue-300 text-blue-700' : 'border-gray-200 text-gray-500'
+            }`}
+          >
+            進行中 ({openOpportunities.length})
+          </button>
+          <button
+            onClick={() => setOppTab('closed')}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+              oppTab === 'closed' ? 'bg-gray-100 border-gray-300 text-gray-700' : 'border-gray-200 text-gray-500'
+            }`}
+          >
+            完了 ({closedOpportunities.length})
+          </button>
+        </div>
+
+        {(oppTab === 'open' ? openOpportunities : closedOpportunities).length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">
+            {oppTab === 'open' ? '進行中の案件はありません' : '完了した案件はありません'}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {(oppTab === 'open' ? openOpportunities : closedOpportunities).map(opp => (
+              <Link
+                key={opp.id}
+                to={`/opportunities/${opp.id}`}
+                className="flex items-center gap-3 px-3 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-800 truncate">{opp.title}</span>
+                    <StageBadge stage={opp.stage} size="sm" />
+                  </div>
+                  {opp.nextAction && (
+                    <div className="text-xs text-gray-500 mt-0.5 truncate">
+                      次: {opp.nextAction}{opp.nextActionDate ? ` (${opp.nextActionDate})` : ''}
+                    </div>
+                  )}
+                </div>
+                {opp.totalMonthlyPremium && (
+                  <span className="text-xs text-gray-500 shrink-0">
+                    ¥{opp.totalMonthlyPremium.toLocaleString()}/月
+                  </span>
+                )}
+              </Link>
             ))}
           </div>
         )}
@@ -450,6 +532,19 @@ export function HouseholdDetailPage() {
         title="世帯を無効化しますか？"
         message={`「${customer.name}」を無効化します。`}
         confirmLabel="無効化する" />
+
+      {/* Quick Opportunity Modal */}
+      {showQuickAddOpp && (
+        <QuickOpportunityModal
+          householdId={customer.id}
+          householdName={customer.name}
+          onCreated={(_id) => {
+            setShowQuickAddOpp(false);
+            navigate(`/opportunities/${_id}`);
+          }}
+          onClose={() => setShowQuickAddOpp(false)}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@
 import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment, Person,
+  Opportunity, OpportunityStage, OpportunityStatus,
 } from '../types';
 import { format, subDays, addDays } from 'date-fns';
 
@@ -289,4 +290,263 @@ export const AUDIT_LOGS: AuditLog[] = [
   { id: 'al3', userId: 'u6', action: 'ユーザー権限変更', targetType: 'User', targetId: 'u2', ip: '192.168.1.100', userAgent: 'Chrome/125', result: 'success', diff: { role: { before: 'general', after: 'manager' } }, createdAt: d(3) + 'T10:00:00' },
   { id: 'al4', userId: 'u4', action: '日報を確認済みにした', targetType: 'DailyReport', targetId: `r_${d(2)}_u1`, ip: '192.168.1.2', userAgent: 'Firefox/120', result: 'success', diff: { status: { before: 'submitted', after: 'confirmed' } }, createdAt: `${d(2)}T19:30:00` },
   { id: 'al5', userId: 'u6', action: '顧客を追加', targetType: 'Customer', targetId: 'c8', ip: '192.168.1.100', userAgent: 'Chrome/125', result: 'success', createdAt: d(10) + 'T14:00:00' },
+];
+
+// =====================================================
+// 商談案件 (Opportunity) — Phase 2 Seed
+// =====================================================
+function mkOpp(
+  id: string,
+  householdId: string,
+  ownerId: string,
+  title: string,
+  stage: OpportunityStage,
+  status: OpportunityStatus,
+  opts: Partial<Opportunity> = {}
+): Opportunity {
+  const now = new Date().toISOString();
+  return {
+    id,
+    householdId,
+    ownerId,
+    title,
+    stage,
+    status,
+    targetPersonIds: opts.targetPersonIds ?? [],
+    productCategories: opts.productCategories ?? [],
+    proposalProducts: opts.proposalProducts ?? [],
+    totalMonthlyPremium: opts.proposalProducts
+      ? opts.proposalProducts.reduce((s, p) => s + p.monthlyPremium, 0) || undefined
+      : undefined,
+    needsAnalysisDone: opts.needsAnalysisDone ?? false,
+    illustrationProvided: opts.illustrationProvided ?? false,
+    stageHistory: opts.stageHistory ?? [{ stage, changedAt: d(7) + 'T09:00:00', changedByUserId: ownerId }],
+    tags: opts.tags ?? [],
+    memo: opts.memo ?? '',
+    expectedCloseDate: opts.expectedCloseDate,
+    actualCloseDate: opts.actualCloseDate,
+    lostReason: opts.lostReason,
+    lostReasonDetail: opts.lostReasonDetail,
+    nextAction: opts.nextAction,
+    nextActionDate: opts.nextActionDate,
+    createdAt: d(14) + 'T10:00:00',
+    updatedAt: now,
+  };
+}
+
+export const OPPORTUNITIES: Opportunity[] = [
+  // c1: KOORO GILSON — 生命保険 (proposal ステージ)
+  mkOpp('opp1', 'c1', 'u1', 'GILSON家 生命保険 見直し', 'proposal', 'open', {
+    targetPersonIds: ['p_c1_head'],
+    productCategories: ['life', 'medical'],
+    proposalProducts: [
+      { id: 'pp1', productCategory: 'life', productName: '収入保障保険', insurer: '明治安田生命', insuredPersonId: 'p_c1_head', monthlyPremium: 4800, faceAmount: 5000000, memo: '60歳満了' },
+      { id: 'pp2', productCategory: 'medical', productName: '医療保険エクセルエイド', insurer: '東京海上日動あんしん生命', insuredPersonId: 'p_c1_head', monthlyPremium: 3200, memo: '1入院60日型' },
+    ],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    nextAction: '設計書の説明と質問対応',
+    nextActionDate: f(3),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(30) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'fact_finding', changedAt: d(21) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'needs_analysis', changedAt: d(14) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(5) + 'T10:00:00', changedByUserId: 'u1', note: '設計書を提示しました' },
+    ],
+    memo: '配偶者分も追加提案を検討中',
+    tags: ['生命保険', '見直し'],
+    expectedCloseDate: f(21),
+  }),
+
+  // c2: 齋藤 和久 — 医療保険 (negotiation ステージ)
+  mkOpp('opp2', 'c2', 'u1', '齋藤家 医療保険 新規', 'negotiation', 'open', {
+    targetPersonIds: ['p_c2_head'],
+    productCategories: ['medical'],
+    proposalProducts: [
+      { id: 'pp3', productCategory: 'medical', productName: 'メディカルKit R', insurer: 'ソニー生命', insuredPersonId: 'p_c2_head', monthlyPremium: 5500, memo: 'がん特約あり' },
+    ],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    nextAction: '奥様との合同面談',
+    nextActionDate: f(7),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(45) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'fact_finding', changedAt: d(30) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'needs_analysis', changedAt: d(20) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(10) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'negotiation', changedAt: d(3) + 'T10:00:00', changedByUserId: 'u1', note: '奥様が同席を希望' },
+    ],
+    memo: '奥様の同席が必要',
+    tags: ['医療保険'],
+    expectedCloseDate: f(14),
+  }),
+
+  // c4: 水野 幸重 — 自動車保険 (application ステージ)
+  mkOpp('opp3', 'c4', 'u1', '水野家 自動車保険 更新', 'application', 'open', {
+    targetPersonIds: ['p_c4_head'],
+    productCategories: ['auto'],
+    proposalProducts: [
+      { id: 'pp4', productCategory: 'auto', productName: 'タフ・くるまの保険', insurer: '東京海上日動', insuredPersonId: 'p_c4_head', monthlyPremium: 7200, memo: '弁護士費用特約付' },
+    ],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    nextAction: '申込書の回収',
+    nextActionDate: f(2),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(20) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(7) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'negotiation', changedAt: d(4) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'application', changedAt: d(1) + 'T10:00:00', changedByUserId: 'u1', note: '申込意向確認済み' },
+    ],
+    memo: '7月更新案件',
+    tags: ['自動車保険', '更新'],
+    expectedCloseDate: f(5),
+  }),
+
+  // c6: 鈴木 花代 — 生命保険 見直し (approach ステージ)
+  mkOpp('opp4', 'c6', 'u2', '鈴木家 生命保険 見直し', 'approach', 'open', {
+    targetPersonIds: ['p_c6_head'],
+    productCategories: ['life'],
+    needsAnalysisDone: false,
+    illustrationProvided: false,
+    nextAction: '家族構成ヒアリング',
+    nextActionDate: f(7),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(5) + 'T09:00:00', changedByUserId: 'u2', note: '既存顧客からの紹介で接触' },
+    ],
+    memo: '子供3人の保障見直し',
+    tags: ['生命保険', '見直し'],
+    expectedCloseDate: f(60),
+  }),
+
+  // c8: 高橋 誠 — 自動車保険 (fact_finding ステージ)
+  mkOpp('opp5', 'c8', 'u1', '高橋家 自動車保険 新規', 'fact_finding', 'open', {
+    targetPersonIds: ['p_c8_head'],
+    productCategories: ['auto'],
+    needsAnalysisDone: false,
+    illustrationProvided: false,
+    nextAction: '現在の保険内容確認',
+    nextActionDate: f(5),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(15) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'fact_finding', changedAt: d(7) + 'T10:00:00', changedByUserId: 'u1', note: '紹介案件、前向きな雰囲気' },
+    ],
+    memo: '紹介案件。家族全員分の保険を見直したい意向',
+    tags: ['見込み', '自動車'],
+    expectedCloseDate: f(30),
+  }),
+
+  // c10: 伊藤 幸子 — 医療保険 (needs_analysis ステージ)
+  mkOpp('opp6', 'c10', 'u3', '伊藤家 医療保険 検討', 'needs_analysis', 'open', {
+    targetPersonIds: ['p_c10_head'],
+    productCategories: ['medical', 'cancer'],
+    needsAnalysisDone: false,
+    illustrationProvided: false,
+    nextAction: 'ニーズ分析シート記入',
+    nextActionDate: f(10),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(25) + 'T09:00:00', changedByUserId: 'u3' },
+      { stage: 'fact_finding', changedAt: d(15) + 'T10:00:00', changedByUserId: 'u3' },
+      { stage: 'needs_analysis', changedAt: d(7) + 'T10:00:00', changedByUserId: 'u3', note: 'がんへの関心高い' },
+    ],
+    memo: 'がん特約への関心が高い。母親がガン経験者',
+    tags: ['医療保険', 'がん保険'],
+    expectedCloseDate: f(45),
+  }),
+
+  // c1: GILSON — 受注案件 (issued / won)
+  mkOpp('opp7', 'c1', 'u1', 'GILSON家 自動車保険 受注', 'issued', 'won', {
+    targetPersonIds: ['p_c1_head'],
+    productCategories: ['auto'],
+    proposalProducts: [
+      { id: 'pp5', productCategory: 'auto', productName: 'タフ・くるまの保険', insurer: '東京海上日動', insuredPersonId: 'p_c1_head', monthlyPremium: 8900, memo: '弁護士費用特約+車両保険' },
+    ],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    stageHistory: [
+      { stage: 'approach', changedAt: d(60) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(45) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'application', changedAt: d(30) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'underwriting', changedAt: d(25) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'issued', changedAt: d(14) + 'T10:00:00', changedByUserId: 'u1', note: '証券発行完了' },
+    ],
+    memo: '継続更新を確保',
+    tags: ['自動車保険', '受注済み'],
+    actualCloseDate: d(14),
+  }),
+
+  // c2: 齋藤 — 失注案件
+  mkOpp('opp8', 'c2', 'u1', '齋藤家 生命保険 (失注)', 'lost', 'lost', {
+    targetPersonIds: ['p_c2_head'],
+    productCategories: ['life'],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    stageHistory: [
+      { stage: 'approach', changedAt: d(90) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(60) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'negotiation', changedAt: d(45) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'lost', changedAt: d(30) + 'T10:00:00', changedByUserId: 'u1', note: '他社に決まった' },
+    ],
+    lostReason: 'competitor',
+    lostReasonDetail: '他社代理店からより安い見積もりが出た',
+    memo: '',
+    tags: [],
+    actualCloseDate: d(30),
+  }),
+
+  // c3: 暁和化学ゴム — 法人 火災保険 (underwriting)
+  mkOpp('opp9', 'c3', 'u1', '暁和化学ゴム 工場火災保険', 'underwriting', 'open', {
+    productCategories: ['fire'],
+    proposalProducts: [
+      { id: 'pp6', productCategory: 'fire', productName: '企業総合保険', insurer: '損保ジャパン', insuredPersonId: '', monthlyPremium: 45000, faceAmount: 200000000, memo: '工場・在庫一式' },
+    ],
+    needsAnalysisDone: true,
+    illustrationProvided: true,
+    nextAction: '査定結果待ち',
+    nextActionDate: f(14),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(40) + 'T09:00:00', changedByUserId: 'u1' },
+      { stage: 'fact_finding', changedAt: d(30) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'needs_analysis', changedAt: d(21) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'proposal', changedAt: d(14) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'application', changedAt: d(7) + 'T10:00:00', changedByUserId: 'u1' },
+      { stage: 'underwriting', changedAt: d(3) + 'T10:00:00', changedByUserId: 'u1', note: '申込書提出済み、査定待ち' },
+    ],
+    memo: '山田部長承認済み',
+    tags: ['法人', '火災保険'],
+    expectedCloseDate: f(21),
+  }),
+
+  // c6: 鈴木 — 学資保険 (fact_finding)
+  mkOpp('opp10', 'c6', 'u2', '鈴木家 学資保険 検討', 'fact_finding', 'open', {
+    targetPersonIds: ['p_c6_head'],
+    productCategories: ['savings'],
+    needsAnalysisDone: false,
+    illustrationProvided: false,
+    nextAction: '子供の年齢・学費計画確認',
+    nextActionDate: f(10),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(10) + 'T09:00:00', changedByUserId: 'u2' },
+      { stage: 'fact_finding', changedAt: d(3) + 'T10:00:00', changedByUserId: 'u2', note: '学費への不安あり' },
+    ],
+    memo: '小学生3名分の学費積み立て',
+    tags: ['学資保険', '積立'],
+    expectedCloseDate: f(60),
+  }),
+
+  // c4: 水野 — 生命保険 (approach)
+  mkOpp('opp11', 'c4', 'u1', '水野家 生命保険 初回アプローチ', 'approach', 'open', {
+    targetPersonIds: ['p_c4_head'],
+    productCategories: ['life'],
+    needsAnalysisDone: false,
+    illustrationProvided: false,
+    nextAction: '初回面談のアポ取得',
+    nextActionDate: f(14),
+    stageHistory: [
+      { stage: 'approach', changedAt: d(2) + 'T09:00:00', changedByUserId: 'u1', note: '自動車更新時に生命保険の興味を確認' },
+    ],
+    memo: '自動車保険更新ついでに生命保険も提案',
+    tags: ['生命保険', '新規'],
+    expectedCloseDate: f(90),
+  }),
 ];

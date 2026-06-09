@@ -12,6 +12,8 @@ import { CustomersPage } from './pages/CustomersPage';
 import { CustomerDetailPage } from './pages/CustomerDetailPage';
 import { HouseholdsPage } from './pages/HouseholdsPage';
 import { HouseholdDetailPage } from './pages/HouseholdDetailPage';
+import { OpportunitiesPage } from './pages/OpportunitiesPage';
+import { OpportunityDetailPage } from './pages/OpportunityDetailPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -83,6 +85,9 @@ function AppLayout() {
         {/* Legacy /customers/* → /households/* リダイレクト */}
         <Route path="/customers" element={<Navigate to="/households" replace />} />
         <Route path="/customers/:customerId" element={<RedirectCustomerToHousehold />} />
+        {/* Opportunity routes (Phase 2) */}
+        <Route path="/opportunities" element={<OpportunitiesPage />} />
+        <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />
