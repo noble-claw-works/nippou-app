@@ -1250,7 +1250,7 @@ updateBlock(report.id, block.id, {
 | `nippou.deletedCustomerIds.v1` | JSON (string[]) | E-8 (e54993b/0450936 2026-06-06) | 削除済み顧客 ID の配列。`deleteCustomer` 時に追加。store 初期化時に seed data をフィルタアウト。`resetAll` 時にクリア |
 | `nippou.currentRole.v1` | 文字列 (Role) | E-9 (a5eb23c 2026-06-06) | ロール切替の現在選択ロール。`setRole` 時に保存。`login`/`logout`/`resetAll` 時にクリア |
 | `nippou.currentUserId.v1` | 文字列 (userId) | E-9 (a5eb23c 2026-06-06) | ロール切替の現在選択ユーザー ID。`setRole` 時に同時保存。`login`/`logout`/`resetAll` 時にクリア |
-| `nippou.persons.v1` | JSON (Person[]) | Phase 1 (6db6e91 2026-06-09) | 世帯員データ。将来的に永続化対象となる予定（現時点は seed データから初期化） |
+| `nippou.persons.v1` | **未実装、将来予定** | — | 世帯員データの永続化構想。現在、実装コードに当該キーは存在せず、seed データから初期化しています。 |
 | `nippou.opportunities.v1` | JSON (Opportunity[]) | Phase 2 (97cabc9 2026-06-09) | 商談案件データ。`addOpportunity` / `updateOpportunity` / `deleteOpportunity` / `changeOpportunityStage` 時に即座保存。store 初期化時に読み込み、なければ seed データでフォールバック |
 | `nippou.policies.v1` | JSON (Policy[]) | Phase 3 (97cf2b1 2026-06-09) | 保険契約データ。`addPolicy` / `updatePolicy` / `deletePolicy` / `issuePoliciesFromOpportunity` / `activatePolicy` 時に即座保存。store 初期化時に読み込み、なければ seed データでフォールバック |
 | `nippou.policyHistory.v1` | JSON (PolicyStatusHistory[]) | Phase 3 (97cf2b1 2026-06-09) | 契約ステータス履歴。`activatePolicy` / `changePolicyStatus` 時に追記。store 初期化時に読み込み、なければ空配列 |

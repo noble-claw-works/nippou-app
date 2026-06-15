@@ -405,7 +405,9 @@ interface Props {
 
 ---
 
-### CustomersPage (件数表示・ソート・削除機能)
+### CustomersPage (件数表示・ソート・削除機能) [**旧ページ / デッドコード - 削除候補**]
+
+> ⚠️ **注稘**: この CustomersPage セクションは Phase 1 以前の旧ページであり、現在。`/customers` ルートは `/households` へリダイレクトされています。CUS-1~CUS-3 の仕様詳細は HouseholdsPage 詳細に統合済み。本セクションは参考資料として保持しています。
 
 **CUS-1 顧客一覧**:
 
@@ -459,7 +461,7 @@ const sorted = [...filtered].sort((a, b) => {
 - **位置**: アクション列（編集ボタン同列）
 - **表示条件**: historyCountByCustomer.get(customer.id) > 0 の場合のみ表示
 - **スタイル**: px-2.5 py-1 text-xs text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50
-- **クリック動作**: `/customers/{id}#history` へ navigate
+- **クリック動作**: `/households/{id}#history` へ navigate
 - **aria-label**: `${customer.name} の対応履歴を見る`
 
 **CUS-3 顧客削除機能**:

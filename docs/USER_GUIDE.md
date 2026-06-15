@@ -10,7 +10,7 @@
 
 | ロール | 主な目的 | アクセス可能な主要画面 |
 |---|---|---|
-| general | 自分の日報作成・顧客記録・上長への報告 | /today, /reports, /customers, /calendar, /search, /settings |
+| general | 自分の日報作成・顧客記録・上長への報告 | /today, /reports, /households, /calendar, /search, /settings, /opportunities, /policies |
 | manager | 部下日報レビュー・コメント・差し戻し | + /dashboard (部下絞り込み) |
 | executive | 全社俯瞰・経営判断 | + /dashboard (全社統計), /admin (読取専用) |
 | admin | ユーザー・チーム・組織編成管理 | + /admin (フル機能) |
@@ -32,7 +32,7 @@
 
 ### 訪問前準備 (出発前・Phase 1)
 
-4.5. `/households` で訪問予定の世帯を検索 → 世帯詳細画面を開く
+4.5. `/households` で訪問予定の世帯を検索 → 世帯詳細画面を開く (旧: `/customers`からリダイレクト)
    - 「👨‍👩‍👧 世帯員」セクションで**世帯員構成**を確認（続柄・生年月日・健康情報）
    - 世帯主と家族構成（spouse/child 等）を頭に入れてから訪問
    - `familyMemo` で「配偶者あり・子 2 名」等のメモを再確認
@@ -62,7 +62,7 @@
 ### 月末
 
 12. `/search` で過去日報を月単位で検索 → 振り返り
-13. `/customers` で顧客情報の整理 (タグ追加・メモ更新)
+13. `/households` で世帯情報の整理 (タグ追加・メモ更新)
 
 ### Opportunity 受注 → 契約発行 → 証券番号入力フロー (Phase 3)
 
@@ -238,6 +238,8 @@
 | `/dashboard` 部下絞り込み | ❌ | ✅ | ✅ | ✅ |
 | `/dashboard` 全社統計 | ❌ | ❌ | ✅ | ✅ |
 | `/households` 一覧 (旧 `/customers` リダイレクト) | ✅ | ✅ | ✅ | ✅ |
+| `/opportunities` 一覧・作成 | ✅ | ✅ | ✅ | ✅ |
+| `/policies` 一覧・詳細 | ✅ | ✅ | ✅ | ✅ |
 | `/households` 削除 (付帯情報なし) | ✅ | ✅ | ✅ | ✅ |
 | `/households` 削除 (付帯情報あり 🔗) | ❌ | ❌ | ✅ | ✅ |
 | 世帯員 (Person) 追加・編集・削除 | ✅ | ✅ | ✅ | ✅ |

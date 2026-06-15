@@ -122,18 +122,18 @@ todo
 
 ### status による提出状態管理
 
-| 操作 | status 遷移 | submittedAt |
-|---|---|---|
-| `confirmPlanning()` | `planning` → `in_progress` | — |
-| `submitReport()` | `in_progress` → `submitted` | セット（現在時刻） |
-| `withdrawReport()` | `submitted` → `in_progress` | クリア |
-| `confirmReport()` | `submitted` → `confirmed` | 変化なし |
-| `bulkConfirmReports(reportIds[])` | 複数 `submitted` → `confirmed` | 変化なし |
+| 操作 | status 遷移 | submittedAt | confirmedAt | confirmedBy |
+|---|---|---|---|---|
+| `confirmPlanning()` | `planning` → `in_progress` | — | — | — |
+| `submitReport()` | `in_progress` → `submitted` | セット（現在時刻） | — | — |
+| `withdrawReport()` | `submitted` → `in_progress` | クリア | — | — |
+| `confirmReport()` | `submitted` → `confirmed` | 変化なし | セット（現在時刻） | セット (currentUserId) |
+| `bulkConfirmReports(reportIds[])` | 複数 `submitted` → `confirmed` | 変化なし | セット（現在時刻） | セット (currentUserId) |
 
 **一括確認の実装** (MGR-4):
 - Store action `bulkConfirmReports(reportIds: string[]): number`
 - 入力: status='submitted' の日報 ID 配列
-- 処理: 各 ID に対し `confirmReport()` を内部実行
+- 処理: 各 ID に対し `confirmReport()` を内部実行。**partial commit (部分適用、ロールバックなし)**。status !== 'submitted' の ID はスキップし、成功件数のみ返す
 - 戻り値: 実際に confirmed 状態にした件数
 
 **状態判定**: `status` enum で状態判定を行う（boolean フラグは廃止）。「提出済みか否か」は `status === 'submitted' || status === 'confirmed'` で判定する。
@@ -177,6 +177,7 @@ todo
 | 現在ページ | currentRole | 動作 |
 |---|---|---|
 | TodayPage | manager/executive | `/dashboard` へ自動 redirect (replace=true) |
+| TodayPage | manager/executive + `?self=1` | redirect 不要 (自分の日報作成モード) |
 | ReportDetailPage | general | 自分の日報のみ前後ナビ |
 | ReportDetailPage | manager/executive | 範囲内各日報の前後ナビ + 未確認循環ナビ |
 | DashboardPage | (all) | 上長以上のみアクセス可能 |
