@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { to: '/opportunities', icon: Handshake,  label: '商談',      roles: ['general','manager','executive','admin'] },
   { to: '/policies',     icon: ScrollText,  label: '契約',      roles: ['general','manager','executive','admin'] },
   { to: '/templates', icon: FileText,   label: 'テンプレート', roles: ['admin'] },
-  { to: '/admin',     icon: ShieldCheck,label: '管理',        roles: ['admin'] },
+  { to: '/admin',     icon: ShieldCheck,label: '管理',        roles: ['admin', 'executive'] },
   { to: '/settings',  icon: Settings,   label: '設定',        roles: ['general','manager','executive','admin'] },
 ];
 
