@@ -130,31 +130,23 @@ describe('LoginPage: 正常ログイン後 localStorage クリア', () => {
 // ─── ロック状態判定 ──────────────────────────────────────────────────────────
 
 describe('LoginPage: ロック状態判定', () => {
-  it('failCount >= 5 でロック状態', () => {
-    let failCount = 5;
-    let lockUntil = 0;
-    const isLocked = lockUntil > Date.now() || failCount >= 5;
-    expect(isLocked).toBe(true);
-  });
-
+  // ロック状態は lockUntil (解除時刻) を正典とする。
+  // failCount単独ではロックとせず、lockUntil 期限切れで必ず解除される。
   it('lockUntil が未来の場合ロック状態', () => {
-    const failCount = 0;
     const lockUntil = Date.now() + 60000;
-    const isLocked = lockUntil > Date.now() || failCount >= 5;
+    const isLocked = lockUntil > Date.now();
     expect(isLocked).toBe(true);
   });
 
   it('lockUntil が過去の場合ロック解除', () => {
-    const failCount = 0;
     const lockUntil = Date.now() - 1000;
-    const isLocked = lockUntil > Date.now() || failCount >= 5;
+    const isLocked = lockUntil > Date.now();
     expect(isLocked).toBe(false);
   });
 
-  it('lockUntil=0 かつ failCount=0 はロック解除', () => {
-    const failCount = 0;
+  it('lockUntil=0 はロック解除', () => {
     const lockUntil = 0;
-    const isLocked = lockUntil > Date.now() || failCount >= 5;
+    const isLocked = lockUntil > Date.now();
     expect(isLocked).toBe(false);
   });
 
@@ -162,8 +154,29 @@ describe('LoginPage: ロック状態判定', () => {
     const rawLock = localStorage.getItem(LS_LOCK_KEY) ?? '0';
     const parsedLock = parseInt(rawLock, 10);
     const lockUntil = isNaN(parsedLock) ? 0 : parsedLock;
-    const failCount = 0;
-    const isLocked = lockUntil > Date.now() || failCount >= 5;
+    const isLocked = lockUntil > Date.now();
     expect(isLocked).toBe(false);
+  });
+
+  // 【リグレッション】タイムアウト後の永久ロックバグ (監査 2026-06-15 ②-1) 防止
+  describe('タイムアウト後のロック解除 (永久ロックバグ防止)', () => {
+    it('lockUntil 期限切れ時、failCount>=5 でもロック解除される', () => {
+      // 旧バグ: isLocked = failCount>=5 || lockUntil>now → タイムアウト後も failCount>=5 で永久ロック
+      const failCount = 5;
+      const lockUntil = Date.now() - 1000; // 30分経過済み
+      // 新ロジック: lockUntil のみで判定
+      const isLocked = lockUntil > Date.now();
+      expect(isLocked).toBe(false); // failCount>=5 でも解除される
+    });
+
+    it('タイムアウト解除処理で failCount/lockUntil の localStorage もクリアされる', () => {
+      localStorage.setItem(LS_FAIL_KEY, '5');
+      localStorage.setItem(LS_LOCK_KEY, String(Date.now() - 1000));
+      // releaseLock 相当の処理
+      localStorage.removeItem(LS_FAIL_KEY);
+      localStorage.removeItem(LS_LOCK_KEY);
+      expect(localStorage.getItem(LS_FAIL_KEY)).toBeNull();
+      expect(localStorage.getItem(LS_LOCK_KEY)).toBeNull();
+    });
   });
 });

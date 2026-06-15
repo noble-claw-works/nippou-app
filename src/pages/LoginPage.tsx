@@ -30,20 +30,37 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
-  // 毎秒更新してロック解除時刻のカウントダウンを表示
+  // 毎秒更新してロック解除時刻のカウントダウンを表示。
+  // タイムアウト経過時には failCount もリセットしてロックを完全解除する
+  // (failCount>=5 が残ると lockUntil 経過後も永久ロックされるバグを防ぐ)
   useEffect(() => {
     if (lockUntil <= 0) return;
+    const releaseLock = () => {
+      setFailCount(0);
+      setLockUntil(0);
+      localStorage.removeItem(FAILS_KEY);
+      localStorage.removeItem(LOCK_KEY);
+    };
+    // マウント時点で既に期限切れなら即解除
+    if (Date.now() >= lockUntil) {
+      releaseLock();
+      return;
+    }
     const timer = setInterval(() => {
       const n = Date.now();
       setNow(n);
       if (n >= lockUntil) {
         clearInterval(timer);
+        releaseLock();
       }
     }, 1000);
     return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lockUntil]);
 
-  const isLocked = failCount >= 5 || lockUntil > now;
+  // ロック状態は lockUntil (解除時刻) を正典とする。
+  // failCount>=5 でも lockUntil 未設定/期限切れならロック解除済みとみなす
+  const isLocked = lockUntil > now;
   const [showQuickPick, setShowQuickPick] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
