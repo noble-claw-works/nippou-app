@@ -8,6 +8,7 @@ import { CustomerCombobox } from '../ui/CustomerCombobox';
 import { OpportunityCombobox } from '../opportunity/OpportunityCombobox';
 import { StageSelector } from '../opportunity/StageSelector';
 import { QuickOpportunityModal } from '../opportunity/QuickOpportunityModal';
+import { QuickHouseholdModal } from '../household/QuickHouseholdModal';
 import { useAppStore } from '../../store';
 
 // ─── BlockModalState ──────────────────────────────────────────────────────────
@@ -45,6 +46,7 @@ export function BlockModal({
   const [visitResultOpen, setVisitResultOpen] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showQuickHousehold, setShowQuickHousehold] = useState(false);
   const [showStageSelector, setShowStageSelector] = useState(false);
 
   // Open opportunities for selected household
@@ -195,6 +197,7 @@ export function BlockModal({
             customers={customers.filter(c => c.status === 'active')}
             placeholder="顧客を検索..."
             allowClear={true}
+            onAddNew={() => setShowQuickHousehold(true)}
           />
         </div>
 
@@ -345,6 +348,18 @@ export function BlockModal({
         )}
       </div>
     </Modal>
+
+    {/* Quick Household creation modal */}
+    {showQuickHousehold && (
+      <QuickHouseholdModal
+        onClose={() => setShowQuickHousehold(false)}
+        onCreated={(customerId, { continueToOpportunity }) => {
+          onChange(s => ({ ...s, block: { ...s.block, customerId, opportunityId: undefined } }));
+          setShowQuickHousehold(false);
+          if (continueToOpportunity) setShowQuickAdd(true);
+        }}
+      />
+    )}
 
     {/* Quick Opportunity creation modal */}
     {showQuickAdd && state.block.customerId && (() => {
