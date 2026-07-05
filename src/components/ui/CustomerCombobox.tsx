@@ -240,15 +240,6 @@ export function CustomerCombobox({
             {items.length === 0 && (
               <li className="px-4 py-3 text-sm text-gray-500 text-center">
                 <div>該当顧客なし</div>
-                {onAddNew && (
-                  <button
-                    type="button"
-                    onClick={onAddNew}
-                    className="mt-1 text-blue-600 hover:underline text-xs"
-                  >
-                    + 新規顧客を追加
-                  </button>
-                )}
               </li>
             )}
 
@@ -338,6 +329,20 @@ export function CustomerCombobox({
           {totalMatchCount > MAX_DISPLAY && (
             <div className="px-4 py-2 text-xs text-gray-400 bg-gray-50 border-t border-gray-100 text-center">
               他 {totalMatchCount - totalResults} 件は検索を絞ってください
+            </div>
+          )}
+
+          {/* Footer: 新規追加ボタン (onAddNew 指定時は常時表示) */}
+          {onAddNew && (
+            <div className="border-t border-gray-100 p-2">
+              <button
+                type="button"
+                onClick={() => { onAddNew(); closeDropdown(); }}
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                <span className="font-medium">＋</span>
+                <span>新規世帯を登録</span>
+              </button>
             </div>
           )}
         </div>
