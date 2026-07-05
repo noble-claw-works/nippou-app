@@ -21,6 +21,8 @@ import { AdminPage } from './pages/AdminPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { SalesDashboardPage } from './pages/SalesDashboardPage';
+import { TeamDashboardPage } from './pages/TeamDashboardPage';
 import { useAppStore } from './store';
 
 /** /customers/:customerId → /households/:customerId リダイレクト */
@@ -97,6 +99,9 @@ function AppLayout() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
+        {/* Sales Dashboard routes (Phase 4) */}
+        <Route path="/sales-dashboard" element={<SalesDashboardPage />} />
+        <Route path="/team-dashboard" element={<TeamDashboardPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>
