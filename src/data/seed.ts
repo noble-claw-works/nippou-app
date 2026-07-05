@@ -6,7 +6,9 @@ import type {
   Notification, AuditLog, TimeBlock, Todo, Comment, Person,
   Opportunity, OpportunityStage, OpportunityStatus,
   Policy, PolicyStatusHistory, Coverage,
+  SalesTarget,
 } from '../types';
+import { toPeriod } from '../utils/salesPeriod';
 import { format, subDays, addDays } from 'date-fns';
 
 const today = format(new Date(), 'yyyy-MM-dd');
@@ -1014,6 +1016,61 @@ pol15.coverages = [
 export const POLICIES: Policy[] = [
   pol1, pol2, pol3, pol4, pol5, pol6, pol7, pol8,
   pol9, pol10, pol11, pol12, pol13, pol14, pol15,
+];
+
+// =====================================================
+// SalesTarget (営業目標) シードデータ
+// =====================================================
+
+const _salesNow = new Date().toISOString();
+const _P = {
+  m: toPeriod(new Date(), 'monthly'),
+  q: toPeriod(new Date(), 'quarterly'),
+  y: toPeriod(new Date(), 'annual'),
+};
+
+const mkTarget = (
+  id: string,
+  scope: SalesTarget['scope'],
+  ownerId: string,
+  periodType: SalesTarget['periodType'],
+  period: string,
+  targetPolicyCount: number,
+  targetPremium: number,
+  createdByUserId: string,
+): SalesTarget => ({
+  id,
+  scope,
+  ownerId,
+  periodType,
+  period,
+  targetPolicyCount,
+  targetPremium,
+  memo: '',
+  createdByUserId,
+  createdAt: _salesNow,
+  updatedAt: _salesNow,
+});
+
+export const SALES_TARGETS: SalesTarget[] = [
+  // 個人 u1(袏田): 月 3 件/4万 → 四半期 9 件/12万 → 年間 36 件/48万
+  mkTarget('tgt_u1_m', 'individual', 'u1', 'monthly', _P.m, 3, 40000, 'u4'),
+  mkTarget('tgt_u1_q', 'individual', 'u1', 'quarterly', _P.q, 9, 120000, 'u4'),
+  mkTarget('tgt_u1_y', 'individual', 'u1', 'annual', _P.y, 36, 480000, 'u4'),
+  // 個人 u3(山田)
+  mkTarget('tgt_u3_m', 'individual', 'u3', 'monthly', _P.m, 2, 30000, 'u4'),
+  mkTarget('tgt_u3_q', 'individual', 'u3', 'quarterly', _P.q, 6, 90000, 'u4'),
+  mkTarget('tgt_u3_y', 'individual', 'u3', 'annual', _P.y, 24, 360000, 'u4'),
+  // 個人 u2(営2課)
+  mkTarget('tgt_u2_m', 'individual', 'u2', 'monthly', _P.m, 2, 25000, 'u5'),
+  mkTarget('tgt_u2_q', 'individual', 'u2', 'quarterly', _P.q, 6, 75000, 'u5'),
+  // チーム t1(営1課): 月 6 件/8万 → 四半期 18 件/24万 → 年間 72 件/96万
+  mkTarget('tgt_t1_m', 'team', 't1', 'monthly', _P.m, 6, 80000, 'u5'),
+  mkTarget('tgt_t1_q', 'team', 't1', 'quarterly', _P.q, 18, 240000, 'u5'),
+  mkTarget('tgt_t1_y', 'team', 't1', 'annual', _P.y, 72, 960000, 'u5'),
+  // チーム t2(営2課)
+  mkTarget('tgt_t2_m', 'team', 't2', 'monthly', _P.m, 2, 25000, 'u5'),
+  mkTarget('tgt_t2_q', 'team', 't2', 'quarterly', _P.q, 6, 75000, 'u5'),
 ];
 
 export const POLICY_STATUS_HISTORY: PolicyStatusHistory[] = [

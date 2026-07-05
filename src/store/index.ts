@@ -9,10 +9,12 @@ import type {
   Person, Opportunity, OpportunityStage, LostReason,
   Policy, PolicyStatusHistory, Coverage, PolicyStatus, CoverageType,
   ProductCategory,
+  SalesTarget, TargetScope, TargetPeriodType,
 } from '../types';
 import {
   USERS, TEAMS, CUSTOMERS, REPORTS, TEMPLATES,
   DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS, PERSONS, OPPORTUNITIES, POLICIES, POLICY_STATUS_HISTORY,
+  SALES_TARGETS,
 } from '../data/seed';
 import { format } from 'date-fns';
 
@@ -170,6 +172,28 @@ interface AppState {
   addCompliment: (dayKey: string, customerId: string | undefined, customerName: string | undefined, type: 'praise' | 'request', body: string) => void;
   deleteCompliment: (complimentId: string) => void;
 
+  // Data: SalesTarget
+  salesTargets: SalesTarget[];
+
+  // Actions: SalesTarget
+  addSalesTarget: (partial: Omit<SalesTarget, 'id' | 'createdAt' | 'updatedAt'>) => SalesTarget;
+  updateSalesTarget: (id: string, patch: Partial<SalesTarget>) => void;
+  deleteSalesTarget: (id: string) => void;
+  getTarget: (
+    scope: TargetScope,
+    ownerId: string,
+    periodType: TargetPeriodType,
+    period: string,
+  ) => SalesTarget | undefined;
+  upsertTarget: (
+    scope: TargetScope,
+    ownerId: string,
+    periodType: TargetPeriodType,
+    period: string,
+    values: { targetPolicyCount: number; targetPremium: number; memo?: string },
+    createdByUserId: string,
+  ) => SalesTarget;
+
   // Data: Opportunity
   opportunities: Opportunity[];
 
@@ -257,6 +281,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   emailChangeRequests: [],
   managerComments: [],
   compliments: [],
+  salesTargets: (() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = window.localStorage.getItem('nippou.salesTargets.v1');
+        if (raw) return JSON.parse(raw) as SalesTarget[];
+      } catch { /* ignore */ }
+    }
+    return SALES_TARGETS;
+  })(),
   opportunities: (() => {
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
@@ -827,6 +860,73 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // ----------------------------------------------------
+  // SalesTarget
+  // ----------------------------------------------------
+  addSalesTarget: (partial) => {
+    const now = new Date().toISOString();
+    const target: SalesTarget = { ...partial, id: uid(), createdAt: now, updatedAt: now };
+    set(s => {
+      const updated = [...s.salesTargets, target];
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.salesTargets.v1', JSON.stringify(updated));
+      }
+      return { salesTargets: updated };
+    });
+    return target;
+  },
+
+  updateSalesTarget: (id, patch) => {
+    set(s => {
+      const updated = s.salesTargets.map(t =>
+        t.id === id ? { ...t, ...patch, updatedAt: new Date().toISOString() } : t,
+      );
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.salesTargets.v1', JSON.stringify(updated));
+      }
+      return { salesTargets: updated };
+    });
+  },
+
+  deleteSalesTarget: (id) => {
+    set(s => {
+      const updated = s.salesTargets.filter(t => t.id !== id);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('nippou.salesTargets.v1', JSON.stringify(updated));
+      }
+      return { salesTargets: updated };
+    });
+  },
+
+  getTarget: (scope, ownerId, periodType, period) => {
+    return get().salesTargets.find(
+      t =>
+        t.scope === scope &&
+        t.ownerId === ownerId &&
+        t.periodType === periodType &&
+        t.period === period,
+    );
+  },
+
+  upsertTarget: (scope, ownerId, periodType, period, values, createdByUserId) => {
+    const existing = get().getTarget(scope, ownerId, periodType, period);
+    if (existing) {
+      get().updateSalesTarget(existing.id, values);
+      return { ...existing, ...values, updatedAt: new Date().toISOString() };
+    } else {
+      return get().addSalesTarget({
+        scope,
+        ownerId,
+        periodType,
+        period,
+        targetPolicyCount: values.targetPolicyCount,
+        targetPremium: values.targetPremium,
+        memo: values.memo ?? '',
+        createdByUserId,
+      });
+    }
+  },
+
+  // ----------------------------------------------------
   // Policy
   // ----------------------------------------------------
   addPolicy: (partial) => {
@@ -1233,6 +1333,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       window.localStorage.removeItem('nippou.opportunities.v1');
       window.localStorage.removeItem('nippou.policies.v1');
       window.localStorage.removeItem('nippou.policyHistory.v1');
+      window.localStorage.removeItem('nippou.salesTargets.v1');
     }
     set({
       currentRole: 'general', currentUserId: 'u1',
@@ -1242,7 +1343,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
       notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
       trackingSession: null, emailChangeRequests: [], managerComments: [], compliments: [],
-      opportunities: OPPORTUNITIES, policies: POLICIES, policyStatusHistory: POLICY_STATUS_HISTORY, toasts: [],
+      opportunities: OPPORTUNITIES, policies: POLICIES, policyStatusHistory: POLICY_STATUS_HISTORY,
+      salesTargets: SALES_TARGETS,
+      toasts: [],
     });
   },
 }));

@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home, Calendar, Search, BarChart3, Users, FileText,
   Settings, ShieldCheck, Bell, ChevronDown, RefreshCw,
-  Menu, X as XIcon, LogOut, Handshake, ScrollText
+  Menu, X as XIcon, LogOut, Handshake, ScrollText,
+  Target, TrendingUp
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ROLE_LABELS, ROLE_DEMO_USERS } from '../../utils';
@@ -18,6 +19,8 @@ const NAV_ITEMS = [
   { to: '/households', icon: Users,      label: '世帯',        roles: ['general','manager','executive','admin'] },
   { to: '/opportunities', icon: Handshake,  label: '商談',      roles: ['general','manager','executive','admin'] },
   { to: '/policies',     icon: ScrollText,  label: '契約',      roles: ['general','manager','executive','admin'] },
+  { to: '/sales-dashboard', icon: Target,     label: '営業進捗',   roles: ['general','manager','executive','admin'] },
+  { to: '/team-dashboard',  icon: TrendingUp, label: 'チーム進捗', roles: ['manager','executive','admin'] },
   { to: '/templates', icon: FileText,   label: 'テンプレート', roles: ['admin'] },
   { to: '/admin',     icon: ShieldCheck,label: '管理',        roles: ['admin', 'executive'] },
   { to: '/settings',  icon: Settings,   label: '設定',        roles: ['general','manager','executive','admin'] },
