@@ -1,13 +1,19 @@
 // =====================================================
 // SalesPerfPage.tsx — 営業実績ダッシュボード v1 ルート
-// T1-1/T1-2: GlobalFilterBar / DataQualityBadge 実装 + S1 結線
-// 他タブはプレースホルダを維持
+// T1-1/T1-2: GlobalFilterBar / DataQualityBadge 実装
+// P4: S1〜S7 全画面結線完了
 // =====================================================
 import { useState } from 'react';
 import { TrendingUp, BarChart2, Activity, Share2, Building2, Heart, FileText } from 'lucide-react';
 import { GlobalFilterBar } from './components/GlobalFilterBar';
 import { DataQualityBadge } from './components/DataQualityBadge';
 import { S1Summary } from './pages/S1Summary';
+import { S2BudgetTarget } from './components/screens/S2BudgetTarget';
+import { S3Process } from './components/screens/S3Process';
+import { S4Channel } from './components/screens/S4Channel';
+import { S5InsurerType } from './components/screens/S5InsurerType';
+import { S6LifePlan } from './components/screens/S6LifePlan';
+import { S7ContractDetail } from './components/screens/S7ContractDetail';
 
 // ----------------------------------------
 // サブ画面定義
@@ -25,16 +31,19 @@ const SCREENS = [
 type ScreenId = typeof SCREENS[number]['id'];
 
 // ----------------------------------------
-// 画面プレースホルダ (S2〜S7)
+// 画面レンダラー (S1〜S7 全結線済)
 // ----------------------------------------
-function ScreenPlaceholder({ screenId, label }: { screenId: ScreenId; label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-24 text-gray-400">
-      <div className="text-5xl mb-4">📊</div>
-      <div className="text-lg font-medium text-gray-500 mb-2">{label} 画面</div>
-      <div className="text-sm">{screenId.toUpperCase()} — 後続フェーズで実装予定</div>
-    </div>
-  );
+function renderScreen(screenId: ScreenId) {
+  switch (screenId) {
+    case 's1': return <S1Summary />;
+    case 's2': return <S2BudgetTarget />;
+    case 's3': return <S3Process />;
+    case 's4': return <S4Channel />;
+    case 's5': return <S5InsurerType />;
+    case 's6': return <S6LifePlan />;
+    case 's7': return <S7ContractDetail />;
+    default: return null;
+  }
 }
 
 // ----------------------------------------
@@ -81,13 +90,7 @@ export function SalesPerfPage() {
 
       {/* コンテンツ */}
       <div className="flex-1 overflow-auto p-4">
-        {activeScreen === 's1' && <S1Summary />}
-        {activeScreen !== 's1' && (
-          <ScreenPlaceholder
-            screenId={activeScreen}
-            label={SCREENS.find(s => s.id === activeScreen)?.label ?? ''}
-          />
-        )}
+        {renderScreen(activeScreen)}
       </div>
     </div>
   );
