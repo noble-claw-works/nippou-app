@@ -540,4 +540,70 @@ export function dataQuality(
 // ----------------------------------------
 // 累計コンボ (S2)
 // ----------------------------------------
-export { monthlyCommissionVsBudget as cumulativeBudgetVsActual };
+
+/**
+ * S2専用: 累計予算 vs 確定累計 + 月次差額バーデータ
+ * - cumBudget: 月次予算の累計 (予算積上げ)
+ * - cumActual: 確定累計 (confidenceScenario 適用)
+ * - gap: 月次実績 − 月次予算 (マイナス=未達)
+ */
+export interface CumulativeComboPoint {
+  month: number;         // 会計月 1-12
+  label: string;         // '4月' 等
+  calMonth: string;      // 'YYYY-MM'
+  monthlyActual: number;  // 月次実績
+  monthlyBudget: number;  // 月次予算
+  cumActual: number;      // 確定累計
+  cumBudget: number;      // 予算積上げ累計
+  gap: number;            // 月次差額 (実績 − 予算)
+  cumGap: number;         // 累計差額 (実績累計 − 予算累計)
+}
+
+export function cumulativeBudgetVsActual(
+  contracts: SalesContract[],
+  targets: SalesTargetRow[],
+  filter: SalesPerfFilter,
+  masters: SalesPerfMasters,
+  role: 'general' | 'manager' | 'admin' | 'executive',
+  currentUserId: string,
+): CumulativeComboPoint[] {
+  const scopeIds = getScopeUserIds(role, currentUserId, filter, masters);
+  const filtered = applyFilter(contracts, filter, scopeIds);
+
+  let cumActual = 0;
+  let cumBudget = 0;
+
+  return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => {
+    // 月次実績: confidenceScenario 適用
+    const monthContracts = filtered.filter(
+      c => c.month === m && isInScenario(c, filter.confidenceScenario),
+    );
+    const monthlyActual = monthContracts.reduce((s, c) => s + validCommission(c), 0);
+
+    // 月次予算
+    const monthlyBudget = sumTargets(
+      targets,
+      { ...filter, periodMode: 'single', singleMonth: m },
+      'all',
+      'ALL',
+      [m],
+    );
+
+    cumActual += monthlyActual;
+    cumBudget += monthlyBudget;
+
+    const { year: cy, month: cm } = fiscalMonthToCalMonth(m, filter.fiscalYear);
+
+    return {
+      month: m,
+      label: FISCAL_MONTH_LABELS[m],
+      calMonth: `${cy}-${String(cm).padStart(2, '0')}`,
+      monthlyActual,
+      monthlyBudget,
+      cumActual,
+      cumBudget,
+      gap: monthlyActual - monthlyBudget,
+      cumGap: cumActual - cumBudget,
+    };
+  });
+}
