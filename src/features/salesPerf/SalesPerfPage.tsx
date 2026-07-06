@@ -1,64 +1,38 @@
 // =====================================================
 // SalesPerfPage.tsx — 営業実績ダッシュボード v1 ルート
-// T0-5: プレースホルダ実装 (7画面サブナビの器 + GlobalFilterBar 枠)
+// T1-1/T1-2: GlobalFilterBar / DataQualityBadge 実装 + S1 結線
+// 他タブはプレースホルダを維持
 // =====================================================
 import { useState } from 'react';
 import { TrendingUp, BarChart2, Activity, Share2, Building2, Heart, FileText } from 'lucide-react';
+import { GlobalFilterBar } from './components/GlobalFilterBar';
+import { DataQualityBadge } from './components/DataQualityBadge';
+import { S1Summary } from './pages/S1Summary';
 
 // ----------------------------------------
 // サブ画面定義
 // ----------------------------------------
 const SCREENS = [
-  { id: 's1', label: 'サマリー',      icon: TrendingUp  },
-  { id: 's2', label: '予算・目標',    icon: BarChart2   },
-  { id: 's3', label: 'プロセス',      icon: Activity    },
-  { id: 's4', label: 'チャネル',      icon: Share2      },
-  { id: 's5', label: '保険会社・種目', icon: Building2  },
-  { id: 's6', label: 'ライフプラン',  icon: Heart       },
-  { id: 's7', label: '契約明細',      icon: FileText    },
+  { id: 's1', label: 'サマリー',       icon: TrendingUp  },
+  { id: 's2', label: '予算・目標',     icon: BarChart2   },
+  { id: 's3', label: 'プロセス',       icon: Activity    },
+  { id: 's4', label: 'チャネル',       icon: Share2      },
+  { id: 's5', label: '保険会社・種目', icon: Building2   },
+  { id: 's6', label: 'ライフプラン',   icon: Heart       },
+  { id: 's7', label: '契約明細',       icon: FileText    },
 ] as const;
 
 type ScreenId = typeof SCREENS[number]['id'];
 
 // ----------------------------------------
-// GlobalFilterBar プレースホルダ
-// ----------------------------------------
-function GlobalFilterBar() {
-  return (
-    <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-600">
-      <span className="font-medium text-gray-700">🔍 グローバルフィルタ</span>
-      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">商品ライン: 両方</span>
-      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">FY2025</span>
-      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">通年</span>
-      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">確定＋S＋A</span>
-      <span className="ml-auto text-xs text-gray-400">※ P1 フィルタ実装予定</span>
-    </div>
-  );
-}
-
-// ----------------------------------------
-// DataQualityBadge プレースホルダ
-// ----------------------------------------
-function DataQualityBadge() {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded">集計 320件</span>
-      <span className="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded border border-yellow-200">
-        ⚠ 要確認 15件
-      </span>
-    </div>
-  );
-}
-
-// ----------------------------------------
-// 画面プレースホルダ
+// 画面プレースホルダ (S2〜S7)
 // ----------------------------------------
 function ScreenPlaceholder({ screenId, label }: { screenId: ScreenId; label: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-gray-400">
       <div className="text-5xl mb-4">📊</div>
       <div className="text-lg font-medium text-gray-500 mb-2">{label} 画面</div>
-      <div className="text-sm">{screenId.toUpperCase()} — P1 フェーズで実装予定</div>
+      <div className="text-sm">{screenId.toUpperCase()} — 後続フェーズで実装予定</div>
     </div>
   );
 }
@@ -78,9 +52,10 @@ export function SalesPerfPage() {
             <TrendingUp className="w-5 h-5 text-blue-600" />
             営業実績ダッシュボード
           </h1>
+          {/* DataQualityBadge: フィルタ連動・常時表示 */}
           <DataQualityBadge />
         </div>
-        {/* グローバルフィルタ */}
+        {/* GlobalFilterBar: 全画面共通フィルタ */}
         <GlobalFilterBar />
       </div>
 
@@ -106,10 +81,12 @@ export function SalesPerfPage() {
 
       {/* コンテンツ */}
       <div className="flex-1 overflow-auto p-4">
-        {SCREENS.map(({ id, label }) =>
-          activeScreen === id ? (
-            <ScreenPlaceholder key={id} screenId={id} label={label} />
-          ) : null,
+        {activeScreen === 's1' && <S1Summary />}
+        {activeScreen !== 's1' && (
+          <ScreenPlaceholder
+            screenId={activeScreen}
+            label={SCREENS.find(s => s.id === activeScreen)?.label ?? ''}
+          />
         )}
       </div>
     </div>
