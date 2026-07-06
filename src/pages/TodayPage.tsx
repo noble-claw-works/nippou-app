@@ -38,12 +38,12 @@ export function TodayPage() {
     trackingSession, startTracking, stopTracking, discardTracking,
   } = useAppStore();
 
-    // MGR-1 + MGR-5: 上長ビューは原則 /dashboard へだが、`?self=1` 付きなら自身の日報作成を許可
+    // MGR-1 + MGR-5: 上長ビューは原則 /report-admin へだが、`?self=1` 付きなら自身の日報作成を許可
   const [searchParams] = useSearchParams();
   const selfMode = searchParams.get('self') === '1';
   useEffect(() => {
     if ((currentRole === 'manager' || currentRole === 'executive') && !selfMode) {
-      navigate('/dashboard', { replace: true });
+      navigate('/report-admin', { replace: true });
     }
   }, [currentRole, navigate, selfMode]);
 

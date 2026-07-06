@@ -8,6 +8,7 @@ import { ReportDetailPage } from './pages/ReportDetailPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { SearchPage } from './pages/SearchPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ReportAdminPage } from './pages/ReportAdminPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { CustomerDetailPage } from './pages/CustomerDetailPage';
 import { HouseholdsPage } from './pages/HouseholdsPage';
@@ -83,6 +84,7 @@ function AppLayout() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/report-admin" element={<ReportAdminPage />} />
         {/* Household routes (Phase 1) */}
         <Route path="/households" element={<HouseholdsPage />} />
         <Route path="/households/:customerId" element={<HouseholdDetailPage />} />
