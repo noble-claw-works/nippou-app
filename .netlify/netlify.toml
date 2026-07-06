@@ -7,7 +7,7 @@ headers = []
 [functions."*"]
 
 [build]
-publish = "/private/tmp/nippou-app-check/dist"
+publish = "/private/tmp/nippou-arch/dist"
 publishOrigin = "config"
 commandOrigin = "config"
 command = "npm run build"

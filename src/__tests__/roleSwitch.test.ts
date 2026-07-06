@@ -107,7 +107,7 @@ describe('E-9-3: login / logout 時の localStorage クリア', () => {
   it('login() 成功後にロール切替記録がクリアされる', () => {
     useAppStore.getState().setRole('admin');
     expect(localStorage.getItem(ROLE_SWITCH_STORAGE_KEY)).toBe('admin');
-    const result = useAppStore.getState().login('hakuta@example.com', 'demo');
+    const result = useAppStore.getState().login('kirishima@example.com', 'demo');
     expect(result.ok).toBe(true);
     expect(localStorage.getItem(ROLE_SWITCH_STORAGE_KEY)).toBeNull();
   });

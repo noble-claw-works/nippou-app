@@ -220,7 +220,7 @@ export function LoginPage() {
               id="login-email"
               type="email" value={email} onChange={e => setEmail(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="hakuta@example.com" required autoComplete="username"
+              placeholder="kirishima@example.com" required autoComplete="username"
             />
           </div>
           <div>

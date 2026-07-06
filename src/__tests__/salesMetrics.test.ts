@@ -60,7 +60,7 @@ const policies: Policy[] = [
 ];
 
 const users: User[] = [
-  { id: 'u1', name: '袴田', email: 'u1@example.com', role: 'general', teamIds: ['t1'], status: 'active', avatarInitials: '袴' },
+  { id: 'u1', name: '霧島', email: 'u1@example.com', role: 'general', teamIds: ['t1'], status: 'active', avatarInitials: '霧' },
   { id: 'u2', name: '田中', email: 'u2@example.com', role: 'general', teamIds: ['t2'], status: 'active', avatarInitials: '田' },
   { id: 'u3', name: '山田', email: 'u3@example.com', role: 'general', teamIds: ['t1'], status: 'active', avatarInitials: '山' },
   { id: 'u4', name: '佐藤', email: 'u4@example.com', role: 'manager', teamIds: ['t1'], status: 'active', avatarInitials: '佐' },

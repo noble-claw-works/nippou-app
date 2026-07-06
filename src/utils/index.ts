@@ -29,7 +29,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DEMO_USERS: Record<Role, string> = {
-  general: '袴田 祐司', manager: '佐藤 健一', executive: '鈴木 美咲', admin: '高田 一郎',
+  general: '霧島 遥', manager: '佐藤 健一', executive: '鈴木 美咲', admin: '高田 一郎',
 };
 
 export function timeToMinutes(time: string): number {

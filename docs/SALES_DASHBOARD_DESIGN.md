@@ -190,7 +190,7 @@ const mkTarget = (
 });
 
 export const SALES_TARGETS: SalesTarget[] = [
-  // 個人 u1(袴田): 月3件/4万 → 四半期9件/12万 → 年間36件/48万
+  // 個人 u1(霧島): 月3件/4万 → 四半期9件/12万 → 年間36件/48万
   mkTarget('tgt_u1_m', 'individual', 'u1', 'monthly',   P.m, 3,  40000,  'u4'),
   mkTarget('tgt_u1_q', 'individual', 'u1', 'quarterly', P.q, 9,  120000, 'u4'),
   mkTarget('tgt_u1_y', 'individual', 'u1', 'annual',    P.y, 36, 480000, 'u4'),

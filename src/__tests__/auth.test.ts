@@ -19,7 +19,7 @@ describe('AUTH-1: ログイン / ログアウト', () => {
   });
 
   it('正しいメール+パスワードでログインできる', () => {
-    const result = useAppStore.getState().login('hakuta@example.com', DEFAULT_DEMO_PASSWORD);
+    const result = useAppStore.getState().login('kirishima@example.com', DEFAULT_DEMO_PASSWORD);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.user.id).toBe('u1');
@@ -30,7 +30,7 @@ describe('AUTH-1: ログイン / ログアウト', () => {
   });
 
   it('メールアドレスは大文字小文字を区別しない', () => {
-    const result = useAppStore.getState().login('HAKUTA@Example.COM', DEFAULT_DEMO_PASSWORD);
+    const result = useAppStore.getState().login('KIRISHIMA@Example.COM', DEFAULT_DEMO_PASSWORD);
     expect(result.ok).toBe(true);
   });
 
@@ -41,14 +41,14 @@ describe('AUTH-1: ログイン / ログアウト', () => {
   });
 
   it('パスワードが間違っていれば失敗する', () => {
-    const result = useAppStore.getState().login('hakuta@example.com', 'wrong-password');
+    const result = useAppStore.getState().login('kirishima@example.com', 'wrong-password');
     expect(result.ok).toBe(false);
     expect(useAppStore.getState().authSession).toBeNull();
   });
 
   it('無効化されたユーザーはログインできない', () => {
     useAppStore.getState().updateUser('u1', { status: 'inactive' });
-    const result = useAppStore.getState().login('hakuta@example.com', DEFAULT_DEMO_PASSWORD);
+    const result = useAppStore.getState().login('kirishima@example.com', DEFAULT_DEMO_PASSWORD);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toContain('無効化');
   });
@@ -97,12 +97,12 @@ describe('AUTH-3: パスワード変更', () => {
     expect(result.ok).toBe(true);
 
     // 新しいパスワードでログインできる
-    const login = useAppStore.getState().login('hakuta@example.com', 'newpass1');
+    const login = useAppStore.getState().login('kirishima@example.com', 'newpass1');
     expect(login.ok).toBe(true);
 
     // 古いパスワードはもう使えない
     useAppStore.getState().logout();
-    const oldLogin = useAppStore.getState().login('hakuta@example.com', DEFAULT_DEMO_PASSWORD);
+    const oldLogin = useAppStore.getState().login('kirishima@example.com', DEFAULT_DEMO_PASSWORD);
     expect(oldLogin.ok).toBe(false);
   });
 
