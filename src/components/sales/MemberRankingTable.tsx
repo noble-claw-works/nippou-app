@@ -83,7 +83,7 @@ export function MemberRankingTable({
                 key={row.user.id}
                 onClick={() =>
                   navigate(
-                    `/sales-dashboard?user=${row.user.id}&pt=${periodType}&period=${period}`,
+                    `/dashboard?tab=personal&user=${row.user.id}&pt=${periodType}&period=${period}`,
                   )
                 }
                 className="border-b border-gray-50 hover:bg-gray-50 cursor-pointer"

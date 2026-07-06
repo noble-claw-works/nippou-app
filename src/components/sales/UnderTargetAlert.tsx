@@ -54,7 +54,7 @@ export function UnderTargetAlert({ members, policies, salesTargets, periodType, 
               key={u.id}
               onClick={() =>
                 navigate(
-                  `/sales-dashboard?user=${u.id}&pt=${periodType}&period=${period}`,
+                  `/dashboard?tab=personal&user=${u.id}&pt=${periodType}&period=${period}`,
                 )
               }
               className="flex items-center gap-2 bg-white border border-orange-200 rounded-lg px-3 py-2 hover:bg-orange-50 transition-colors"
