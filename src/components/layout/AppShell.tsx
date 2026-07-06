@@ -4,7 +4,7 @@ import {
   Home, Calendar, Search, BarChart3, Users, FileText,
   Settings, ShieldCheck, Bell, ChevronDown, RefreshCw,
   Menu, X as XIcon, LogOut, Handshake, ScrollText,
-  ClipboardList
+  ClipboardList, TrendingUp
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ROLE_LABELS, ROLE_DEMO_USERS } from '../../utils';
@@ -13,6 +13,7 @@ import { NotificationBell } from '../notifications/NotificationBell';
 
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: BarChart3,      label: 'ダッシュボード', roles: ['general','manager','executive','admin'] },
+  { to: '/sales-perf', icon: TrendingUp,     label: '営業実績',     roles: ['general','manager','executive','admin'] },
   { to: '/today',      icon: Home,            label: 'Today',         roles: ['general','manager','executive','admin'] },
   { to: '/calendar',   icon: Calendar,        label: 'カレンダー',    roles: ['general','manager','executive','admin'] },
   { to: '/search',     icon: Search,          label: '検索',          roles: ['general','manager','executive','admin'] },

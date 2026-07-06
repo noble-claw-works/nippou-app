@@ -24,6 +24,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SalesDashboardPage } from './pages/SalesDashboardPage';
 import { TeamDashboardPage } from './pages/TeamDashboardPage';
+import { SalesPerfPage } from './features/salesPerf/SalesPerfPage';
 import { useAppStore } from './store';
 
 /** /customers/:customerId → /households/:customerId リダイレクト */
@@ -104,6 +105,8 @@ function AppLayout() {
         {/* Sales Dashboard routes (Phase 4) */}
         <Route path="/sales-dashboard" element={<SalesDashboardPage />} />
         <Route path="/team-dashboard" element={<TeamDashboardPage />} />
+        {/* 営業実績ダッシュボード v1 (P0) */}
+        <Route path="/sales-perf" element={<SalesPerfPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>
