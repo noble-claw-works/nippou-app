@@ -425,40 +425,147 @@ export function channelBreakdown(
 }
 
 // ----------------------------------------
+// S4追加: 提携先別月次件数テーブル
+// ----------------------------------------
+
+export interface PartnerMonthlyRow {
+  partner: string;
+  /** 会計月(1-12)→件数 */
+  monthly: Record<number, number>;
+  total: number;
+  /** 全体合計に対する構成比 (null=分母0) */
+  share: number | null;
+}
+
+/**
+ * 提携先(partner)別 × 月次 件数テーブル用データ。
+ * 分母0 → share=null。
+ */
+export function partnerMonthlyBreakdown(
+  contracts: SalesContract[],
+  filter: SalesPerfFilter,
+  masters: SalesPerfMasters,
+  role: 'general' | 'manager' | 'admin' | 'executive',
+  currentUserId: string,
+): PartnerMonthlyRow[] {
+  const scopeIds = getScopeUserIds(role, currentUserId, filter, masters);
+  const filtered = applyFilter(contracts, filter, scopeIds)
+    .filter(c => isInScenario(c, filter.confidenceScenario));
+
+  // partner → month → count
+  const map = new Map<string, Record<number, number>>();
+  for (const c of filtered) {
+    if (!map.has(c.partner)) map.set(c.partner, {});
+    const rec = map.get(c.partner)!;
+    const m = c.month ?? 0; // month null は 0 bucket (未計上)
+    rec[m] = (rec[m] ?? 0) + 1;
+  }
+
+  const totalCount = filtered.length;
+  return [...map.entries()]
+    .map(([partner, monthly]) => {
+      const total = Object.values(monthly).reduce((s, v) => s + v, 0);
+      return {
+        partner,
+        monthly,
+        total,
+        share: safeDiv(total * 100, totalCount),
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
+// ----------------------------------------
 // S5: 保険会社・種目
 // ----------------------------------------
 
+/** 単軸集計行 (保険会社単体 or 種目単体) */
 export interface InsurerTypeRow {
   key: string;
   commission: number;
   count: number;
 }
 
+/**
+ * 保険会社×種目 クロス集計行
+ * insurers: 保険会社別の小計行 (productTypes の合計)
+ * productTypes: 保険会社内の種目別明細
+ */
+export interface InsurerTypeCrossRow {
+  insurer: string;                          // 保険会社名
+  commission: number;                        // 保険会社合計手数料
+  count: number;                             // 保険会社合計件数
+  productTypes: InsurerTypeRow[];            // 種目別内訳
+}
+
+/**
+ * S5専用: 保険会社×種目 クロス集計。
+ * mode='commission' → 手数料合計で表示・ソート
+ * mode='count'      → 件数で表示・ソート
+ * フィルタ(confidenceScenario含む)適用後。分母0→null（呼び出し側で "−"）
+ */
 export function insurerTypeBreakdown(
   contracts: SalesContract[],
   filter: SalesPerfFilter,
   masters: SalesPerfMasters,
   role: 'general' | 'manager' | 'admin' | 'executive',
   currentUserId: string,
-  mode: 'insurer' | 'productType' = 'insurer',
-): InsurerTypeRow[] {
+  mode: 'commission' | 'count' = 'commission',
+): InsurerTypeCrossRow[] {
   const scopeIds = getScopeUserIds(role, currentUserId, filter, masters);
   const filtered = applyFilter(contracts, filter, scopeIds)
     .filter(c => isInScenario(c, filter.confidenceScenario));
 
-  const map = new Map<string, { commission: number; count: number }>();
+  // 保険会社 → 種目 → { commission, count } の2段 Map
+  const crossMap = new Map<string, Map<string, { commission: number; count: number }>>();
+
   for (const c of filtered) {
-    const key = mode === 'insurer' ? c.insurer : c.productType;
-    const existing = map.get(key) ?? { commission: 0, count: 0 };
-    map.set(key, {
+    const ins = c.insurer || '未分類';
+    const pt  = c.productType || '未分類';
+
+    if (!crossMap.has(ins)) {
+      crossMap.set(ins, new Map());
+    }
+    const ptMap = crossMap.get(ins)!;
+    const existing = ptMap.get(pt) ?? { commission: 0, count: 0 };
+    ptMap.set(pt, {
       commission: existing.commission + validCommission(c),
       count: existing.count + 1,
     });
   }
 
-  return [...map.entries()]
-    .map(([key, v]) => ({ key, commission: v.commission, count: v.count }))
-    .sort((a, b) => b.commission - a.commission);
+  const rows: InsurerTypeCrossRow[] = [];
+
+  for (const [insurer, ptMap] of crossMap.entries()) {
+    // 種目別小計
+    const productTypes: InsurerTypeRow[] = [...ptMap.entries()]
+      .map(([key, v]) => ({ key, commission: v.commission, count: v.count }))
+      .sort((a, b) =>
+        mode === 'commission'
+          ? b.commission - a.commission
+          : b.count - a.count,
+      );
+
+    // 保険会社合計
+    const totalCommission = productTypes.reduce((s, r) => s + r.commission, 0);
+    const totalCount      = productTypes.reduce((s, r) => s + r.count, 0);
+
+    rows.push({
+      insurer,
+      commission: totalCommission,
+      count: totalCount,
+      productTypes,
+    });
+  }
+
+  // 保険会社行を mode に応じてソート
+  rows.sort((a, b) =>
+    mode === 'commission'
+      ? b.commission - a.commission
+      : b.count - a.count,
+  );
+
+  return rows;
 }
 
 // ----------------------------------------
