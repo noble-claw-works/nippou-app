@@ -211,12 +211,12 @@ export function InsurerTypeStackedBar({ data, mode, height = 320 }: InsurerTypeS
           tickLine={false}
         />
         <Tooltip
-          formatter={(value, name) => [
+          formatter={((value: unknown, name: unknown) => [
             mode === 'commission'
               ? formatYen(typeof value === 'number' ? value : 0)
               : formatCount(typeof value === 'number' ? value : 0),
             name as string,
-          ]}
+          ]) as (value: unknown) => [string, string]}
           cursor={{ fill: '#f9fafb' }}
         />
         <Legend
