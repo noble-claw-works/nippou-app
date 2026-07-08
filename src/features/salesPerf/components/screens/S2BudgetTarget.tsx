@@ -4,6 +4,7 @@
 // =====================================================
 import { useState } from 'react';
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import {
   budgetTable,
@@ -83,12 +84,12 @@ export function S2BudgetTarget() {
   const currentRole    = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId  = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, targets, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, targets, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     targets:   s.targets,
     masters:   s.masters,
-  }));
+  })));
 
   const [showMillions, setShowMillions] = useState(true);
 

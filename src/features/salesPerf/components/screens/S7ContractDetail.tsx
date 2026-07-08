@@ -4,6 +4,7 @@
 // =====================================================
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import { contractRows } from '../../lib/salesPerfMetrics';
 import { ownerName } from '../../lib/salePerfScope';
@@ -251,11 +252,11 @@ export function S7ContractDetail() {
   const currentRole   = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     masters:   s.masters,
-  }));
+  })));
 
   // ソート状態
   const [sortKey, setSortKey] = useState<SortKey>('establishedDate');

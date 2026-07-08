@@ -5,6 +5,7 @@
 // =====================================================
 import { useState } from 'react';
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import {
   channelBreakdown,
@@ -66,11 +67,11 @@ export function S4Channel() {
   const currentRole   = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     masters:   s.masters,
-  }));
+  })));
 
   const [chartMode, setChartMode] = useState<ChartMode>('donut');
   const [showMillions, setShowMillions] = useState(true);

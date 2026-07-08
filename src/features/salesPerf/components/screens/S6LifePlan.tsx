@@ -5,6 +5,7 @@
 // =====================================================
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import { lifePlanMetrics } from '../../lib/salesPerfMetrics';
 import { LP_TARGET_PER_MONTH, FISCAL_MONTH_LABELS } from '../../constants';
@@ -65,11 +66,11 @@ export function S6LifePlan() {
   const currentRole   = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     masters:   s.masters,
-  }));
+  })));
 
   // ビュー切替
   const [viewMode, setViewMode]           = useState<ViewMode>('byMonth');

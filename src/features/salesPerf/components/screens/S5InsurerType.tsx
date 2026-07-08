@@ -4,6 +4,7 @@
 // =====================================================
 import { useState } from 'react';
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import { insurerTypeBreakdown } from '../../lib/salesPerfMetrics';
 import { formatMillionYen, formatYen, formatCount } from '../../lib/format';
@@ -251,11 +252,11 @@ export function S5InsurerType() {
   const currentRole   = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     masters:   s.masters,
-  }));
+  })));
 
   // ----------------------------------------
   // 集計 (mode でソートと表示値が変わる)

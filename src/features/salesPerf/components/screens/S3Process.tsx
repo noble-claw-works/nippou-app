@@ -3,6 +3,7 @@
 // T2-1: funnelMetrics + ownerFunnelHeat 連動
 // =====================================================
 import { useAppStore } from '../../../../store/index';
+import { useShallow } from 'zustand/shallow';
 import { useSalesPerfStore } from '../../store';
 import { funnelMetrics, ownerFunnelHeat } from '../../lib/salesPerfMetrics';
 import { formatPercent } from '../../lib/format';
@@ -82,11 +83,11 @@ export function S3Process() {
   const currentRole   = useAppStore(s => s.currentRole) as 'general' | 'manager' | 'admin' | 'executive';
   const currentUserId = useAppStore(s => s.currentUserId);
 
-  const { filter, contracts, masters } = useSalesPerfStore(s => ({
+  const { filter, contracts, masters } = useSalesPerfStore(useShallow(s => ({
     filter:    s.filter,
     contracts: s.contracts,
     masters:   s.masters,
-  }));
+  })));
 
   // ----------------------------------------
   // 集計
