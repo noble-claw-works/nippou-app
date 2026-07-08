@@ -89,8 +89,9 @@ export function SalesPerfPage() {
       </div>
 
       {/* コンテンツ */}
+      {/* key=activeScreen: タブ切替でサブツリーを再マウントさせ、画面間のフック数不一致(React #185)を回避 */}
       <div className="flex-1 overflow-auto p-4">
-        {renderScreen(activeScreen)}
+        <div key={activeScreen}>{renderScreen(activeScreen)}</div>
       </div>
     </div>
   );
