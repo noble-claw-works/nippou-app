@@ -7,6 +7,7 @@ import type {
   Opportunity, OpportunityStage, OpportunityStatus,
   Policy, PolicyStatusHistory, Coverage,
   SalesTarget,
+  ContractMilestones, ContractTasks, InsuredTaskState, DeficiencyItem,
 } from '../types';
 import { toPeriod } from '../utils/salesPeriod';
 import { format, subDays, addDays } from 'date-fns';
@@ -334,6 +335,14 @@ function mkOpp(
     nextActionDate: opts.nextActionDate,
     createdAt: d(14) + 'T10:00:00',
     updatedAt: now,
+    // ── B-1 新規フィールド（任意・opts にあれば引き継ぐ）──
+    ...(opts.contractorPersonId !== undefined ? { contractorPersonId: opts.contractorPersonId } : {}),
+    ...(opts.channelId !== undefined ? { channelId: opts.channelId } : {}),
+    ...(opts.confidence !== undefined ? { confidence: opts.confidence } : {}),
+    ...(opts.milestones !== undefined ? { milestones: opts.milestones } : {}),
+    ...(opts.contractTasks !== undefined ? { contractTasks: opts.contractTasks } : {}),
+    ...(opts.insuredTasks !== undefined ? { insuredTasks: opts.insuredTasks } : {}),
+    ...(opts.deficiencies !== undefined ? { deficiencies: opts.deficiencies } : {}),
   };
 }
 
@@ -343,8 +352,8 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ['p_c1_head'],
     productCategories: ['life', 'medical'],
     proposalProducts: [
-      { id: 'pp1', productCategory: 'life', productName: '収入保障保険', insurer: '明治安田生命', insuredPersonId: 'p_c1_head', monthlyPremium: 4800, faceAmount: 5000000, memo: '60歳満了' },
-      { id: 'pp2', productCategory: 'medical', productName: '医療保険エクセルエイド', insurer: '東京海上日動あんしん生命', insuredPersonId: 'p_c1_head', monthlyPremium: 3200, memo: '1入院60日型' },
+      { id: 'pp1', productCategory: 'life', productName: '収入保障保険', insurer: '明治安田生命', insuredPersonId: 'p_c1_head', monthlyPremium: 4800, faceAmount: 5000000, firstYearCommission: 57600, memo: '60歳満了' },
+      { id: 'pp2', productCategory: 'medical', productName: '医療保険エクセルエイド', insurer: '東京海上日動あんしん生命', insuredPersonId: 'p_c1_head', monthlyPremium: 3200, firstYearCommission: 19200, memo: '1入院60日型' },
     ],
     needsAnalysisDone: true,
     illustrationProvided: true,
@@ -359,6 +368,18 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: '配偶者分も追加提案を検討中',
     tags: ['生命保険', '見直し'],
     expectedCloseDate: f(21),
+    // ★ B-1 デモ値
+    contractorPersonId: 'p_c1_head',
+    channelId: 'ch_referral_existing',
+    confidence: 'A' as const,
+    milestones: {
+      firstConsultDate: d(30),
+      lifePlanDate: d(18),
+      proposalDate: d(5),
+    } as ContractMilestones,
+    insuredTasks: [
+      { personId: 'p_c1_head', intentSheetDone: true, intentSheetDate: d(14), signatureDone: false, memo: '署名は次回面談時' } as InsuredTaskState,
+    ],
   }),
 
   // c2: 齋藤 和久 — 医療保険 (negotiation ステージ)
@@ -366,7 +387,7 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ['p_c2_head'],
     productCategories: ['medical'],
     proposalProducts: [
-      { id: 'pp3', productCategory: 'medical', productName: 'メディカルKit R', insurer: 'ソニー生命', insuredPersonId: 'p_c2_head', monthlyPremium: 5500, memo: 'がん特約あり' },
+      { id: 'pp3', productCategory: 'medical', productName: 'メディカルKit R', insurer: 'ソニー生命', insuredPersonId: 'p_c2_head', monthlyPremium: 5500, firstYearCommission: 33000, memo: 'がん特約あり' },
     ],
     needsAnalysisDone: true,
     illustrationProvided: true,
@@ -382,6 +403,18 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: '奥様の同席が必要',
     tags: ['医療保険'],
     expectedCloseDate: f(14),
+    // ★ B-1 デモ値
+    contractorPersonId: 'p_c2_head',
+    channelId: 'ch_agency_bagwell',
+    confidence: 'B' as const,
+    milestones: {
+      firstConsultDate: d(45),
+      lifePlanDate: d(25),
+      proposalDate: d(10),
+    } as ContractMilestones,
+    deficiencies: [
+      { id: 'def_opp2_1', item: '告知書未記入', detail: '貧血歴の記載漏れ', resolved: false } as DeficiencyItem,
+    ],
   }),
 
   // c4: 水野 幸重 — 自動車保険 (application ステージ)
@@ -404,6 +437,20 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: '7月更新案件',
     tags: ['自動車保険', '更新'],
     expectedCloseDate: f(5),
+    // ★ B-1 デモ値
+    contractorPersonId: 'p_c4_head',
+    channelId: 'ch_direct_tel',
+    confidence: 'S' as const,
+    milestones: {
+      firstConsultDate: d(20),
+      proposalDate: d(7),
+      applicationDate: d(1),
+      inceptionDate: f(30),
+    } as ContractMilestones,
+    contractTasks: {
+      policyCollected: false,
+      policyReviewed: false,
+    } as ContractTasks,
   }),
 
   // c6: 鈴木 花代 — 生命保険 見直し (approach ステージ)
@@ -420,6 +467,12 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: '子供3人の保障見直し',
     tags: ['生命保険', '見直し'],
     expectedCloseDate: f(60),
+    // ★ B-1 デモ値
+    channelId: 'ch_referral_family',
+    confidence: 'C' as const,
+    milestones: {
+      firstConsultDate: d(5),
+    } as ContractMilestones,
   }),
 
   // c8: 高橋 誠 — 自動車保険 (fact_finding ステージ)
