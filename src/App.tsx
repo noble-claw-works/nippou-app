@@ -13,6 +13,7 @@ import { CustomersPage } from './pages/CustomersPage';
 import { CustomerDetailPage } from './pages/CustomerDetailPage';
 import { HouseholdsPage } from './pages/HouseholdsPage';
 import { HouseholdDetailPage } from './pages/HouseholdDetailPage';
+import { HouseholdBatchEntryPage } from './pages/HouseholdBatchEntryPage';
 import { OpportunitiesPage } from './pages/OpportunitiesPage';
 import { OpportunityDetailPage } from './pages/OpportunityDetailPage';
 import { PoliciesPage } from './pages/PoliciesPage';
@@ -89,6 +90,7 @@ function AppLayout() {
         {/* Household routes (Phase 1) */}
         <Route path="/households" element={<HouseholdsPage />} />
         <Route path="/households/:customerId" element={<HouseholdDetailPage />} />
+        <Route path="/households/:customerId/batch-entry" element={<HouseholdBatchEntryPage />} />
         {/* Legacy /customers/* → /households/* リダイレクト */}
         <Route path="/customers" element={<Navigate to="/households" replace />} />
         <Route path="/customers/:customerId" element={<RedirectCustomerToHousehold />} />

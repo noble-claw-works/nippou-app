@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Tag, Edit, Clock, User as UserIcon, FileText, CheckCircle2, Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { ArrowLeft, MapPin, Tag, Edit, Clock, User as UserIcon, FileText, CheckCircle2, Calendar as CalendarIcon, Plus, Layers } from 'lucide-react';
 import { useAppStore } from '../store';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
@@ -333,14 +333,24 @@ export function HouseholdDetailPage() {
           <h2 className="text-sm font-semibold text-gray-700">
             💼 商談 ({householdOpportunities.length}件)
           </h2>
-          <button
-            type="button"
-            onClick={() => setShowQuickAddOpp(true)}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            新規案件
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/households/${customerId}/batch-entry`)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
+              <Layers className="w-3 h-3" />
+              まとめて入力/更新
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowQuickAddOpp(true)}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              新規案件
+            </button>
+          </div>
         </div>
 
         {/* open / closed tab */}
