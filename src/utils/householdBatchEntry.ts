@@ -1,8 +1,11 @@
 // =====================================================
-// 世帯まとめ入力 B-2a — 純粋関数ユーティリティ
+// 世帯まとめ入力 B-2a/B-2b — 純粋関数ユーティリティ
 // (HouseholdBatchEntryPage で使用 / 単体テスト対象)
 // =====================================================
-import type { Opportunity, ProposalProduct, ConfidenceUnified } from '../types';
+import type {
+  Opportunity, ProposalProduct, ConfidenceUnified,
+  ContractMilestones, ContractTasks, InsuredTaskState, DeficiencyItem,
+} from '../types';
 import type { SalesChannel } from '../types';
 
 // ── ID 生成（簡易版: テスト環境でも動く） ──
@@ -64,6 +67,11 @@ export function createEmptyDraft(params: {
     contractorPersonId: params.contractorPersonId,
     channelId: params.channelId,
     confidence: undefined,
+    // B-2b 拡張フィールド（新規は空で初期化）
+    milestones: undefined,
+    contractTasks: undefined,
+    insuredTasks: undefined,
+    deficiencies: undefined,
     // ドラフト専用
     _isNew: true,
     _isDirty: true,
@@ -71,7 +79,7 @@ export function createEmptyDraft(params: {
   };
 }
 
-/** 既存ドラフトを複製（金額ゼロ化・確度リセット・新規IDで作成） */
+/** 既存ドラフトを複製（金額ゼロ化・確度リセット・B-2bフィールドは引き継がない） */
 export function duplicateDraft(
   source: DraftOpportunity,
   params: { contractorPersonId?: string; channelId?: string }
@@ -93,6 +101,11 @@ export function duplicateDraft(
     // 継承: contractorPersonId・channelId（ヘッダー優先・引数で上書き可）
     contractorPersonId: params.contractorPersonId ?? source.contractorPersonId,
     channelId: params.channelId ?? source.channelId,
+    // B-2b フィールドは複製時に引き継がない（新規案件は空）
+    milestones: undefined,
+    contractTasks: undefined,
+    insuredTasks: undefined,
+    deficiencies: undefined,
     stageHistory: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -100,6 +113,174 @@ export function duplicateDraft(
     _isDirty: true,
     _isOpen: true,
   };
+}
+
+// ─────────────────────────────────────────────────────────────
+// B-2b: ステージ日付・タスク・被保険者タスク・不備 ヘルパー
+// ─────────────────────────────────────────────────────────────
+
+/** ContractMilestones の空オブジェクトを生成 */
+export function createEmptyMilestones(): ContractMilestones {
+  return {};
+}
+
+/** ContractTasks の空オブジェクトを生成 */
+export function createEmptyContractTasks(): ContractTasks {
+  return {
+    policyCollected: false,
+    policyReviewed: false,
+  };
+}
+
+/**
+ * proposalProducts の insuredPersonId 集合から InsuredTaskState[] を遅延生成する
+ * 既存の insuredTasks があれば保持し、不足する personId のみ追加する（削除はしない）
+ */
+export function syncInsuredTasks(
+  proposalProducts: ProposalProduct[],
+  currentTasks: InsuredTaskState[] | undefined
+): InsuredTaskState[] {
+  // insuredPersonId の重複を排除した一覧
+  const personIds = Array.from(
+    new Set(proposalProducts.map(p => p.insuredPersonId).filter(Boolean))
+  );
+  const existingTasks = currentTasks ?? [];
+  const result: InsuredTaskState[] = [...existingTasks];
+
+  for (const personId of personIds) {
+    if (!result.some(t => t.personId === personId)) {
+      result.push({
+        personId,
+        intentSheetDone: false,
+        intentSheetDate: undefined,
+        signatureDone: false,
+        signatureDate: undefined,
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * 全被保険者の意向シートを一括トグル
+ * allDone=true: 全員チェック+当日日付
+ * allDone=false: 全員チェック解除
+ */
+export function toggleAllIntentSheet(
+  tasks: InsuredTaskState[],
+  allDone: boolean,
+  today: string
+): InsuredTaskState[] {
+  return tasks.map(t => ({
+    ...t,
+    intentSheetDone: allDone,
+    intentSheetDate: allDone ? (t.intentSheetDate || today) : t.intentSheetDate,
+  }));
+}
+
+/**
+ * 全被保険者の署名を一括トグル
+ * allDone=true: 全員チェック+当日日付
+ * allDone=false: 全員チェック解除
+ */
+export function toggleAllSignature(
+  tasks: InsuredTaskState[],
+  allDone: boolean,
+  today: string
+): InsuredTaskState[] {
+  return tasks.map(t => ({
+    ...t,
+    signatureDone: allDone,
+    signatureDate: allDone ? (t.signatureDate || today) : t.signatureDate,
+  }));
+}
+
+/** 不備アイテムを新規作成 */
+export function createEmptyDeficiency(): DeficiencyItem {
+  return {
+    id: localUid(),
+    item: '',
+    detail: '',
+    resolved: false,
+    resolvedDate: undefined,
+  };
+}
+
+/** 不備アイテムを削除（id指定） */
+export function removeDeficiency(
+  deficiencies: DeficiencyItem[],
+  deficiencyId: string
+): DeficiencyItem[] {
+  return deficiencies.filter(d => d.id !== deficiencyId);
+}
+
+/** 不備アイテムを更新 */
+export function updateDeficiency(
+  deficiencies: DeficiencyItem[],
+  deficiencyId: string,
+  patch: Partial<DeficiencyItem>
+): DeficiencyItem[] {
+  return deficiencies.map(d => d.id === deficiencyId ? { ...d, ...patch } : d);
+}
+
+/**
+ * ステージ日付の順序警告を返す
+ * 前のステージ日付 > 後のステージ日付の組み合わせを列挙する
+ * ブロックはしない・注意喚起のみ（設計書§4-6）
+ */
+export const MILESTONE_ORDER: Array<keyof ContractMilestones> = [
+  'firstConsultDate',
+  'lifePlanDate',
+  'proposalDate',
+  'applicationDate',
+  'establishedDate',
+];
+
+export const MILESTONE_LABELS: Record<keyof ContractMilestones, string> = {
+  firstConsultDate: '初回相談',
+  lifePlanDate: 'LP提案',
+  proposalDate: '提案',
+  applicationDate: '申込(契約)',
+  establishedDate: '成立',
+  inceptionDate: '始期(損保)',
+  lostDate: '失注',
+};
+
+export interface MilestoneOrderWarning {
+  earlier: keyof ContractMilestones;
+  later: keyof ContractMilestones;
+  earlierLabel: string;
+  laterLabel: string;
+}
+
+/**
+ * 日付順序の逆転ペアを返す純粋関数
+ * MILESTONE_ORDER（firstConsult→lifePlan→proposal→application→established）の順序違反を検出
+ */
+export function getMilestoneOrderWarnings(
+  milestones: ContractMilestones | undefined
+): MilestoneOrderWarning[] {
+  if (!milestones) return [];
+  const warnings: MilestoneOrderWarning[] = [];
+  const ordered = MILESTONE_ORDER;
+
+  for (let i = 0; i < ordered.length; i++) {
+    for (let j = i + 1; j < ordered.length; j++) {
+      const earlier = ordered[i];
+      const later = ordered[j];
+      const earlierDate = milestones[earlier];
+      const laterDate = milestones[later];
+      if (earlierDate && laterDate && earlierDate > laterDate) {
+        warnings.push({
+          earlier,
+          later,
+          earlierLabel: MILESTONE_LABELS[earlier],
+          laterLabel: MILESTONE_LABELS[later],
+        });
+      }
+    }
+  }
+  return warnings;
 }
 
 // ─────────────────────────────────────────────────────────────

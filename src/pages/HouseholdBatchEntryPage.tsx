@@ -1,5 +1,5 @@
 // =====================================================
-// HouseholdBatchEntryPage — 世帯まとめ入力画面 B-2a
+// HouseholdBatchEntryPage — 世帯まとめ入力画面 B-2a/B-2b
 // 設計書: docs/HOUSEHOLD_BATCH_ENTRY_UX.md §3-§9
 // ★ useShallow 必須 / getSnapshot 無限ループ回避厳守
 // =====================================================
@@ -9,6 +9,7 @@ import { useShallow } from 'zustand/shallow';
 import {
   ArrowLeft, Plus, ChevronDown, ChevronRight,
   Copy, Trash2, AlertCircle, CheckCircle2,
+  ChevronUp,
 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { SALES_CHANNELS } from '../data/salesChannels';
@@ -16,6 +17,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import type {
   Opportunity, ProposalProduct, ProductCategory, ConfidenceUnified,
+  ContractMilestones, ContractTasks, InsuredTaskState, DeficiencyItem,
 } from '../types';
 import {
   calcTotalMonthlyPremium,
@@ -32,8 +34,18 @@ import {
   getParentChannelId,
   CONFIDENCE_LABELS,
   CONFIDENCE_OPTIONS,
+  MILESTONE_LABELS,
+  MILESTONE_ORDER,
+  getMilestoneOrderWarnings,
+  syncInsuredTasks,
+  toggleAllIntentSheet,
+  toggleAllSignature,
+  createEmptyDeficiency,
+  removeDeficiency,
+  updateDeficiency,
   type DraftOpportunity,
   type ShowFilter,
+  type MilestoneOrderWarning,
 } from '../utils/householdBatchEntry';
 
 // ─────────────────────────────────────────────────────────────
@@ -230,6 +242,41 @@ function ProductRow({ product, persons, onUpdate, onDuplicate, onDelete, showDel
 }
 
 // ─────────────────────────────────────────────────────────────
+// B-2b: マイルストーン日付フィールド（小コンポーネント）
+// ─────────────────────────────────────────────────────────────
+interface MilestoneDateFieldProps {
+  label: string;
+  value: string | undefined;
+  onChange: (value: string | undefined) => void;
+  today: string;
+}
+
+function MilestoneDateField({ label, value, onChange, today }: MilestoneDateFieldProps) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <label className="block text-[10px] text-gray-500">{label}</label>
+      <input
+        type="date"
+        value={value ?? ''}
+        onChange={e => onChange(e.target.value || undefined)}
+        className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+        aria-label={label}
+      />
+      {!value && (
+        <button
+          type="button"
+          onClick={() => onChange(today)}
+          className="text-[10px] text-blue-500 hover:text-blue-700 text-left px-0 py-0 leading-tight"
+          tabIndex={-1}
+        >
+          今日
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // 案件カード（折りたたみ）
 // ─────────────────────────────────────────────────────────────
 interface OpportunityCardProps {
@@ -289,6 +336,92 @@ function OpportunityCard({
   const handleDeleteProduct = useCallback((productId: string) => {
     onUpdate({ proposalProducts: draft.proposalProducts.filter(p => p.id !== productId) });
   }, [draft.proposalProducts, onUpdate]);
+
+  // B-2b: 詳細セクションの開閉状態（カード内ローカルstate）
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
+  // B-2b: 今日の日付文字列
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  // B-2b: milestones 操作（useMemoで安定化）
+  const milestones = useMemo<ContractMilestones>(
+    () => draft.milestones ?? {},
+    [draft.milestones]
+  );
+  const milestoneWarnings = useMemo(
+    () => getMilestoneOrderWarnings(draft.milestones),
+    [draft.milestones]
+  );
+
+  const handleMilestoneChange = useCallback(
+    (key: keyof ContractMilestones, value: string | undefined) => {
+      onUpdate({ milestones: { ...milestones, [key]: value || undefined } });
+    },
+    [milestones, onUpdate]
+  );
+
+  // B-2b: contractTasks 操作（useMemoで安定化）
+  const contractTasks = useMemo<ContractTasks>(
+    () => draft.contractTasks ?? { policyCollected: false, policyReviewed: false },
+    [draft.contractTasks]
+  );
+
+  const handleContractTaskChange = useCallback(
+    (patch: Partial<ContractTasks>) => {
+      onUpdate({ contractTasks: { ...contractTasks, ...patch } });
+    },
+    [contractTasks, onUpdate]
+  );
+
+  // B-2b: insuredTasks 操作（proposalProducts の insuredPersonId から遅延生成）
+  const insuredTasks = useMemo<InsuredTaskState[]>(
+    () => syncInsuredTasks(draft.proposalProducts, draft.insuredTasks),
+    [draft.proposalProducts, draft.insuredTasks]
+  );
+
+  const allIntentDone = insuredTasks.length > 0 && insuredTasks.every(t => t.intentSheetDone);
+  const allSignatureDone = insuredTasks.length > 0 && insuredTasks.every(t => t.signatureDone);
+
+  const handleToggleAllIntent = useCallback(() => {
+    const next = toggleAllIntentSheet(insuredTasks, !allIntentDone, todayStr);
+    onUpdate({ insuredTasks: next });
+  }, [insuredTasks, allIntentDone, todayStr, onUpdate]);
+
+  const handleToggleAllSignature = useCallback(() => {
+    const next = toggleAllSignature(insuredTasks, !allSignatureDone, todayStr);
+    onUpdate({ insuredTasks: next });
+  }, [insuredTasks, allSignatureDone, todayStr, onUpdate]);
+
+  const handleInsuredTaskChange = useCallback(
+    (personId: string, patch: Partial<InsuredTaskState>) => {
+      const updated = insuredTasks.map(t =>
+        t.personId === personId ? { ...t, ...patch } : t
+      );
+      onUpdate({ insuredTasks: updated });
+    },
+    [insuredTasks, onUpdate]
+  );
+
+  // B-2b: deficiencies 操作（useMemoで安定化）
+  const deficiencies = useMemo<DeficiencyItem[]>(
+    () => draft.deficiencies ?? [],
+    [draft.deficiencies]
+  );
+
+  const handleAddDeficiency = useCallback(() => {
+    onUpdate({ deficiencies: [...deficiencies, createEmptyDeficiency()] });
+  }, [deficiencies, onUpdate]);
+
+  const handleRemoveDeficiency = useCallback((id: string) => {
+    onUpdate({ deficiencies: removeDeficiency(deficiencies, id) });
+  }, [deficiencies, onUpdate]);
+
+  const handleUpdateDeficiencyField = useCallback(
+    (id: string, patch: Partial<DeficiencyItem>) => {
+      onUpdate({ deficiencies: updateDeficiency(deficiencies, id, patch) });
+    },
+    [deficiencies, onUpdate]
+  );
 
   // サマリ用: 最初の商品の情報
   const firstProduct = draft.proposalProducts[0];
@@ -488,6 +621,250 @@ function OpportunityCard({
                     showDelete={draft.proposalProducts.length > 1}
                   />
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* B-2b: 詳細セクション（日付・タスク・不備）— 折りたたみ */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => setDetailsOpen(v => !v)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDetailsOpen(v => !v); } }}
+              aria-expanded={detailsOpen}
+              className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 cursor-pointer select-none transition-colors"
+            >
+              <span className="text-gray-500 shrink-0">
+                {detailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              </span>
+              <span className="text-xs font-semibold text-gray-700">▸ 詳細（日付・タスク・不備）</span>
+              {(Object.values(milestones).some(Boolean) || deficiencies.length > 0 ||
+                contractTasks.policyCollected || contractTasks.policyReviewed ||
+                insuredTasks.some(t => t.intentSheetDone || t.signatureDone)) && (
+                <span className="ml-1 text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">入力済</span>
+              )}
+              {milestoneWarnings.length > 0 && (
+                <span className="ml-1 text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">日付順序注意</span>
+              )}
+            </div>
+
+            {detailsOpen && (
+              <div className="p-3 space-y-4 bg-white">
+
+                {/* --- ステージ日付 --- */}
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-600 mb-2">⏱ ステージ日付</p>
+                  {milestoneWarnings.map((w: MilestoneOrderWarning) => (
+                    <div key={`${w.earlier}-${w.later}`} className="flex items-center gap-1.5 mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-700">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>「{w.earlierLabel}」が「{w.laterLabel}」より後になっています（注意）</span>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {MILESTONE_ORDER.map(key => (
+                      <MilestoneDateField
+                        key={key}
+                        label={MILESTONE_LABELS[key]}
+                        value={milestones[key]}
+                        onChange={v => handleMilestoneChange(key, v)}
+                        today={todayStr}
+                      />
+                    ))}
+                    <MilestoneDateField
+                      label={MILESTONE_LABELS.inceptionDate}
+                      value={milestones.inceptionDate}
+                      onChange={v => handleMilestoneChange('inceptionDate', v)}
+                      today={todayStr}
+                    />
+                    <MilestoneDateField
+                      label={MILESTONE_LABELS.lostDate}
+                      value={milestones.lostDate}
+                      onChange={v => handleMilestoneChange('lostDate', v)}
+                      today={todayStr}
+                    />
+                  </div>
+                </div>
+
+                {/* --- 案件単位タスク --- */}
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-600 mb-2">☑️ タスク</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[44px]">
+                        <input type="checkbox" checked={contractTasks.policyCollected}
+                          onChange={e => handleContractTaskChange({ policyCollected: e.target.checked })}
+                          className="w-4 h-4 rounded accent-blue-600" />
+                        <span>証券回収</span>
+                      </label>
+                      <input type="date" value={contractTasks.policyCollectDate ?? ''}
+                        onChange={e => handleContractTaskChange({ policyCollectDate: e.target.value || undefined })}
+                        className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        aria-label="証券回収日" />
+                      {!contractTasks.policyCollectDate && (
+                        <button type="button" onClick={() => handleContractTaskChange({ policyCollectDate: todayStr })}
+                          className="text-[11px] px-1.5 py-0.5 text-blue-600 hover:text-blue-700 border border-blue-300 rounded">今日</button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[44px]">
+                        <input type="checkbox" checked={contractTasks.policyReviewed}
+                          onChange={e => handleContractTaskChange({ policyReviewed: e.target.checked })}
+                          className="w-4 h-4 rounded accent-blue-600" />
+                        <span>ポリシーレビュー</span>
+                      </label>
+                      <input type="date" value={contractTasks.policyReviewDate ?? ''}
+                        onChange={e => handleContractTaskChange({ policyReviewDate: e.target.value || undefined })}
+                        className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        aria-label="ポリシーレビュー日" />
+                      {!contractTasks.policyReviewDate && (
+                        <button type="button" onClick={() => handleContractTaskChange({ policyReviewDate: todayStr })}
+                          className="text-[11px] px-1.5 py-0.5 text-blue-600 hover:text-blue-700 border border-blue-300 rounded">今日</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- 被保険者単位タスク --- */}
+                {insuredTasks.length > 0 ? (
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-600 mb-2">📝 意向シート・署名（被保険者単位）</p>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="grid grid-cols-[1fr_auto_auto] bg-gray-50 border-b border-gray-200 px-3 py-2 gap-2">
+                        <span className="text-[10px] font-medium text-gray-500">被保険者</span>
+                        <button type="button" onClick={handleToggleAllIntent}
+                          className={`text-[10px] font-medium px-2 py-1 rounded min-h-[36px] min-w-[72px] border transition-colors ${
+                            allIntentDone ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
+                          }`}
+                          aria-pressed={allIntentDone}>
+                          意向シート {allIntentDone ? '☑' : '☐'}
+                        </button>
+                        <button type="button" onClick={handleToggleAllSignature}
+                          className={`text-[10px] font-medium px-2 py-1 rounded min-h-[36px] min-w-[64px] border transition-colors ${
+                            allSignatureDone ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
+                          }`}
+                          aria-pressed={allSignatureDone}>
+                          署名 {allSignatureDone ? '☑' : '☐'}
+                        </button>
+                      </div>
+                      {insuredTasks.map(task => {
+                        const personName = persons.find(p => p.id === task.personId)?.name ?? task.personId;
+                        return (
+                          <div key={task.personId} className="grid grid-cols-[1fr_auto_auto] border-b border-gray-100 last:border-0 px-3 py-2 gap-2 items-center">
+                            <span className="text-xs text-gray-700 truncate">{personName}</span>
+                            <div className="flex flex-col items-center gap-1">
+                              <label className="flex items-center gap-1 cursor-pointer min-h-[36px]">
+                                <input type="checkbox" checked={task.intentSheetDone}
+                                  onChange={e => {
+                                    const done = e.target.checked;
+                                    handleInsuredTaskChange(task.personId, {
+                                      intentSheetDone: done,
+                                      intentSheetDate: done ? (task.intentSheetDate || todayStr) : task.intentSheetDate,
+                                    });
+                                  }}
+                                  className="w-4 h-4 accent-blue-600" />
+                              </label>
+                              <input type="date" value={task.intentSheetDate ?? ''}
+                                onChange={e => handleInsuredTaskChange(task.personId, { intentSheetDate: e.target.value || undefined })}
+                                className="border border-gray-200 rounded px-1 py-0.5 text-[10px] w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                aria-label={`${personName} 意向シート日付`} />
+                            </div>
+                            <div className="flex flex-col items-center gap-1">
+                              <label className="flex items-center gap-1 cursor-pointer min-h-[36px]">
+                                <input type="checkbox" checked={task.signatureDone}
+                                  onChange={e => {
+                                    const done = e.target.checked;
+                                    handleInsuredTaskChange(task.personId, {
+                                      signatureDone: done,
+                                      signatureDate: done ? (task.signatureDate || todayStr) : task.signatureDate,
+                                    });
+                                  }}
+                                  className="w-4 h-4 accent-blue-600" />
+                              </label>
+                              <input type="date" value={task.signatureDate ?? ''}
+                                onChange={e => handleInsuredTaskChange(task.personId, { signatureDate: e.target.value || undefined })}
+                                className="border border-gray-200 rounded px-1 py-0.5 text-[10px] w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                aria-label={`${personName} 署名日付`} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">商品の被保険者が確定すると行が生成されます</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-600 mb-2">📝 意向シート・署名（被保険者単位）</p>
+                    <div className="px-3 py-4 border border-dashed border-gray-200 rounded-lg text-center">
+                      <p className="text-xs text-gray-400">商品を登録すると被保険者単位のタスクが表示されます</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- 不備 --- */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-gray-600">⚠️ 不備（転記方式）</p>
+                    <button type="button" onClick={handleAddDeficiency}
+                      className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 border border-blue-300 hover:bg-blue-50 px-2 py-1 rounded min-h-[36px]">
+                      <Plus className="w-3 h-3" /> 不備追加
+                    </button>
+                  </div>
+                  {deficiencies.length === 0 ? (
+                    <div className="px-3 py-4 border border-dashed border-gray-200 rounded-lg text-center">
+                      <p className="text-xs text-gray-400">不備なし</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {deficiencies.map(def => (
+                        <div key={def.id} className="border border-gray-200 rounded-lg p-2.5 space-y-2">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="block text-[10px] text-gray-500 mb-0.5">項目名</label>
+                              <input type="text" value={def.item}
+                                onChange={e => handleUpdateDeficiencyField(def.id, { item: e.target.value })}
+                                placeholder="例: 告知書未記入"
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            </div>
+                            <button type="button" onClick={() => handleRemoveDeficiency(def.id)}
+                              className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded self-end transition-colors min-h-[36px] min-w-[36px]"
+                              aria-label="この不備を削除">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-gray-500 mb-0.5">内容（転記）</label>
+                            <textarea value={def.detail ?? ''}
+                              onChange={e => handleUpdateDeficiencyField(def.id, { detail: e.target.value })}
+                              rows={2} placeholder="不備内容を転記してください"
+                              className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none" />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[36px]">
+                              <input type="checkbox" checked={def.resolved}
+                                onChange={e => {
+                                  const resolved = e.target.checked;
+                                  handleUpdateDeficiencyField(def.id, {
+                                    resolved,
+                                    resolvedDate: resolved ? (def.resolvedDate || todayStr) : def.resolvedDate,
+                                  });
+                                }}
+                                className="w-4 h-4 rounded accent-blue-600" />
+                              <span>解消済み</span>
+                            </label>
+                            {def.resolved && (
+                              <input type="date" value={def.resolvedDate ?? ''}
+                                onChange={e => handleUpdateDeficiencyField(def.id, { resolvedDate: e.target.value || undefined })}
+                                className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                aria-label="解消日" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
           </div>
