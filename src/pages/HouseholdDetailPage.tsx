@@ -9,7 +9,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { PersonEditModal } from '../components/household/PersonEditModal';
 import { BLOCK_EMOJIS, BLOCK_LABELS } from '../utils';
-import type { Customer, CustomerType, Person, PersonRelation, PersonGender } from '../types';
+import type { Customer, CustomerType, PersonRelation, PersonGender } from '../types';
 import { StageBadge } from '../components/opportunity/StageBadge';
 import { QuickOpportunityModal } from '../components/opportunity/QuickOpportunityModal';
 import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
@@ -105,19 +105,22 @@ export function HouseholdDetailPage() {
   const [showAddPolicy, setShowAddPolicy] = useState(false);
 
   const customer = customers.find(c => c.id === customerId);
-  if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="世帯が見つかりません" /></div>;
 
-  const primaryUser = users.find(u => u.id === customer.primaryUserId);
+  const primaryUser = useMemo(
+    () => users.find(u => u.id === customer?.primaryUserId),
+    [users, customer?.primaryUserId]
+  );
 
   const householdPersons = useMemo(
-    () => persons.filter(p => p.householdId === customerId).sort((a, b) => {
+    () => (customer ? persons.filter(p => p.householdId === customerId).sort((a, b) => {
       const order: Record<PersonRelation, number> = { head: 0, spouse: 1, child: 2, parent: 3, sibling: 4, other: 5 };
       return (order[a.relation] ?? 9) - (order[b.relation] ?? 9);
-    }),
-    [persons, customerId]
+    }) : []),
+    [persons, customerId, customer]
   );
 
   const historyEntries = useMemo(() => {
+    if (!customer) return [];
     const entries: Array<{
       reportId: string;
       reportDate: string;
@@ -136,25 +139,31 @@ export function HouseholdDetailPage() {
       return (a.block.startTime || '') < (b.block.startTime || '') ? 1 : -1;
     });
     return entries;
-  }, [reports, customerId]);
+  }, [reports, customerId, customer]);
+
+  // Phase 2: Opportunities for this household
+  const householdOpportunities = useMemo(
+    () => (customer ? opportunities.filter(o => o.householdId === customerId) : []),
+    [opportunities, customerId, customer]
+  );
+
+  // Phase 3: Policies for this household
+  // getPoliciesByHousehold は store の selector で毎レンダー新しい参照になるため除外。policies/customerIdの変化で十分再計算される。
+  /* eslint-disable react-hooks/exhaustive-deps */
+  const householdPolicies = useMemo(
+    () => (customerId ? getPoliciesByHousehold(customerId) : []),
+    [policies, customerId]
+  );
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="世帯が見つかりません" /></div>;
 
   const canEdit = currentRole === 'manager' || currentRole === 'admin';
   const canDeactivate = currentRole === 'admin';
   const editingPerson = editPersonId ? householdPersons.find(p => p.id === editPersonId) : null;
 
-  // Phase 2: Opportunities for this household
-  const householdOpportunities = useMemo(
-    () => opportunities.filter(o => o.householdId === customerId),
-    [opportunities, customerId]
-  );
   const openOpportunities = householdOpportunities.filter(o => o.status === 'open');
   const closedOpportunities = householdOpportunities.filter(o => o.status !== 'open');
-
-  // Phase 3: Policies for this household
-  const householdPolicies = useMemo(
-    () => getPoliciesByHousehold(customerId!),
-    [policies, customerId]
-  );
   const activePolicies = householdPolicies.filter(p => p.status === 'inforce' || p.status === 'pending');
   const closedPolicies = householdPolicies.filter(p => p.status !== 'inforce' && p.status !== 'pending');
   const totalMonthlyPremium = activePolicies

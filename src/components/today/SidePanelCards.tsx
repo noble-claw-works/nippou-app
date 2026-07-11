@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Check, ChevronDown } from 'lucide-react';
+import { Plus, X, ChevronDown } from 'lucide-react';
 import { BLOCK_EMOJIS, MOOD_EMOJIS } from '../../utils';
 import type { DailyReport, Customer, MoodType, ManagerSignal } from '../../types';
 import { ComplimentsCard } from './ComplimentsCard';

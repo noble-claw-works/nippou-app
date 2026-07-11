@@ -86,7 +86,7 @@ function CustomerForm({ initial, onSave, onCancel }: {
 
 export function CustomersPage() {
   const navigate = useNavigate();
-  const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, deleteCustomer, currentRole, currentUserId, addToast } = useAppStore();
+  const { customers, users, reports, addCustomer, updateCustomer, deactivateCustomer, deleteCustomer, currentRole, addToast } = useAppStore();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // P0 付帯情報判定用 state

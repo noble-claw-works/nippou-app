@@ -51,7 +51,6 @@ describe('normalizeForSearch', () => {
 
 // ─── searchCustomers: query 空 ──────────────────────────────────────
 describe('searchCustomers (query 空)', () => {
-  const today = new Date().toISOString().slice(0, 10);
   const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const fortyDaysAgo = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 

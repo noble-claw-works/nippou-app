@@ -3,7 +3,7 @@
 // =====================================================
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore } from '../store';
-import type { Policy, Coverage, PolicyStatus } from '../types';
+import type { Policy } from '../types';
 
 function resetStore() {
   useAppStore.setState({

@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MapPin, Tag, Edit, Clock, User as UserIcon, FileText, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAppStore } from '../store';
 import { EmptyState } from '../components/ui/EmptyState';
-import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { BLOCK_EMOJIS, BLOCK_LABELS } from '../utils';
 
@@ -19,17 +18,21 @@ export function CustomerDetailPage() {
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, [location.hash]);
-  const { customers, users, reports, currentRole, updateCustomer, deactivateCustomer, addToast } = useAppStore();
-  const [showEdit, setShowEdit] = useState(false);
+  const { customers, users, reports, currentRole, deactivateCustomer, addToast } = useAppStore();
+  // showEdit: 顧客編集モーダル表示フラグ (編集UIは将来実装)
+  const [, setShowEdit] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
 
   const customer = customers.find(c => c.id === customerId);
-  if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="顧客が見つかりません" /></div>;
 
-  const primaryUser = users.find(u => u.id === customer.primaryUserId);
+  const primaryUser = useMemo(
+    () => users.find(u => u.id === customer?.primaryUserId),
+    [users, customer?.primaryUserId]
+  );
 
   // 対応履歴: 該顧客 customerId を含むすべての block を「1 件 = 1 ブロック」単位で平めて、新しい順 (date desc → startTime desc) に並べる。
   const historyEntries = useMemo(() => {
+    if (!customer) return [];
     const entries: Array<{
       reportId: string;
       reportDate: string;
@@ -48,7 +51,9 @@ export function CustomerDetailPage() {
       return (a.block.startTime || '') < (b.block.startTime || '') ? 1 : -1;
     });
     return entries;
-  }, [reports, customerId]);
+  }, [reports, customerId, customer]);
+
+  if (!customer) return <div className="px-4 py-8"><EmptyState icon="🔍" title="顧客が見つかりません" /></div>;
 
   const TYPE_LABELS = { individual: '個人', corporate: '法人', prospect: '見込み' };
   const canEdit = currentRole === 'manager' || currentRole === 'admin';

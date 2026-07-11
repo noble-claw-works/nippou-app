@@ -4,7 +4,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAppStore } from '../store';
-import { ForbiddenState } from '../components/ui/EmptyState';
 import { PeriodSwitcher } from '../components/sales/PeriodSwitcher';
 import { PersonSelector } from '../components/sales/PersonSelector';
 import { AchievementCardRow } from '../components/sales/AchievementCardRow';

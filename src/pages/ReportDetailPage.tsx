@@ -7,13 +7,13 @@ import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { MOOD_EMOJIS, formatDate, formatRelativeTime } from '../utils';
 import { ReadOnlyTimeline } from '../components/report/ReadOnlyTimeline';
-import { format } from 'date-fns';
+
 
 export function ReportDetailPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const { reports, users, customers, currentRole, currentUserId, currentUserId: uid,
-    addComment, deleteComment, confirmReport, withdrawReport, addToast,
+    confirmReport, withdrawReport, addToast,
     managerComments, addManagerComment, deleteManagerComment } = useAppStore();
 
   const report = reports.find(r => r.date === date && r.userId === (currentRole === 'general' ? uid : r.userId))

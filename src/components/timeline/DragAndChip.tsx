@@ -1,3 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
+// DragAndChip は定数・関数・コンポーネントを集約したタイムライン専用ユーティリティ。
+// 分離するとインポーター(TodayPage等)の修正が大規模になるため file-level で抑制。
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { BLOCK_EMOJIS, BLOCK_LABELS } from '../../utils';
 import type { BlockType } from '../../types';

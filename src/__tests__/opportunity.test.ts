@@ -3,7 +3,7 @@
 // =====================================================
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStore } from '../store';
-import type { Opportunity } from '../types';
+
 
 // Reset store before each test
 function resetStore() {

@@ -1,5 +1,5 @@
 // person.test.ts — Person CRUD / 世帯主繰り上げロジック テスト (Phase 1)
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { Person, PersonRelation } from '../types';
 
 // ─── Person ファクトリ ─────────────────────────────────────────────

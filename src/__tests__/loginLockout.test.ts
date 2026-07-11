@@ -84,19 +84,15 @@ describe('LoginPage: localStorage 初期値読み込み', () => {
 
 describe('LoginPage: 失敗時 localStorage 同期', () => {
   it('ログイン失敗時に failCount を localStorage に書き込む', () => {
-    let failCount = 0;
     // 失敗シミュレーション
-    const nextFail = failCount + 1;
-    failCount = nextFail;
+    const nextFail = 1;
     localStorage.setItem(LS_FAIL_KEY, String(nextFail));
 
     expect(localStorage.getItem(LS_FAIL_KEY)).toBe('1');
   });
 
   it('5 回失敗でロックタイムスタンプが書き込まれる', () => {
-    let failCount = 4;
-    const nextFail = failCount + 1;
-    failCount = nextFail;
+    const nextFail = 5;
     localStorage.setItem(LS_FAIL_KEY, String(nextFail));
 
     const now = Date.now();
@@ -162,7 +158,7 @@ describe('LoginPage: ロック状態判定', () => {
   describe('タイムアウト後のロック解除 (永久ロックバグ防止)', () => {
     it('lockUntil 期限切れ時、failCount>=5 でもロック解除される', () => {
       // 旧バグ: isLocked = failCount>=5 || lockUntil>now → タイムアウト後も failCount>=5 で永久ロック
-      const failCount = 5;
+      // failCount=5 のシナリオを仃説するテスト（値はロジック記述のためのコメント）
       const lockUntil = Date.now() - 1000; // 30分経過済み
       // 新ロジック: lockUntil のみで判定
       const isLocked = lockUntil > Date.now();

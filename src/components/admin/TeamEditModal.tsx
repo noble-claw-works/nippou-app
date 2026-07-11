@@ -18,6 +18,9 @@ export function TeamEditModal({ team, users, onClose, onSave }: Props) {
     managerIds: [] as string[],
   });
 
+  // フォームをモーダル対象(team)の変化に合わせて同期する意図的なパターン。
+  // setForm は team が存在するときのみ呼び、cascading renderの実害はない。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (team) {
       setForm({
@@ -28,6 +31,7 @@ export function TeamEditModal({ team, users, onClose, onSave }: Props) {
       });
     }
   }, [team]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const toggleMember = (userId: string) => {
     setForm(f => {

@@ -14,7 +14,6 @@ import { SalesFunnelPanel } from '../components/sales/SalesFunnelPanel';
 import { TargetEditModal } from '../components/sales/TargetEditModal';
 import { toPeriod } from '../utils/salesPeriod';
 import type { PeriodType } from '../utils/salesPeriod';
-import type { Role } from '../types';
 
 export function TeamDashboardPage() {
   const {
@@ -31,15 +30,6 @@ export function TeamDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showEditModal, setShowEditModal] = useState(false);
 
-  // general は閲覧禁止
-  if (currentRole === 'general') {
-    return (
-      <div className="px-4 py-8">
-        <ForbiddenState />
-      </div>
-    );
-  }
-
   // URL クエリから状態を復元
   const year = Number(searchParams.get('year') ?? new Date().getFullYear());
   const periodType = (searchParams.get('pt') as PeriodType) ?? 'monthly';
@@ -54,6 +44,15 @@ export function TeamDashboardPage() {
     }
     return teams;
   }, [currentRole, currentUserId, teams]);
+
+  // general は閲覧禁止 (フックは全て上記に移動済み)
+  if (currentRole === 'general') {
+    return (
+      <div className="px-4 py-8">
+        <ForbiddenState />
+      </div>
+    );
+  }
 
   const selectedTeamId =
     teamIdParam && visibleTeams.some(t => t.id === teamIdParam)

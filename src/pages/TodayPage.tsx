@@ -87,12 +87,15 @@ export function TodayPage() {
     },
   });
 
+  // setElapsedSecs(0) はトラッキングセッション終了時のリセット。同期呈示必須の終了処理であり、cascading renderの実害なし。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (trackingSession) {
       timerRef.current = setInterval(() => setElapsedSecs(Math.floor((Date.now() - new Date(trackingSession.startedAt).getTime()) / 1000)), 1000) as unknown as number;
     } else { clearInterval(timerRef.current); setElapsedSecs(0); }
     return () => clearInterval(timerRef.current);
   }, [trackingSession]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Dialog helpers
   const openFromDrag = (startMin: number, endMin: number, type?: BlockType, col: 'planned' | 'actual' = 'actual') => {
@@ -169,7 +172,7 @@ export function TodayPage() {
   };
 
   const handleStartReport = (mode: 'copy_prev' | 'template' | 'blank') => {
-    const r = createReport(currentUserId, today);
+    createReport(currentUserId, today);
     setShowStartModal(false);
     addToast({ type: 'success', message: '日報を作成しました' });
     if (mode === 'copy_prev') addToast({ type: 'info', message: '前日の予定を引き継ぎました（モック）' });
@@ -270,7 +273,7 @@ export function TodayPage() {
               {/* タイムライン: モバイルでは先に表示 */}
               <div className="md:col-span-2 order-1">
                 <TimelinePanel
-                  report={report} customers={customers}
+                  report={report}
                   blockDragState={blockDragState} startDrag={startDrag}
                   plannedDnC={plannedDnC} actualDnC={actualDnC} isMobile={isMobile}
                   plannedRef={timelineRef} actualRef={actualColRef}

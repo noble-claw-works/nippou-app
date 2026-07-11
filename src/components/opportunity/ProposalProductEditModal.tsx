@@ -37,7 +37,7 @@ interface Props {
 
 function uid() { return `pp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
-export function ProposalProductEditModal({ product, opportunityId, householdId, onClose, onSave }: Props) {
+export function ProposalProductEditModal({ product, householdId, onClose, onSave }: Props) {
   const { getPersonsByHousehold } = useAppStore();
   const persons: Person[] = getPersonsByHousehold(householdId);
 

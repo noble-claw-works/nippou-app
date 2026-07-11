@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { isTodoReadOnly, getTodoReadOnlyReason } from '../utils/todoReadOnly';
-import type { ReportStatus } from '../utils/todoReadOnly';
+
 
 const TODAY = '2026-06-04';
 const YESTERDAY = '2026-06-03';

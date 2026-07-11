@@ -77,8 +77,8 @@ export function useBlockDrag({ containerRef, actualRef, onCommit }: UseBlockDrag
       const dyMin = ((e.clientY - c.anchorClientY) / HOUR_PX) * 60;
       const duration = c.origEnd - c.origStart;
 
-      let newStart = c.origStart;
-      let newEnd   = c.origEnd;
+      let newStart: number;
+      let newEnd: number;
 
       if (c.mode === 'move') {
         newStart = clamp(snap(c.origStart + dyMin), DAY_START, DAY_END - duration);

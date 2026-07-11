@@ -1,4 +1,4 @@
-import { useState } from 'react';
+
 import { Trash2 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import type { ManagerComment } from '../../types';
@@ -10,7 +10,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-export function ManagerCommentCard({ comment, dayKey, isManager, onDelete }: Props) {
+export function ManagerCommentCard({ comment, isManager, onDelete }: Props) {
   const { currentUserId, users, replyToManagerComment } = useAppStore();
   const author = users.find(u => u.id === comment.authorUserId);
   const userReply = comment.replies.find(r => r.userId === currentUserId);

@@ -5,7 +5,7 @@ import { useAppStore } from '../store';
 import type { PolicyStatus, ProductCategory } from '../types';
 import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
 import { PolicyEditModal } from '../components/policy/PolicyEditModal';
-import { ForbiddenState } from '../components/ui/EmptyState';
+
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   life: '生命保険', medical: '医療保険', cancer: 'がん保険',
@@ -16,7 +16,7 @@ const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
 const ALL_STATUSES: PolicyStatus[] = ['inforce', 'pending', 'lapsed', 'surrendered', 'matured', 'paid_up', 'reduced'];
 
 export function PoliciesPage() {
-  const { policies, customers, persons, users, currentRole, currentUserId } = useAppStore();
+  const { policies, customers, users, currentRole, currentUserId } = useAppStore();
 
   const [showAdd, setShowAdd] = useState(false);
   const [addHouseholdId, setAddHouseholdId] = useState<string>('');
@@ -59,8 +59,8 @@ export function PoliciesPage() {
 
     // Sort
     list = [...list].sort((a, b) => {
-      let va: string | number = sortKey === 'monthlyPremium' ? a.monthlyPremium : (a[sortKey] ?? '');
-      let vb: string | number = sortKey === 'monthlyPremium' ? b.monthlyPremium : (b[sortKey] ?? '');
+      const va: string | number = sortKey === 'monthlyPremium' ? a.monthlyPremium : (a[sortKey] ?? '');
+      const vb: string | number = sortKey === 'monthlyPremium' ? b.monthlyPremium : (b[sortKey] ?? '');
       if (va < vb) return sortDir === 'asc' ? -1 : 1;
       if (va > vb) return sortDir === 'asc' ? 1 : -1;
       return 0;

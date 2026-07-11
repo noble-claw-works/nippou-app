@@ -20,7 +20,7 @@ export interface BlockCardProps {
 // ─── BlockCard Component ──────────────────────────────────────────────────────
 export function BlockCard({
   block, isDragging, startMin, endMin,
-  origStart, origEnd, col, showActualizeBtn,
+  col, showActualizeBtn,
   onDragStart, onClick, onActualize,
 }: BlockCardProps) {
   const top = minuteToY(startMin) + 8;

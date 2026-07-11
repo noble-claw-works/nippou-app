@@ -6,7 +6,7 @@ import type {
   User, Team, Customer, DailyReport, Template, QuickChip,
   Notification, AuditLog, TimeBlock, Todo, Comment,
   Role, TrackingSession, BlockType, ManagerComment, Compliment,
-  Person, Opportunity, OpportunityStage, LostReason,
+  Person, Opportunity, OpportunityStage,
   Policy, PolicyStatusHistory, Coverage, PolicyStatus, CoverageType,
   ProductCategory,
   SalesTarget, TargetScope, TargetPeriodType,

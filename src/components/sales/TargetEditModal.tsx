@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAppStore } from '../../store';
 import type { PeriodType } from '../../utils/salesPeriod';
 import { toPeriod, shiftPeriod, periodLabel, periodsOfYear } from '../../utils/salesPeriod';
-import { checkTargetRollup, calcAchievement } from '../../utils/salesMetrics';
+import { checkTargetRollup } from '../../utils/salesMetrics';
 import type { TargetScope } from '../../types';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export function TargetEditModal({
   initialPeriod,
   onClose,
 }: Props) {
-  const { currentRole, currentUserId, salesTargets, upsertTarget, policies, addToast } =
+  const { currentRole, currentUserId, salesTargets, upsertTarget, addToast } =
     useAppStore();
 
   const [periodType, setPeriodType] = useState<PeriodType>(initialPeriodType);

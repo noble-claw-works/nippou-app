@@ -23,7 +23,7 @@ interface Row {
 }
 
 export function SubmissionStatsTable({ reports, users, monthDate, onOpenUser }: Props) {
-  const base = monthDate ?? new Date();
+  const base = useMemo(() => monthDate ?? new Date(), [monthDate]);
   const targetUsers = users.filter(u => ['general', 'manager'].includes(u.role) && u.status === 'active');
 
   const businessDays = useMemo(() => {

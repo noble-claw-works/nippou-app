@@ -55,7 +55,6 @@ export function LoginPage() {
       }
     }, 1000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lockUntil]);
 
   // ロック状態は lockUntil (解除時刻) を正典とする。

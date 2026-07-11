@@ -2,15 +2,24 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../store';
-import type { Opportunity, OpportunityStage, ProductCategory } from '../types';
+import type { OpportunityStage, ProductCategory } from '../types';
 import { StageBadge, STAGE_META } from '../components/opportunity/StageBadge';
-import { QuickOpportunityModal } from '../components/opportunity/QuickOpportunityModal';
+
+// ─── SortIcon コンポーネント（レンダー内定義を回避するためコンポーネント外部に定義） ──
+type SortKey = 'stage' | 'expectedCloseDate' | 'totalMonthlyPremium' | 'updatedAt';
+
+function SortIcon({ k, sortKey, sortAsc }: { k: SortKey; sortKey: SortKey; sortAsc: boolean }) {
+  if (sortKey !== k) return <ChevronDown className="w-3 h-3 text-gray-300" />;
+  return sortAsc
+    ? <ChevronUp className="w-3 h-3 text-blue-500" />
+    : <ChevronDown className="w-3 h-3 text-blue-500" />;
+}
 
 // =====================================================
 // OpportunitiesPage — 商談案件一覧
 // =====================================================
 
-type SortKey = 'stage' | 'expectedCloseDate' | 'totalMonthlyPremium' | 'updatedAt';
+
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   life: '生命保険', medical: '医療保険', cancer: 'がん保険',
@@ -25,9 +34,9 @@ const STAGE_ORDER: OpportunityStage[] = [
 
 export function OpportunitiesPage() {
   const navigate = useNavigate();
-  const { opportunities, customers, currentUserId, currentRole, addOpportunity } = useAppStore();
+  const { opportunities, customers, currentUserId, currentRole } = useAppStore();
   const [stageFilter, setStageFilter] = useState<OpportunityStage | 'all'>('all');
-  const [ownerFilter, setOwnerFilter] = useState<string>('all');
+  const [ownerFilter] = useState<string>('all');
   const [openOnly, setOpenOnly] = useState(true);
   const [catFilter, setCatFilter] = useState<ProductCategory | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
@@ -55,7 +64,7 @@ export function OpportunitiesPage() {
     if (catFilter !== 'all') list = list.filter(o => o.productCategories.includes(catFilter));
 
     list.sort((a, b) => {
-      let cmp = 0;
+      let cmp: number;
       if (sortKey === 'stage') {
         cmp = STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage);
       } else if (sortKey === 'expectedCloseDate') {
@@ -78,12 +87,7 @@ export function OpportunitiesPage() {
     else { setSortKey(key); setSortAsc(false); }
   };
 
-  const SortIcon = ({ k }: { k: SortKey }) => {
-    if (sortKey !== k) return <ChevronDown className="w-3 h-3 text-gray-300" />;
-    return sortAsc
-      ? <ChevronUp className="w-3 h-3 text-blue-500" />
-      : <ChevronDown className="w-3 h-3 text-blue-500" />;
-  };
+
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -166,21 +170,21 @@ export function OpportunitiesPage() {
                   className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none"
                   onClick={() => handleSort('stage')}
                 >
-                  <span className="flex items-center gap-1">ステージ <SortIcon k="stage" /></span>
+                  <span className="flex items-center gap-1">ステージ <SortIcon k="stage" sortKey={sortKey} sortAsc={sortAsc} /></span>
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">カテゴリ</th>
                 <th
                   className="px-4 py-3 text-right font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden md:table-cell"
                   onClick={() => handleSort('totalMonthlyPremium')}
                 >
-                  <span className="flex items-center justify-end gap-1">月払 <SortIcon k="totalMonthlyPremium" /></span>
+                  <span className="flex items-center justify-end gap-1">月払 <SortIcon k="totalMonthlyPremium" sortKey={sortKey} sortAsc={sortAsc} /></span>
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">次アクション</th>
                 <th
                   className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden lg:table-cell"
                   onClick={() => handleSort('expectedCloseDate')}
                 >
-                  <span className="flex items-center gap-1">期日 <SortIcon k="expectedCloseDate" /></span>
+                  <span className="flex items-center gap-1">期日 <SortIcon k="expectedCloseDate" sortKey={sortKey} sortAsc={sortAsc} /></span>
                 </th>
               </tr>
             </thead>

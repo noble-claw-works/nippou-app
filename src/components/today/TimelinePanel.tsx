@@ -1,10 +1,10 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import {
   BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS,
   timeToMinutes, minutesToTime,
 } from '../../utils';
-import type { DailyReport, Customer, TimeBlock } from '../../types';
+import type { DailyReport, TimeBlock } from '../../types';
 import {
   ChipPopover,
   DAY_START, DAY_END, HOUR_PX, minuteToY,
@@ -16,7 +16,6 @@ import { BlockCard } from './BlockCard';
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface TimelinePanelProps {
   report: DailyReport;
-  customers: Customer[];
   blockDragState: BlockDragState | null;
   startDrag: (
     e: React.MouseEvent,
@@ -86,7 +85,7 @@ function DragGhost({ dragState, col }: { dragState: DragState; col: 'planned' | 
 
 // ─── TimelinePanel ────────────────────────────────────────────────────────────
 export function TimelinePanel({
-  report, customers, blockDragState, startDrag,
+  report, blockDragState, startDrag,
   plannedDnC, actualDnC, isMobile,
   plannedRef, actualRef,
   onOpenBlock, onActualize,

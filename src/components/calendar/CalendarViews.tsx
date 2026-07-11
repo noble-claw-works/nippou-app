@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
-  format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, isToday,
+  format, startOfWeek, endOfWeek, eachDayOfInterval, isToday,
   startOfMonth, endOfMonth,
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -23,14 +23,11 @@ export interface SubNavProps {
   onToday: () => void;
 }
 export function SubNav({ view, baseDate, onPrev, onNext, onToday }: SubNavProps) {
-  let label = '';
-  if (view === 'week') {
-    const s = startOfWeek(baseDate, { weekStartsOn: 1 });
-    const e = endOfWeek(baseDate, { weekStartsOn: 1 });
-    label = `${format(s, 'M/d')} – ${format(e, 'M/d')}`;
-  } else {
-    label = format(baseDate, 'yyyy年M月d日 (E)', { locale: ja });
-  }
+  const s = startOfWeek(baseDate, { weekStartsOn: 1 });
+  const e = endOfWeek(baseDate, { weekStartsOn: 1 });
+  const label = view === 'week'
+    ? `${format(s, 'M/d')} – ${format(e, 'M/d')}`
+    : format(baseDate, 'yyyy年M月d日 (E)', { locale: ja });
   return (
     <div className="flex items-center gap-2 mb-3">
       <button

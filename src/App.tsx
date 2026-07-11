@@ -9,8 +9,6 @@ import { CalendarPage } from './pages/CalendarPage';
 import { SearchPage } from './pages/SearchPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ReportAdminPage } from './pages/ReportAdminPage';
-import { CustomersPage } from './pages/CustomersPage';
-import { CustomerDetailPage } from './pages/CustomerDetailPage';
 import { HouseholdsPage } from './pages/HouseholdsPage';
 import { HouseholdDetailPage } from './pages/HouseholdDetailPage';
 import { HouseholdBatchEntryPage } from './pages/HouseholdBatchEntryPage';

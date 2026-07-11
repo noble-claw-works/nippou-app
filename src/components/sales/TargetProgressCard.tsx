@@ -9,7 +9,6 @@ import {
   calcAchievement,
   achievementRate,
   rollupAchievements,
-  checkTargetRollup,
 } from '../../utils/salesMetrics';
 
 interface Props {

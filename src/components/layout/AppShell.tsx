@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home, Calendar, Search, BarChart3, Users, FileText,
-  Settings, ShieldCheck, Bell, ChevronDown, RefreshCw,
+  Settings, ShieldCheck, ChevronDown, RefreshCw,
   Menu, X as XIcon, LogOut, Handshake, ScrollText,
   ClipboardList, TrendingUp
 } from 'lucide-react';
@@ -29,12 +29,11 @@ const NAV_ITEMS = [
 const ROLES: Role[] = ['general', 'manager', 'executive', 'admin'];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { currentRole, currentUserId, setRole, addToast, resetAll, notifications, logout } = useAppStore();
+  const { currentRole, setRole, addToast, resetAll, logout } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
   const user = useAppStore(s => s.users.find(u => u.id === s.currentUserId));
-  const unreadCount = notifications.filter(n => !n.isRead).length;
 
   const handleLogout = () => {
     logout();

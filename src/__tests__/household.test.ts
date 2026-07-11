@@ -1,5 +1,5 @@
 // household.test.ts — Household 型 / アクション テスト (Phase 1)
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { Customer, Household } from '../types';
 
 describe('Household 型互換性', () => {

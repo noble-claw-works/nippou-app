@@ -9,7 +9,7 @@ import { TodoProgressPanel } from '../components/dashboard/TodoProgressPanel';
 import { SummaryReportPanel } from '../components/dashboard/SummaryReportPanel';
 
 export function ReportAdminPage() {
-  const { currentRole, reports, users, policies, addToast } = useAppStore();
+  const { currentRole, reports, users, policies } = useAppStore();
   const navigate = useNavigate();
 
   if (currentRole !== 'manager' && currentRole !== 'executive' && currentRole !== 'admin') {

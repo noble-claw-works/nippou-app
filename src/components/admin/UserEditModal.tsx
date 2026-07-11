@@ -17,11 +17,15 @@ interface Props {
 export function UserEditModal({ user, teams, onClose, onSave }: Props) {
   const [form, setForm] = useState({ name: '', email: '', role: 'general' as Role, teamIds: [] as string[] });
 
+  // フォームをモーダル対象(user)の変化に合わせて同期する意図的なパターン。
+  // setForm は user が存在するときのみ呼び、cascading renderの実害はない。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (user) {
       setForm({ name: user.name, email: user.email, role: user.role, teamIds: [...user.teamIds] });
     }
   }, [user]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const toggleTeam = (teamId: string) => {
     setForm(f => ({

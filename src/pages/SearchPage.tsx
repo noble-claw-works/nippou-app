@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -27,14 +27,9 @@ export function SearchPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<ReportStatus[]>(initialStatuses);
   const [authorId, setAuthorId] = useState('');
-  const [searched, setSearched] = useState(autoSearch);
-
   // MGR-2: URL クエリで ?status=submitted&auto=1 が渡されたら初期検索を実行して一覧を表示
-  useEffect(() => {
-    if (autoSearch) {
-      setSearched(true);
-    }
-  }, [autoSearch]);
+  // autoSearch は初期レンダリング時にマウント旹式で設定されるため、初期値に直接使用する。
+  const [searched, setSearched] = useState(autoSearch);
 
   const toggleStatus = (s: ReportStatus) => {
     setSelectedStatuses(prev =>
