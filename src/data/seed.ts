@@ -456,6 +456,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c6: 鈴木 花代 — 生命保険 見直し (approach ステージ)
   mkOpp('opp4', 'c6', 'u2', '鈴木家 生命保険 見直し', 'approach', 'open', {
     targetPersonIds: ['p_c6_head'],
+    contractorPersonId: 'p_c6_head',
     productCategories: ['life'],
     needsAnalysisDone: false,
     illustrationProvided: false,
@@ -478,6 +479,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c8: 高橋 誠 — 自動車保険 (fact_finding ステージ)
   mkOpp('opp5', 'c8', 'u1', '高橋家 自動車保険 新規', 'fact_finding', 'open', {
     targetPersonIds: ['p_c8_head'],
+    contractorPersonId: 'p_c8_head',
     productCategories: ['auto'],
     needsAnalysisDone: false,
     illustrationProvided: false,
@@ -495,6 +497,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c10: 伊藤 幸子 — 医療保険 (needs_analysis ステージ)
   mkOpp('opp6', 'c10', 'u3', '伊藤家 医療保険 検討', 'needs_analysis', 'open', {
     targetPersonIds: ['p_c10_head'],
+    contractorPersonId: 'p_c10_head',
     productCategories: ['medical', 'cancer'],
     needsAnalysisDone: false,
     illustrationProvided: false,
@@ -513,6 +516,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c1: GILSON — 受注案件 (issued / won)
   mkOpp('opp7', 'c1', 'u1', 'GILSON家 自動車保険 受注', 'issued', 'won', {
     targetPersonIds: ['p_c1_head'],
+    contractorPersonId: 'p_c1_head',
     productCategories: ['auto'],
     proposalProducts: [
       { id: 'pp5', productCategory: 'auto', productName: 'タフ・くるまの保険', insurer: '東京海上日動', insuredPersonId: 'p_c1_head', monthlyPremium: 8900, memo: '弁護士費用特約+車両保険' },
@@ -534,6 +538,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c2: 齋藤 — 失注案件
   mkOpp('opp8', 'c2', 'u1', '齋藤家 生命保険 (失注)', 'lost', 'lost', {
     targetPersonIds: ['p_c2_head'],
+    contractorPersonId: 'p_c2_head',
     productCategories: ['life'],
     needsAnalysisDone: true,
     illustrationProvided: true,
@@ -552,6 +557,7 @@ export const OPPORTUNITIES: Opportunity[] = [
 
   // c3: 暁和化学ゴム — 法人 火災保険 (underwriting)
   mkOpp('opp9', 'c3', 'u1', '暁和化学ゴム 工場火災保険', 'underwriting', 'open', {
+    contractorPersonId: 'p_c3_head',
     productCategories: ['fire'],
     proposalProducts: [
       { id: 'pp6', productCategory: 'fire', productName: '企業総合保険', insurer: '損保ジャパン', insuredPersonId: '', monthlyPremium: 45000, faceAmount: 200000000, memo: '工場・在庫一式' },
@@ -576,6 +582,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c6: 鈴木 — 学資保険 (fact_finding)
   mkOpp('opp10', 'c6', 'u2', '鈴木家 学資保険 検討', 'fact_finding', 'open', {
     targetPersonIds: ['p_c6_head'],
+    contractorPersonId: 'p_c6_head',
     productCategories: ['savings'],
     needsAnalysisDone: false,
     illustrationProvided: false,
@@ -593,6 +600,7 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c4: 水野 — 生命保険 (approach)
   mkOpp('opp11', 'c4', 'u1', '水野家 生命保険 初回アプローチ', 'approach', 'open', {
     targetPersonIds: ['p_c4_head'],
+    contractorPersonId: 'p_c4_head',
     productCategories: ['life'],
     needsAnalysisDone: false,
     illustrationProvided: false,

@@ -20,7 +20,45 @@ import {
   getChannelDisplayName,
   isLeafChannel,
 } from '../utils/channelUtils';
-import { OPPORTUNITIES } from '../data/seed';
+import { OPPORTUNITIES, POLICIES, PERSONS } from '../data/seed';
+
+// =====================================================
+// §0: seed 契約者データ整合（主上指摘2026-07-12「契約者未設定はありえない」）
+// =====================================================
+describe('seed 契約者データ整合', () => {
+  const personIds = new Set(PERSONS.map((p) => p.id));
+  const personById = new Map(PERSONS.map((p) => [p.id, p]));
+
+  it('全 Opportunity に契約者(contractorPersonId)が設定されていること', () => {
+    const missing = OPPORTUNITIES.filter((o) => !o.contractorPersonId);
+    expect(missing.map((o) => o.id)).toEqual([]);
+  });
+
+  it('全 Policy に契約者(contractorPersonId)が設定されていること', () => {
+    const missing = POLICIES.filter((p) => !p.contractorPersonId);
+    expect(missing.map((p) => p.id)).toEqual([]);
+  });
+
+  it('契約者は実在し、案件と同一世帯の Person であること', () => {
+    const bad = OPPORTUNITIES.filter(
+      (o) =>
+        o.contractorPersonId &&
+        (!personIds.has(o.contractorPersonId) ||
+          personById.get(o.contractorPersonId)?.householdId !== o.householdId),
+    );
+    expect(bad.map((o) => `${o.id}:${o.contractorPersonId}`)).toEqual([]);
+  });
+
+  it('契約(Policy)の契約者も実在し同一世帯であること', () => {
+    const bad = POLICIES.filter(
+      (p) =>
+        p.contractorPersonId &&
+        (!personIds.has(p.contractorPersonId) ||
+          personById.get(p.contractorPersonId)?.householdId !== p.householdId),
+    );
+    expect(bad.map((p) => `${p.id}:${p.contractorPersonId}`)).toEqual([]);
+  });
+});
 
 // =====================================================
 // §1: チャネルマスタ参照整合テスト
