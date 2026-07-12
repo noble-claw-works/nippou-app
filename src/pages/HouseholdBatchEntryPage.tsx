@@ -909,7 +909,15 @@ export function HouseholdBatchEntryPage() {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const fromParam = searchParams.get('from') ?? '/households';
+  // B-2c: fromパラメータに基づく戻り先解決
+  // from=today → /today, from=report:{date} → /reports/{date}, その他 → /households
+  const fromRaw = searchParams.get('from');
+  const fromParam = (() => {
+    if (!fromRaw) return '/households';
+    if (fromRaw === 'today') return '/today';
+    if (fromRaw.startsWith('report:')) return `/reports/${fromRaw.slice('report:'.length)}`;
+    return '/households';
+  })();
 
   // ── Store 購読（useShallow で無限ループ回避・必須） ──
   const {

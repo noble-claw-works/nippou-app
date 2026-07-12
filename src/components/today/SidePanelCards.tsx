@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, X, ChevronDown } from 'lucide-react';
 import { BLOCK_EMOJIS, MOOD_EMOJIS } from '../../utils';
 import type { DailyReport, Customer, MoodType, ManagerSignal } from '../../types';
@@ -14,7 +15,12 @@ export interface SidePanelCardsProps {
   onAddTodo: (text: string, priority?: 'high' | 'medium' | 'low') => void;
   onToggleTodo: (todoId: string) => void;
   onDeleteTodo: (todoId: string) => void;
+  /** B-2c: 日報が実績入力中（in_progress）かどうか。世帯まとめ入力導線ボタンの活性化に使用 */
+  canEditActual?: boolean;
 }
+
+// resolveBackUrl, canActivateBatchEntry は utils/batchEntryNavigation.ts に定義
+// (react-refresh/only-export-components 対応)
 
 // ─── TODO Card ────────────────────────────────────────────────────────────────
 interface TodoInputState {
@@ -204,8 +210,17 @@ function TodoCard({ report, isReadOnly, onAddTodo, onToggleTodo, onDeleteTodo }:
 }
 
 // ─── Customer Summary Card ────────────────────────────────────────────────────
-function CustomerSummaryCard({ report, customers }: Pick<SidePanelCardsProps, 'report' | 'customers'>) {
+function CustomerSummaryCard({
+  report, customers, canEditActual,
+}: Pick<SidePanelCardsProps, 'report' | 'customers' | 'canEditActual'>) {
+  const navigate = useNavigate();
   const visitBlocks = report.blocks.filter(b => b.type === 'visit' && b.customerId);
+  const isInProgress = canEditActual === true;
+
+  // B-2c: 世帯まとめ入力画面への遷移ハンドラ
+  const handleBatchEntry = (cId: string) => {
+    navigate(`/households/${cId}/batch-entry?from=today&date=${report.date}`);
+  };
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -225,6 +240,28 @@ function CustomerSummaryCard({ report, customers }: Pick<SidePanelCardsProps, 'r
                     {block.startTime}–{block.endTime}
                   </span>
                 </div>
+                {/* B-2c: 世帯まとめ入力ボタン（実績入力中のみ活性） */}
+                {block.customerId && (
+                  <div className="pl-5 mt-1">
+                    {isInProgress ? (
+                      <button
+                        type="button"
+                        onClick={() => handleBatchEntry(block.customerId!)}
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 min-h-[32px] transition-colors"
+                      >
+                        📋 まとめ入力/更新
+                      </button>
+                    ) : (
+                      <span
+                        title="実績入力中のみ利用できます"
+                        aria-label="実績入力中のみ利用できます"
+                        className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed select-none"
+                      >
+                        📋 まとめ入力/更新
+                      </span>
+                    )}
+                  </div>
+                )}
                 {/* Visit result badges */}
                 <div className="flex flex-wrap gap-1.5 pl-5">
                   {block.collected && (
@@ -453,12 +490,13 @@ function GratitudeCard({ report, onUpdateReport }: Pick<SidePanelCardsProps, 're
 export function SidePanelCards({
   report, customers,
   onUpdateReport, onAddTodo, onToggleTodo, onDeleteTodo,
+  canEditActual,
 }: SidePanelCardsProps) {
   // BUG-B: 提出済み / 確認済み日報の TODO を UI レベルでも読み取り専用にする
   const isReadOnly = report.status === 'submitted' || report.status === 'confirmed';
   return (
     <div className="space-y-4">
-      <CustomerSummaryCard report={report} customers={customers} />
+      <CustomerSummaryCard report={report} customers={customers} canEditActual={canEditActual} />
       <TodoCard
         report={report}
         isReadOnly={isReadOnly}

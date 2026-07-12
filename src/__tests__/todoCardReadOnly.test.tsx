@@ -17,6 +17,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { SidePanelCards } from '../components/today/SidePanelCards';
 import type { DailyReport, Customer, ReportStatus, Todo } from '../types';
 
@@ -54,14 +55,16 @@ function renderWith(status: ReportStatus) {
   const onUpdateReport = vi.fn();
 
   const utils = render(
-    <SidePanelCards
-      report={report}
-      customers={customers}
-      onUpdateReport={onUpdateReport}
-      onAddTodo={onAddTodo}
-      onToggleTodo={onToggleTodo}
-      onDeleteTodo={onDeleteTodo}
-    />,
+    <MemoryRouter>
+      <SidePanelCards
+        report={report}
+        customers={customers}
+        onUpdateReport={onUpdateReport}
+        onAddTodo={onAddTodo}
+        onToggleTodo={onToggleTodo}
+        onDeleteTodo={onDeleteTodo}
+      />
+    </MemoryRouter>,
   );
   return { ...utils, onToggleTodo, onAddTodo, onDeleteTodo, onUpdateReport };
 }
@@ -191,14 +194,16 @@ describe('BUG-B 残存: 期限切れ TODO は status=planning でも読み取り
     const onUpdateReport = vi.fn();
 
     render(
-      <SidePanelCards
-        report={report}
-        customers={[]}
-        onUpdateReport={onUpdateReport}
-        onAddTodo={onAddTodo}
-        onToggleTodo={onToggleTodo}
-        onDeleteTodo={onDeleteTodo}
-      />,
+      <MemoryRouter>
+        <SidePanelCards
+          report={report}
+          customers={[]}
+          onUpdateReport={onUpdateReport}
+          onAddTodo={onAddTodo}
+          onToggleTodo={onToggleTodo}
+          onDeleteTodo={onDeleteTodo}
+        />
+      </MemoryRouter>,
     );
     return { onToggleTodo, onAddTodo, onDeleteTodo };
   }

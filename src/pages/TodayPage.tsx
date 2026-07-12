@@ -290,6 +290,7 @@ export function TodayPage() {
                   onAddTodo={(t, p) => addTodo(report.id, t, p)}
                   onToggleTodo={id => toggleTodo(report.id, id)}
                   onDeleteTodo={id => deleteTodo(report.id, id)}
+                  canEditActual={canEditActual(report)}
                 />
                 {/* P0-1: 上長コメント */}
                 <ManagerCommentSection dayKey={report.date} submitted={report.status === 'submitted' || report.status === 'confirmed'} />
