@@ -1,13 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import { useAppStore } from '../store';
-import type { Policy, PolicyStatus, ProductCategory } from '../types';
+import type { PolicyStatus, ProductCategory } from '../types';
 import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
 import { PolicyEditModal } from '../components/policy/PolicyEditModal';
-import { TwoLevelAccordion } from '../components/ui/TwoLevelAccordion';
-import { groupByHouseholdThenContractor } from '../utils/grouping';
 
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
@@ -18,21 +15,10 @@ const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
 
 const ALL_STATUSES: PolicyStatus[] = ['inforce', 'pending', 'lapsed', 'surrendered', 'matured', 'paid_up', 'reduced'];
 
-const POLICY_COL_SPAN = 8;
+type PolicySortKey = 'startDate' | 'monthlyPremium' | 'maturityDate' | 'contractor';
 
 export function PoliciesPage() {
-  // ★ useShallow で参照安定化（無限ループ防止）
-  const { policies, customers, persons, users } = useAppStore(
-    useShallow(s => ({
-      policies: s.policies,
-      customers: s.customers,
-      persons: s.persons,
-      users: s.users,
-    })),
-  );
-  const { currentRole, currentUserId } = useAppStore(
-    useShallow(s => ({ currentRole: s.currentRole, currentUserId: s.currentUserId })),
-  );
+  const { policies, customers, persons, users, currentRole, currentUserId } = useAppStore();
 
   const [showAdd, setShowAdd] = useState(false);
   const [addHouseholdId, setAddHouseholdId] = useState<string>('');
@@ -40,8 +26,15 @@ export function PoliciesPage() {
   const [filterStatus, setFilterStatus] = useState<PolicyStatus | ''>('');
   const [filterCategory, setFilterCategory] = useState<ProductCategory | ''>('');
   const [filterOwner, setFilterOwner] = useState('');
-  const [sortKey, setSortKey] = useState<'startDate' | 'monthlyPremium' | 'maturityDate'>('startDate');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  // 既定ソートを契約者(contractor)昇順に（主上修正指示2026-07-12）
+  const [sortKey, setSortKey] = useState<PolicySortKey>('contractor');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  // 契約者名を取得するヘルパー（ソート・表示共用）
+  const getContractorName = (contractorPersonId: string): string => {
+    if (!contractorPersonId) return '';
+    return persons.find(p => p.id === contractorPersonId)?.name ?? '';
+  };
 
   // ロール別フィルタ
   const visiblePolicies = useMemo(() => {
@@ -75,29 +68,36 @@ export function PoliciesPage() {
 
     // Sort
     list = [...list].sort((a, b) => {
-      const va: string | number = sortKey === 'monthlyPremium' ? a.monthlyPremium : (a[sortKey] ?? '');
-      const vb: string | number = sortKey === 'monthlyPremium' ? b.monthlyPremium : (b[sortKey] ?? '');
-      if (va < vb) return sortDir === 'asc' ? -1 : 1;
-      if (va > vb) return sortDir === 'asc' ? 1 : -1;
-      return 0;
+      let cmp: number;
+      if (sortKey === 'contractor') {
+        const nameA = getContractorName(a.contractorPersonId);
+        const nameB = getContractorName(b.contractorPersonId);
+        // 未設定は末尾
+        if (!nameA && !nameB) cmp = 0;
+        else if (!nameA) cmp = 1;
+        else if (!nameB) cmp = -1;
+        else cmp = nameA.localeCompare(nameB, 'ja');
+      } else if (sortKey === 'monthlyPremium') {
+        cmp = a.monthlyPremium - b.monthlyPremium;
+      } else {
+        const va = a[sortKey] ?? '';
+        const vb = b[sortKey] ?? '';
+        cmp = va < vb ? -1 : va > vb ? 1 : 0;
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
     });
 
     return list;
-  }, [visiblePolicies, filterStatus, filterCategory, filterOwner, search, sortKey, sortDir, customers]);
-
-  // ★ グルーピング（useMemo で安定化。filterの結果を世帯>契約者2段に束ねる）
-  const groups = useMemo(
-    () => groupByHouseholdThenContractor(filtered, customers, persons),
-    [filtered, customers, persons],
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visiblePolicies, filterStatus, filterCategory, filterOwner, search, sortKey, sortDir, customers, persons]);
 
   if (currentRole === 'general') {
     // general is allowed to view own policies, so no block
   }
 
-  const handleSort = (key: typeof sortKey) => {
+  const handleSort = (key: PolicySortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('desc'); }
+    else { setSortKey(key); setSortDir('asc'); }
   };
 
   const totalActive = filtered.filter(p => p.status === 'inforce').length;
@@ -107,80 +107,6 @@ export function PoliciesPage() {
 
   // Active customers with policies for add modal
   const activeCustomers = customers.filter(c => c.status === 'active');
-
-  // 契約行レンダラー
-  const renderPolicyRow = (policy: Policy) => {
-    const household = customers.find(c => c.id === policy.householdId);
-    const owner = users.find(u => u.id === policy.ownerId);
-    return (
-      <tr key={policy.id} className="hover:bg-gray-50 transition-colors">
-        <td className="px-4 py-3">
-          {household ? (
-            <Link
-              to={`/households/${household.id}`}
-              className="text-blue-600 hover:underline font-medium"
-              onClick={e => e.stopPropagation()}
-            >
-              {household.name}
-            </Link>
-          ) : (
-            <span className="text-gray-400">—</span>
-          )}
-        </td>
-        <td className="px-3 py-3">
-          <Link
-            to={`/policies/${policy.id}`}
-            className="text-gray-900 hover:text-blue-600 hover:underline font-medium"
-            onClick={e => e.stopPropagation()}
-          >
-            {policy.productName}
-          </Link>
-          {policy.policyNumber && (
-            <div className="text-[10px] text-gray-400">{policy.policyNumber}</div>
-          )}
-        </td>
-        <td className="px-3 py-3 text-gray-700">{policy.insurer}</td>
-        <td className="px-3 py-3 text-gray-600">
-          {PRODUCT_CATEGORY_LABELS[policy.productCategory] ?? policy.productCategory}
-        </td>
-        <td className="px-3 py-3">
-          <PolicyStatusBadge status={policy.status} size="sm" />
-        </td>
-        <td className="px-3 py-3 text-right font-semibold text-gray-900">
-          {policy.monthlyPremium > 0
-            ? `¥${policy.monthlyPremium.toLocaleString()}`
-            : '—'
-          }
-        </td>
-        <td className="px-3 py-3 text-gray-600">{policy.startDate}</td>
-        <td className="px-3 py-3 text-gray-600">{owner?.name ?? '—'}</td>
-      </tr>
-    );
-  };
-
-  // テーブルヘッダーレンダラー
-  const renderTableHeader = () => (
-    <tr>
-      <th className="text-left px-4 py-3 text-gray-600 font-medium">世帯</th>
-      <th className="text-left px-3 py-3 text-gray-600 font-medium">商品名</th>
-      <th className="text-left px-3 py-3 text-gray-600 font-medium">保険会社</th>
-      <th className="text-left px-3 py-3 text-gray-600 font-medium">カテゴリ</th>
-      <th className="text-left px-3 py-3 text-gray-600 font-medium">ステータス</th>
-      <th
-        className="text-right px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
-        onClick={() => handleSort('monthlyPremium')}
-      >
-        月払 {sortKey === 'monthlyPremium' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
-      </th>
-      <th
-        className="text-left px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
-        onClick={() => handleSort('startDate')}
-      >
-        契約日 {sortKey === 'startDate' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
-      </th>
-      <th className="text-left px-3 py-3 text-gray-600 font-medium">担当</th>
-    </tr>
-  );
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-4">
@@ -193,7 +119,7 @@ export function PoliciesPage() {
           </p>
         </div>
         <button
-          onClick={() => { setAddHouseholdId(activeCustomers[0]?.id ?? customers[0]?.id ?? ''); setShowAdd(true); }}
+          onClick={() => { setAddHouseholdId(activeCustomers[0]?.id ?? activeCustomers[0]?.id ?? customers[0]?.id ?? ''); setShowAdd(true); }}
           className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" />
@@ -244,15 +170,106 @@ export function PoliciesPage() {
         )}
       </div>
 
-      {/* 2段グループ化アコーディオン */}
-      <TwoLevelAccordion
-        groups={groups}
-        allOpenDefault={true}
-        renderItem={renderPolicyRow}
-        renderTableHeader={renderTableHeader}
-        colSpan={POLICY_COL_SPAN}
-        emptyMessage="契約が見つかりません"
-      />
+      {/* Table */}
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <p className="text-3xl mb-2">📜</p>
+            <p className="text-sm">契約が見つかりません</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-gray-600 font-medium">世帯</th>
+                  <th
+                    className="text-left px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
+                    onClick={() => handleSort('contractor')}
+                  >
+                    契約者 {sortKey === 'contractor' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                  </th>
+                  <th className="text-left px-3 py-3 text-gray-600 font-medium">商品名</th>
+                  <th className="text-left px-3 py-3 text-gray-600 font-medium">保険会社</th>
+                  <th className="text-left px-3 py-3 text-gray-600 font-medium">カテゴリ</th>
+                  <th className="text-left px-3 py-3 text-gray-600 font-medium">ステータス</th>
+                  <th
+                    className="text-right px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
+                    onClick={() => handleSort('monthlyPremium')}
+                  >
+                    月払 {sortKey === 'monthlyPremium' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                  </th>
+                  <th
+                    className="text-left px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
+                    onClick={() => handleSort('startDate')}
+                  >
+                    契約日 {sortKey === 'startDate' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                  </th>
+                  <th
+                    className="text-left px-3 py-3 text-gray-600 font-medium cursor-pointer hover:text-blue-600"
+                    onClick={() => handleSort('maturityDate')}
+                  >
+                    満期日 {sortKey === 'maturityDate' ? (sortDir === 'desc' ? '↓' : '↑') : ''}
+                  </th>
+                  <th className="text-left px-3 py-3 text-gray-600 font-medium">担当</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map(policy => {
+                  const household = customers.find(c => c.id === policy.householdId);
+                  const owner = users.find(u => u.id === policy.ownerId);
+                  return (
+                    <tr key={policy.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        {household ? (
+                          <Link
+                            to={`/households/${household.id}`}
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            {household.name}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-gray-700">
+                        {getContractorName(policy.contractorPersonId) || <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-3 py-3">
+                        <Link
+                          to={`/policies/${policy.id}`}
+                          className="text-gray-900 hover:text-blue-600 hover:underline font-medium"
+                        >
+                          {policy.productName}
+                        </Link>
+                        {policy.policyNumber && (
+                          <div className="text-[10px] text-gray-400">{policy.policyNumber}</div>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 text-gray-700">{policy.insurer}</td>
+                      <td className="px-3 py-3 text-gray-600">
+                        {PRODUCT_CATEGORY_LABELS[policy.productCategory] ?? policy.productCategory}
+                      </td>
+                      <td className="px-3 py-3">
+                        <PolicyStatusBadge status={policy.status} size="sm" />
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-gray-900">
+                        {policy.monthlyPremium > 0
+                          ? `¥${policy.monthlyPremium.toLocaleString()}`
+                          : '—'
+                        }
+                      </td>
+                      <td className="px-3 py-3 text-gray-600">{policy.startDate}</td>
+                      <td className="px-3 py-3 text-gray-600">{policy.maturityDate ?? '—'}</td>
+                      <td className="px-3 py-3 text-gray-600">{owner?.name ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Add Modal */}
       {showAdd && addHouseholdId && (

@@ -1,15 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter, ChevronUp, ChevronDown } from 'lucide-react';
-import { useShallow } from 'zustand/shallow';
 import { useAppStore } from '../store';
-import type { OpportunityStage, ProductCategory, Opportunity } from '../types';
+import type { OpportunityStage, ProductCategory } from '../types';
 import { StageBadge, STAGE_META } from '../components/opportunity/StageBadge';
-import { TwoLevelAccordion } from '../components/ui/TwoLevelAccordion';
-import { groupByHouseholdThenContractor } from '../utils/grouping';
 
 // ─── SortIcon コンポーネント（レンダー内定義を回避するためコンポーネント外部に定義） ──
-type SortKey = 'stage' | 'expectedCloseDate' | 'totalMonthlyPremium' | 'updatedAt';
+type SortKey = 'stage' | 'expectedCloseDate' | 'totalMonthlyPremium' | 'updatedAt' | 'contractor';
 
 function SortIcon({ k, sortKey, sortAsc }: { k: SortKey; sortKey: SortKey; sortAsc: boolean }) {
   if (sortKey !== k) return <ChevronDown className="w-3 h-3 text-gray-300" />;
@@ -19,8 +16,10 @@ function SortIcon({ k, sortKey, sortAsc }: { k: SortKey; sortKey: SortKey; sortA
 }
 
 // =====================================================
-// OpportunitiesPage — 商談案件一覧（世帯>契約者 2段グループ化）
+// OpportunitiesPage — 商談案件一覧
 // =====================================================
+
+
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   life: '生命保険', medical: '医療保険', cancer: 'がん保険',
@@ -33,29 +32,16 @@ const STAGE_ORDER: OpportunityStage[] = [
   'negotiation', 'application', 'underwriting', 'issued', 'lost',
 ];
 
-const OPP_COL_SPAN = 6;
-
 export function OpportunitiesPage() {
   const navigate = useNavigate();
-
-  // ★ useShallow で配列の参照安定化（無限ループ防止）
-  const { opportunities, customers, persons } = useAppStore(
-    useShallow(s => ({
-      opportunities: s.opportunities,
-      customers: s.customers,
-      persons: s.persons,
-    })),
-  );
-  const { currentUserId, currentRole } = useAppStore(
-    useShallow(s => ({ currentUserId: s.currentUserId, currentRole: s.currentRole })),
-  );
-
+  const { opportunities, customers, persons, currentUserId, currentRole } = useAppStore();
   const [stageFilter, setStageFilter] = useState<OpportunityStage | 'all'>('all');
   const [ownerFilter] = useState<string>('all');
   const [openOnly, setOpenOnly] = useState(true);
   const [catFilter, setCatFilter] = useState<ProductCategory | 'all'>('all');
-  const [sortKey, setSortKey] = useState<SortKey>('updatedAt');
-  const [sortAsc, setSortAsc] = useState(false);
+  // 既定ソートを契約者(contractor)昇順に（主上修正指示2026-07-12）
+  const [sortKey, setSortKey] = useState<SortKey>('contractor');
+  const [sortAsc, setSortAsc] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
 
@@ -70,6 +56,12 @@ export function OpportunitiesPage() {
       return true; // executive/admin sees all
     });
   }, [opportunities, currentRole, currentUserId]);
+
+  // 契約者名を取得するヘルパー（ソート・表示共用）
+  const getContractorName = (contractorPersonId: string | undefined): string => {
+    if (!contractorPersonId) return '';
+    return persons.find(p => p.id === contractorPersonId)?.name ?? '';
+  };
 
   const filtered = useMemo(() => {
     let list = [...visibleOpportunities];
@@ -86,87 +78,32 @@ export function OpportunitiesPage() {
         cmp = (a.expectedCloseDate ?? '9999').localeCompare(b.expectedCloseDate ?? '9999');
       } else if (sortKey === 'totalMonthlyPremium') {
         cmp = (b.totalMonthlyPremium ?? 0) - (a.totalMonthlyPremium ?? 0);
+      } else if (sortKey === 'contractor') {
+        const nameA = getContractorName(a.contractorPersonId);
+        const nameB = getContractorName(b.contractorPersonId);
+        // 未設定は末尾
+        if (!nameA && !nameB) cmp = 0;
+        else if (!nameA) cmp = 1;
+        else if (!nameB) cmp = -1;
+        else cmp = nameA.localeCompare(nameB, 'ja');
       } else {
         cmp = b.updatedAt.localeCompare(a.updatedAt);
       }
       return sortAsc ? cmp : -cmp;
     });
     return list;
-  }, [visibleOpportunities, openOnly, stageFilter, ownerFilter, catFilter, sortKey, sortAsc]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleOpportunities, openOnly, stageFilter, ownerFilter, catFilter, sortKey, sortAsc, persons]);
 
-  // ★ グルーピング（派生計算なので useMemo で安定化）
-  const groups = useMemo(
-    () => groupByHouseholdThenContractor(filtered, customers, persons),
-    [filtered, customers, persons],
-  );
+  const getHouseholdName = (householdId: string) =>
+    customers.find(c => c.id === householdId)?.name ?? householdId;
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(v => !v);
-    else { setSortKey(key); setSortAsc(false); }
+    else { setSortKey(key); setSortAsc(true); }
   };
 
-  // アコーディオン内の行レンダラー
-  const renderOppRow = (opp: Opportunity) => (
-    <tr
-      key={opp.id}
-      className="hover:bg-gray-50 cursor-pointer"
-      onClick={() => navigate(`/opportunities/${opp.id}`)}
-    >
-      <td className="px-4 py-3">
-        <span className="font-medium text-gray-800">{opp.title}</span>
-      </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        <StageBadge stage={opp.stage} size="sm" />
-      </td>
-      <td className="px-4 py-3 hidden md:table-cell">
-        <div className="flex flex-wrap gap-1">
-          {opp.productCategories.map(cat => (
-            <span key={cat} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-              {PRODUCT_CATEGORY_LABELS[cat]}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap hidden md:table-cell">
-        {opp.totalMonthlyPremium
-          ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
-          : '—'}
-      </td>
-      <td className="px-4 py-3 text-gray-600 hidden lg:table-cell max-w-[180px] truncate">
-        {opp.nextAction ?? '—'}
-      </td>
-      <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden lg:table-cell">
-        {opp.expectedCloseDate ?? '—'}
-      </td>
-    </tr>
-  );
 
-  // テーブルヘッダーレンダラー（アコーディオン内で使用）
-  const renderTableHeader = () => (
-    <tr>
-      <th className="px-4 py-3 text-left font-medium text-gray-600">案件名</th>
-      <th
-        className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none"
-        onClick={() => handleSort('stage')}
-      >
-        <span className="flex items-center gap-1">ステージ <SortIcon k="stage" sortKey={sortKey} sortAsc={sortAsc} /></span>
-      </th>
-      <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">カテゴリ</th>
-      <th
-        className="px-4 py-3 text-right font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden md:table-cell"
-        onClick={() => handleSort('totalMonthlyPremium')}
-      >
-        <span className="flex items-center justify-end gap-1">月払 <SortIcon k="totalMonthlyPremium" sortKey={sortKey} sortAsc={sortAsc} /></span>
-      </th>
-      <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">次アクション</th>
-      <th
-        className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden lg:table-cell"
-        onClick={() => handleSort('expectedCloseDate')}
-      >
-        <span className="flex items-center gap-1">期日 <SortIcon k="expectedCloseDate" sortKey={sortKey} sortAsc={sortAsc} /></span>
-      </th>
-    </tr>
-  );
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -237,15 +174,95 @@ export function OpportunitiesPage() {
         </div>
       )}
 
-      {/* 2段グループ化アコーディオン */}
-      <TwoLevelAccordion
-        groups={groups}
-        allOpenDefault={true}
-        renderItem={renderOppRow}
-        renderTableHeader={renderTableHeader}
-        colSpan={OPP_COL_SPAN}
-        emptyMessage="該当する案件がありません"
-      />
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">世帯</th>
+                <th
+                  className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none"
+                  onClick={() => handleSort('contractor')}
+                >
+                  <span className="flex items-center gap-1">契約者 <SortIcon k="contractor" sortKey={sortKey} sortAsc={sortAsc} /></span>
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600">案件名</th>
+                <th
+                  className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none"
+                  onClick={() => handleSort('stage')}
+                >
+                  <span className="flex items-center gap-1">ステージ <SortIcon k="stage" sortKey={sortKey} sortAsc={sortAsc} /></span>
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">カテゴリ</th>
+                <th
+                  className="px-4 py-3 text-right font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden md:table-cell"
+                  onClick={() => handleSort('totalMonthlyPremium')}
+                >
+                  <span className="flex items-center justify-end gap-1">月払 <SortIcon k="totalMonthlyPremium" sortKey={sortKey} sortAsc={sortAsc} /></span>
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">次アクション</th>
+                <th
+                  className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none hidden lg:table-cell"
+                  onClick={() => handleSort('expectedCloseDate')}
+                >
+                  <span className="flex items-center gap-1">期日 <SortIcon k="expectedCloseDate" sortKey={sortKey} sortAsc={sortAsc} /></span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                    該当する案件がありません
+                  </td>
+                </tr>
+              ) : (
+                filtered.map(opp => (
+                  <tr
+                    key={opp.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/opportunities/${opp.id}`)}
+                  >
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {getHouseholdName(opp.householdId)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                      {getContractorName(opp.contractorPersonId) || <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-gray-800">{opp.title}</span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <StageBadge stage={opp.stage} size="sm" />
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {opp.productCategories.map(cat => (
+                          <span key={cat} className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            {PRODUCT_CATEGORY_LABELS[cat]}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap hidden md:table-cell">
+                      {opp.totalMonthlyPremium
+                        ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 hidden lg:table-cell max-w-[180px] truncate">
+                      {opp.nextAction ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden lg:table-cell">
+                      {opp.expectedCloseDate ?? '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Quick add modal (needs household — show simple selector) */}
       {showQuickAdd && (
