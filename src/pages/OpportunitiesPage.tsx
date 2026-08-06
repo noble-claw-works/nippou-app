@@ -3,41 +3,42 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Filter, ChevronUp, ChevronDown } from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "../store";
-import type { OpportunityStage, ProductCategory } from "../types";
+import type { ProductCategory } from "../types";
 import { StageBadge } from "../components/opportunity/StageBadge";
 import { HouseholdAccordion } from "../components/ui/HouseholdAccordion";
 import { groupByHousehold } from "../utils/groupByHousehold";
 import type { Opportunity } from "../types";
+import {
+  effectiveStage,
+  effectiveExpectedCloseDate,
+  isRagged,
+  tabOf,
+  householdActiveOpps,
+  representativeOpp,
+  FUNNEL_ORDER,
+} from "../utils/opportunityStage";
+import type { StageTabKey7 } from "../utils/opportunityStage";
 
-// ─── タブ定義（確定仕様 2026-07-28） ─────────────────────────────────────────
-// 既存 OpportunityStage（9値）を「表示グループ」としてまとめる。型・seed・他コンポは変更しない。
+// ─── 7タブ定義（ADR-B3 確定仕様 2026-08-06） ────────────────────────────────────
+// 新案件/訪問済み/提案済み/契約予定/契約/成立/失注 の 7タブ。
+// 件数は tabOf(opp) による案件単位カウント・商品数非依存。
 
-type StageTabKey =
-  "new" | "proposed" | "contract_pending" | "contract" | "issued" | "lost";
+type StageTabKey = StageTabKey7;
 
 interface StageTab {
   key: StageTabKey;
   label: string;
-  stages: OpportunityStage[];
 }
 
 const STAGE_TABS: StageTab[] = [
-  {
-    key: "new",
-    label: "新案件",
-    stages: ["approach", "fact_finding", "needs_analysis"],
-  },
-  { key: "proposed", label: "提案済み", stages: ["proposal", "negotiation"] },
-  { key: "contract_pending", label: "契約予定", stages: ["application"] },
-  { key: "contract", label: "契約", stages: ["underwriting"] },
-  { key: "issued", label: "成立", stages: ["issued"] },
-  { key: "lost", label: "失注", stages: ["lost"] },
+  { key: "new", label: "新案件" },
+  { key: "visited", label: "訪問済み" },
+  { key: "proposed", label: "提案済み" },
+  { key: "contract_pending", label: "契約予定" },
+  { key: "contract", label: "契約" },
+  { key: "issued", label: "成立" },
+  { key: "lost", label: "失注" },
 ];
-
-/** ステージ → タブキー逆引き */
-const STAGE_TO_TAB: Record<OpportunityStage, StageTabKey> = Object.fromEntries(
-  STAGE_TABS.flatMap((tab) => tab.stages.map((s) => [s, tab.key])),
-) as Record<OpportunityStage, StageTabKey>;
 
 // ─── SortIcon コンポーネント（レンダー内定義を回避するためコンポーネント外部に定義） ──
 type SortKey =
@@ -80,18 +81,6 @@ const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   liability: "賠償責任保険",
   other: "その他",
 };
-
-const STAGE_ORDER: OpportunityStage[] = [
-  "approach",
-  "fact_finding",
-  "needs_analysis",
-  "proposal",
-  "negotiation",
-  "application",
-  "underwriting",
-  "issued",
-  "lost",
-];
 
 export function OpportunitiesPage() {
   const navigate = useNavigate();
@@ -147,10 +136,11 @@ export function OpportunitiesPage() {
   // 失注タブは openOnly を無視（lost は status!=='open' のため空になるのを防ぐ）
   const isLostTab = activeTab === "lost";
 
-  /** 各タブの件数バッジ計算（カテゴリフィルタ適用後。openOnly扱いはタブと一致させる） */
+  /** 各タブの件数バッジ計算（ADR-B3: tabOf による案件単位カウント） */
   const tabCounts = useMemo(() => {
     const counts: Record<StageTabKey, number> = {
       new: 0,
+      visited: 0,
       proposed: 0,
       contract_pending: 0,
       contract: 0,
@@ -160,8 +150,7 @@ export function OpportunitiesPage() {
     for (const o of visibleOpportunities) {
       if (catFilter !== "all" && !o.productCategories.includes(catFilter))
         continue;
-      const tabKey = STAGE_TO_TAB[o.stage];
-      if (!tabKey) continue;
+      const tabKey = tabOf(o);
       // 失注タブは openOnly 無視。他は openOnly に従う
       if (tabKey !== "lost" && openOnly && o.status !== "open") continue;
       counts[tabKey]++;
@@ -173,11 +162,8 @@ export function OpportunitiesPage() {
     let list = [...visibleOpportunities];
     // 失注タブは openOnly 無視。他タブは従来通り
     if (!isLostTab && openOnly) list = list.filter((o) => o.status === "open");
-    // タブに対応するステージのみ表示
-    const tabStages = new Set(
-      STAGE_TABS.find((t) => t.key === activeTab)?.stages ?? [],
-    );
-    list = list.filter((o) => tabStages.has(o.stage));
+    // tabOf(opp) でアクティブタブに一致する案件のみ表示（ADR-B3: 実効ステージベース）
+    list = list.filter((o) => tabOf(o) === activeTab);
     if (ownerFilter !== "all")
       list = list.filter((o) => o.ownerId === ownerFilter);
     if (catFilter !== "all")
@@ -186,11 +172,13 @@ export function OpportunitiesPage() {
     list.sort((a, b) => {
       let cmp: number;
       if (sortKey === "stage") {
-        cmp = STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage);
+        cmp =
+          FUNNEL_ORDER.indexOf(effectiveStage(a)) -
+          FUNNEL_ORDER.indexOf(effectiveStage(b));
       } else if (sortKey === "expectedCloseDate") {
-        cmp = (a.expectedCloseDate ?? "9999").localeCompare(
-          b.expectedCloseDate ?? "9999",
-        );
+        const da = effectiveExpectedCloseDate(a) ?? "9999";
+        const db = effectiveExpectedCloseDate(b) ?? "9999";
+        cmp = da.localeCompare(db);
       } else if (sortKey === "totalMonthlyPremium") {
         cmp = (b.totalMonthlyPremium ?? 0) - (a.totalMonthlyPremium ?? 0);
       } else if (sortKey === "contractor") {
@@ -227,6 +215,37 @@ export function OpportunitiesPage() {
       getHouseholdName,
     );
   }, [filtered, getHouseholdName]);
+
+  // 世帯ヘッダー行: 代表アクティブ案件メタ（ADR-B3 §B3-5-1）
+  // visibleOpportunities 全体から計算（タブフィルタ後の filtered ではなく全案件が対象）
+  const renderHouseholdMeta = useMemo(() => {
+    return (householdId: string) => {
+      const activeOpps = householdActiveOpps(visibleOpportunities, householdId);
+      const repOpp = representativeOpp(activeOpps);
+      if (!repOpp) return null;
+
+      const effStage = effectiveStage(repOpp);
+      const closeDate = effectiveExpectedCloseDate(repOpp);
+      const ragged = isRagged(repOpp);
+
+      return (
+        <span className="flex items-center gap-1.5 ml-2 text-xs text-gray-600">
+          <StageBadge stage={effStage} size="sm" />
+          {closeDate && (
+            <span className="text-gray-500 whitespace-nowrap">{closeDate}</span>
+          )}
+          {ragged && (
+            <span
+              title="商品間で進捗/日付が揃っていません。案件詳細で内訳を確認"
+              className="text-amber-500"
+            >
+              ⚠️
+            </span>
+          )}
+        </span>
+      );
+    };
+  }, [visibleOpportunities]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((v) => !v);
@@ -296,7 +315,17 @@ export function OpportunitiesPage() {
         <span className="font-medium text-gray-800">{opp.title}</span>
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
-        <StageBadge stage={opp.stage} size="sm" />
+        <span className="inline-flex items-center gap-1">
+          <StageBadge stage={effectiveStage(opp)} size="sm" />
+          {isRagged(opp) && (
+            <span
+              title="商品間で進捗/日付が揃っていません。案件詳細で内訳を確認"
+              className="text-amber-500 text-xs"
+            >
+              ⚠️
+            </span>
+          )}
+        </span>
       </td>
       <td className="px-4 py-3 hidden md:table-cell">
         <div className="flex flex-wrap gap-1">
@@ -319,7 +348,7 @@ export function OpportunitiesPage() {
         {opp.nextAction ?? "—"}
       </td>
       <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden lg:table-cell">
-        {opp.expectedCloseDate ?? "—"}
+        {effectiveExpectedCloseDate(opp) ?? "—"}
       </td>
     </tr>
   );
@@ -443,6 +472,7 @@ export function OpportunitiesPage() {
         colSpan={7}
         itemLabel="商談"
         emptyMessage="該当する案件がありません"
+        renderHouseholdMeta={renderHouseholdMeta}
       />
 
       {/* Quick add modal */}

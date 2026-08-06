@@ -14,9 +14,9 @@
  *   - 既定=全開（C-1で主上是認の全開踏襲）
  */
 
-import { useState, useCallback } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
-import type { HouseholdGroup } from '../../utils/groupByHousehold';
+import { useState, useCallback } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
+import type { HouseholdGroup } from "../../utils/groupByHousehold";
 
 export interface HouseholdAccordionProps<T> {
   /** グルーピング済みデータ */
@@ -33,6 +33,11 @@ export interface HouseholdAccordionProps<T> {
   itemLabel: string;
   /** データ0件時のメッセージ */
   emptyMessage?: string;
+  /**
+   * 世帯ヘッダー行に追加表示するメタ情報（任意）。
+   * ADR-B3: 代表アクティブ案件の律速ステージ・契約予定日・⚠️ 等。
+   */
+  renderHouseholdMeta?: (householdId: string) => React.ReactNode;
 }
 
 /**
@@ -40,7 +45,7 @@ export interface HouseholdAccordionProps<T> {
  * 背景: gray-100, 左ボーダー: blue-400
  */
 const HOUSEHOLD_HEADER_CLASS =
-  'bg-gray-100 border-l-4 border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors select-none';
+  "bg-gray-100 border-l-4 border-blue-400 hover:bg-blue-50 cursor-pointer transition-colors select-none";
 
 export function HouseholdAccordion<T>({
   groups,
@@ -49,22 +54,24 @@ export function HouseholdAccordion<T>({
   renderTableHeader,
   colSpan,
   itemLabel,
-  emptyMessage = '該当するデータがありません',
+  emptyMessage = "該当するデータがありません",
+  renderHouseholdMeta,
 }: HouseholdAccordionProps<T>) {
   /** 開いている世帯IDのSet */
   const buildInitialOpen = useCallback(
     (open: boolean): Set<string> => {
       if (!open) return new Set();
-      return new Set(groups.map(g => g.householdId));
+      return new Set(groups.map((g) => g.householdId));
     },
     [groups],
   );
 
-  const [openSet, setOpenSet] = useState<Set<string>>(
-    () => buildInitialOpen(allOpenDefault),
+  const [openSet, setOpenSet] = useState<Set<string>>(() =>
+    buildInitialOpen(allOpenDefault),
   );
 
-  const isAllOpen = groups.length > 0 && groups.every(g => openSet.has(g.householdId));
+  const isAllOpen =
+    groups.length > 0 && groups.every((g) => openSet.has(g.householdId));
 
   const toggleAll = () => {
     if (isAllOpen) {
@@ -75,7 +82,7 @@ export function HouseholdAccordion<T>({
   };
 
   const toggleHousehold = (householdId: string) => {
-    setOpenSet(prev => {
+    setOpenSet((prev) => {
       const next = new Set(prev);
       if (next.has(householdId)) {
         next.delete(householdId);
@@ -95,7 +102,10 @@ export function HouseholdAccordion<T>({
           </thead>
           <tbody>
             <tr>
-              <td colSpan={colSpan} className="px-4 py-8 text-center text-gray-400">
+              <td
+                colSpan={colSpan}
+                className="px-4 py-8 text-center text-gray-400"
+              >
                 {emptyMessage}
               </td>
             </tr>
@@ -113,7 +123,7 @@ export function HouseholdAccordion<T>({
           onClick={toggleAll}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline min-h-[32px] px-2"
         >
-          {isAllOpen ? 'すべて閉じる' : 'すべて開く'}
+          {isAllOpen ? "すべて閉じる" : "すべて開く"}
         </button>
       </div>
 
@@ -123,7 +133,7 @@ export function HouseholdAccordion<T>({
             {renderTableHeader()}
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {groups.map(group => (
+            {groups.map((group) => (
               <>
                 {/* 世帯ヘッダー行 */}
                 <tr
@@ -132,7 +142,7 @@ export function HouseholdAccordion<T>({
                   onClick={() => toggleHousehold(group.householdId)}
                 >
                   <td colSpan={colSpan} className="px-4 py-2.5 min-h-[44px]">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {openSet.has(group.householdId) ? (
                         <ChevronDown className="w-4 h-4 text-blue-500 flex-shrink-0" />
                       ) : (
@@ -142,8 +152,10 @@ export function HouseholdAccordion<T>({
                         {group.householdName}
                       </span>
                       <span className="ml-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
-                        {itemLabel}{group.items.length}件
+                        {itemLabel}
+                        {group.items.length}件
                       </span>
+                      {renderHouseholdMeta?.(group.householdId)}
                     </div>
                   </td>
                 </tr>
