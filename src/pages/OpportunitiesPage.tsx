@@ -15,7 +15,6 @@ import {
   tabOf,
   householdActiveOpps,
   representativeOpp,
-  FUNNEL_ORDER,
 } from "../utils/opportunityStage";
 import type { StageTabKey7 } from "../utils/opportunityStage";
 
@@ -41,12 +40,9 @@ const STAGE_TABS: StageTab[] = [
 ];
 
 // ─── SortIcon コンポーネント（レンダー内定義を回避するためコンポーネント外部に定義） ──
+// 要件1 (ADR-B4 v2): ステージ列削除に伴い 'stage' キーを除去
 type SortKey =
-  | "stage"
-  | "expectedCloseDate"
-  | "totalMonthlyPremium"
-  | "updatedAt"
-  | "contractor";
+  "expectedCloseDate" | "totalMonthlyPremium" | "updatedAt" | "contractor";
 
 function SortIcon({
   k,
@@ -171,11 +167,7 @@ export function OpportunitiesPage() {
 
     list.sort((a, b) => {
       let cmp: number;
-      if (sortKey === "stage") {
-        cmp =
-          FUNNEL_ORDER.indexOf(effectiveStage(a)) -
-          FUNNEL_ORDER.indexOf(effectiveStage(b));
-      } else if (sortKey === "expectedCloseDate") {
+      if (sortKey === "expectedCloseDate") {
         const da = effectiveExpectedCloseDate(a) ?? "9999";
         const db = effectiveExpectedCloseDate(b) ?? "9999";
         cmp = da.localeCompare(db);
@@ -247,6 +239,29 @@ export function OpportunitiesPage() {
     };
   }, [visibleOpportunities]);
 
+  // 要件3 (ADR-B4 v2): 世帯ヘッダー行右端「報告」ボタン
+  // 代表アクティブ案件がある世帯のみ表示。遅辺でも navigate まで実装。
+  const renderHouseholdActions = useMemo(() => {
+    return (householdId: string) => {
+      const activeOpps = householdActiveOpps(visibleOpportunities, householdId);
+      const repOpp = representativeOpp(activeOpps);
+      if (!repOpp) return null;
+
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/opportunities/${repOpp.id}/report`);
+          }}
+          className="min-h-[44px] min-w-[44px] flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors"
+        >
+          📝 報告
+        </button>
+      );
+    };
+  }, [visibleOpportunities, navigate]);
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((v) => !v);
     else {
@@ -261,14 +276,6 @@ export function OpportunitiesPage() {
         契約者
       </th>
       <th className="px-4 py-3 text-left font-medium text-gray-600">案件名</th>
-      <th
-        className="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer whitespace-nowrap select-none"
-        onClick={() => handleSort("stage")}
-      >
-        <span className="flex items-center gap-1">
-          ステージ <SortIcon k="stage" sortKey={sortKey} sortAsc={sortAsc} />
-        </span>
-      </th>
       <th className="px-4 py-3 text-left font-medium text-gray-600 hidden md:table-cell">
         カテゴリ
       </th>
@@ -313,19 +320,6 @@ export function OpportunitiesPage() {
       </td>
       <td className="px-4 py-3">
         <span className="font-medium text-gray-800">{opp.title}</span>
-      </td>
-      <td className="px-4 py-3 whitespace-nowrap">
-        <span className="inline-flex items-center gap-1">
-          <StageBadge stage={effectiveStage(opp)} size="sm" />
-          {isRagged(opp) && (
-            <span
-              title="商品間で進捗/日付が揃っていません。案件詳細で内訳を確認"
-              className="text-amber-500 text-xs"
-            >
-              ⚠️
-            </span>
-          )}
-        </span>
       </td>
       <td className="px-4 py-3 hidden md:table-cell">
         <div className="flex flex-wrap gap-1">
@@ -469,10 +463,11 @@ export function OpportunitiesPage() {
         allOpenDefault={true}
         renderItem={renderItem}
         renderTableHeader={renderTableHeader}
-        colSpan={7}
+        colSpan={6}
         itemLabel="商談"
         emptyMessage="該当する案件がありません"
         renderHouseholdMeta={renderHouseholdMeta}
+        renderHouseholdActions={renderHouseholdActions}
       />
 
       {/* Quick add modal */}
