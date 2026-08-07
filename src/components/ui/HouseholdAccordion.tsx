@@ -38,6 +38,12 @@ export interface HouseholdAccordionProps<T> {
    * ADR-B3: 代表アクティブ案件の律速ステージ・契約予定日・⚠️ 等。
    */
   renderHouseholdMeta?: (householdId: string) => React.ReactNode;
+  /**
+   * 世帯ヘッダー行右端に描画するアクションボタン群（任意）。
+   * ADR-B4 v2 要件3: 「報告」ボタン等を注入する。
+   * e.stopPropagation() は呼び出し側ボタンの onClick 内で行うこと。
+   */
+  renderHouseholdActions?: (householdId: string) => React.ReactNode;
 }
 
 /**
@@ -56,6 +62,7 @@ export function HouseholdAccordion<T>({
   itemLabel,
   emptyMessage = "該当するデータがありません",
   renderHouseholdMeta,
+  renderHouseholdActions,
 }: HouseholdAccordionProps<T>) {
   /** 開いている世帯IDのSet */
   const buildInitialOpen = useCallback(
@@ -156,6 +163,11 @@ export function HouseholdAccordion<T>({
                         {group.items.length}件
                       </span>
                       {renderHouseholdMeta?.(group.householdId)}
+                      {renderHouseholdActions && (
+                        <span className="ml-auto">
+                          {renderHouseholdActions(group.householdId)}
+                        </span>
+                      )}
                     </div>
                   </td>
                 </tr>
