@@ -163,7 +163,8 @@ export interface ContractMilestones {
   firstConsultDate?: string; // 初回相談日 (YYYY-MM-DD)
   lifePlanDate?: string; // LP提案日（ライフプラン提案）
   proposalDate?: string; // 提案日（設計書提示）
-  applicationDate?: string; // 契約日（申込日）
+  applicationDate?: string; // ★契約予定日（=申込予定日。ADR-B4 v2 語義確定）
+  contractDate?: string; // ★NEW 契約日（元シート「契約日」列。契約予定日と別物。ADR-B4 v2）
   establishedDate?: string; // 成立日（成立=会計上の実績確定日）
   inceptionDate?: string; // ★始期日（主に損保。主上確定 2026-07-08）
   lostDate?: string; // 失注日
@@ -206,6 +207,64 @@ export interface DeficiencyItem {
  */
 export type ConfidenceUnified = "fixed" | "S" | "A" | "B" | "C" | "D";
 
+/**
+ * 提案ラウンド。1案件で提案は複数回でき、回ごとに提案日・修正日・提案商品セットを持つ。
+ * ADR-B4 v2 追加機能2。元シート「記録」グループの提案日/修正日に対応。
+ */
+export interface ProposalRound {
+  id: string;
+  roundNo: number; // 1,2,3... 提案回
+  proposalDate: string; // この回の提案日（元シート「提案日」）
+  revisedDate?: string; // この回の修正日（元シート「修正日」）
+  /** この回で提案した商品構成のスナップショット（ProposalProduct.id 群） */
+  productIds: string[]; // 参照する ProposalProduct.id（商品構成が回ごとに変わりうる）
+  memo?: string;
+  createdAt: string;
+}
+
+/**
+ * 商談活動報告。案件(世帯商談)単位・報告日単位。ADR-B4 v2 要件5の正本。
+ * 日報(DailyReport)へは本 entity から「当日の活動サマリ」を導出/生成する。
+ */
+export interface OpportunityActivityReport {
+  id: string;
+  opportunityId: string; // 対象案件
+  userId: string; // 報告者
+  reportDate: string; // 報告日 YYYY-MM-DD（＝日報日と紐付く）
+  // ── 活動内容 ──
+  activityType: "visit" | "phone" | "web" | "other"; // 面談/電話/オンライン/その他
+  summary: string; // 活動サマリ
+  proposalDetail?: string; // 提案内容（提案した場合）
+  nextAction?: string; // 次アクション
+  nextActionDate?: string; // 次回アポ/次アクション日
+  collected?: boolean; // 集金
+  // ── 局面到達（reachedMilestones の日付を milestones にセット） ──
+  reachedMilestones?: Partial<
+    Record<
+      "firstConsult" | "lifePlan" | "proposal" | "contract" | "established",
+      boolean
+    >
+  >;
+  // ── 確度・不備・意向/署名の更新 ──
+  confidence?: ConfidenceUnified; // この報告時点の見込確度
+  deficiencyNote?: string; // 不備メモ（案件 deficiencies へ反映）
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** UI 表示用の統一タスク行（永続型ではなく導出ビュー）。ADR-B4 v2 追加機能1。 */
+export interface OppTaskRow {
+  key: string; // 例 'policyCollect' / `intentSheet:${personId}`
+  kind: "policyCollect" | "policyReview" | "intentSheet" | "signature";
+  label: string; // '証券回収' / 'ポリシーレビュー' / '意向シート' / '署名'
+  scope: "opportunity" | "insured";
+  personId?: string; // scope='insured' のとき対象被保険者
+  personName?: string;
+  done: boolean;
+  date?: string; // 完了日 or 予定日
+  ownerId?: string; // 担当（既定=案件 ownerId）
+}
+
 export interface Opportunity {
   id: string;
   householdId: string;
@@ -235,10 +294,11 @@ export interface Opportunity {
   contractorPersonId?: string; // 契約者 Person.id（世帯主とは限らない）
   channelId?: string; // チャネル（葉）SalesChannel.id
   confidence?: ConfidenceUnified; // 見込確度（★統一ラダー・案件単位1値・主上確定）
-  milestones?: ContractMilestones; // ステージ日付（7種）
+  milestones?: ContractMilestones; // ステージ日付（8種・ADR-B4 v2 contractDate 追加）
   contractTasks?: ContractTasks; // 証券回収 / ポリシーレビュー
   insuredTasks?: InsuredTaskState[]; // 意向シート / 署名（被保険者単位）
   deficiencies?: DeficiencyItem[]; // ★不備（項目化・転記方式。主上確定 2026-07-08）
+  proposals?: ProposalRound[]; // ★NEW 提案ラウンド履歴（ADR-B4 v2 追加機能2）
 }
 
 export interface TimeBlock {
@@ -261,6 +321,8 @@ export interface TimeBlock {
   nextAppointment?: string; // 次回AP (YYYY-MM-DD)
   proposal?: string; // 提案内容
   result?: string; // 対応結果メモ
+  /** ★NEW この活動ブロックが OpportunityActivityReport から生成された場合その id（ADR-B4 v2） */
+  sourceReportId?: string;
 }
 
 export interface Todo {
