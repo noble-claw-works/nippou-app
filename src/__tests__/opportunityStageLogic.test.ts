@@ -622,7 +622,7 @@ describe("tabOf", () => {
     expect(tabOf(opp)).toBe("issued");
   });
 
-  it('approach + firstConsultDate なし → "new"', () => {
+  it('approach + firstConsultDate なし → "first_consult"（ADR-B4 v2: 新案件タブ廃止・最左へ）', () => {
     const opp = mkOpp({
       id: "t3",
       householdId: "c1",
@@ -630,10 +630,10 @@ describe("tabOf", () => {
       status: "open",
       proposalProducts: [],
     });
-    expect(tabOf(opp)).toBe("new");
+    expect(tabOf(opp)).toBe("first_consult");
   });
 
-  it('fact_finding + firstConsultDate あり・proposalDate なし → "visited"', () => {
+  it('fact_finding + firstConsultDate あり・proposalDate なし → "first_consult"（ADR-B4 v2）', () => {
     const opp = mkOpp({
       id: "t4",
       householdId: "c1",
@@ -642,7 +642,7 @@ describe("tabOf", () => {
       proposalProducts: [],
       milestones: { firstConsultDate: "2026-07-01" },
     });
-    expect(tabOf(opp)).toBe("visited");
+    expect(tabOf(opp)).toBe("first_consult");
   });
 
   it('proposal + proposalDate あり → "proposed"', () => {
@@ -771,13 +771,12 @@ describe("effectiveExpectedCloseDate", () => {
 describe("タブ件数カウント — seed 実値確認", () => {
   // seed の open 案件でタブ別件数を数え、新設「訪問済み」タブに件数が入ることを確認
 
-  it('seed に "visited" タブに分類される案件が存在すること', () => {
-    const visitedOpps = OPPORTUNITIES.filter(
-      (o) => o.status === "open" && tabOf(o) === "visited",
+  it('seed に "first_consult" タブに分類される案件が存在すること（ADR-B4 v2 語彙）', () => {
+    const firstConsultOpps = OPPORTUNITIES.filter(
+      (o) => o.status === "open" && tabOf(o) === "first_consult",
     );
-    // opp4(鈴木), opp5(高橋), opp6(伊藤), opp10(鈴木学資), opp11(水野), opp_demo1 のうち
-    // firstConsultDate あり かつ proposalDate なし のもの
-    expect(visitedOpps.length).toBeGreaterThan(0);
+    // approach stage の案件または firstConsultDate だけある案件が first_consult タブへ
+    expect(firstConsultOpps.length).toBeGreaterThan(0);
   });
 
   it('opp1(proposal+proposalDate) は "proposed" タブに分類される', () => {
@@ -838,8 +837,8 @@ describe("タブ件数カウント — seed 実値確認", () => {
   it("全タブ件数の合計は全 open 案件数に等しいこと（lost タブは status=lost も含む）", () => {
     // lost タブは status=lost OR stage=lost の案件
     const allTabs = [
-      "new",
-      "visited",
+      "first_consult",
+      "lifeplan",
       "proposed",
       "contract_pending",
       "contract",

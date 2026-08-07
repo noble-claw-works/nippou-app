@@ -31,9 +31,9 @@ interface StageTab {
 }
 
 const STAGE_TABS: StageTab[] = [
-  { key: "new", label: "新案件" },
-  { key: "visited", label: "訪問済み" },
-  { key: "proposed", label: "提案済み" },
+  { key: "first_consult", label: "初回相談" },
+  { key: "lifeplan", label: "LP提案" },
+  { key: "proposed", label: "提案" },
   { key: "contract_pending", label: "契約予定" },
   { key: "contract", label: "契約" },
   { key: "issued", label: "成立" },
@@ -97,7 +97,7 @@ export function OpportunitiesPage() {
       })),
     );
 
-  const [activeTab, setActiveTab] = useState<StageTabKey>("new");
+  const [activeTab, setActiveTab] = useState<StageTabKey>("first_consult");
   const [ownerFilter] = useState<string>("all");
   const [openOnly, setOpenOnly] = useState(true);
   const [catFilter, setCatFilter] = useState<ProductCategory | "all">("all");
@@ -139,8 +139,8 @@ export function OpportunitiesPage() {
   /** 各タブの件数バッジ計算（ADR-B3: tabOf による案件単位カウント） */
   const tabCounts = useMemo(() => {
     const counts: Record<StageTabKey, number> = {
-      new: 0,
-      visited: 0,
+      first_consult: 0,
+      lifeplan: 0,
       proposed: 0,
       contract_pending: 0,
       contract: 0,

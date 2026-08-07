@@ -3,10 +3,15 @@
 // (HouseholdBatchEntryPage で使用 / 単体テスト対象)
 // =====================================================
 import type {
-  Opportunity, ProposalProduct, ConfidenceUnified,
-  ContractMilestones, ContractTasks, InsuredTaskState, DeficiencyItem,
-} from '../types';
-import type { SalesChannel } from '../types';
+  Opportunity,
+  ProposalProduct,
+  ConfidenceUnified,
+  ContractMilestones,
+  ContractTasks,
+  InsuredTaskState,
+  DeficiencyItem,
+} from "../types";
+import type { SalesChannel } from "../types";
 
 // ── ID 生成（簡易版: テスト環境でも動く） ──
 let _localCounter = 0;
@@ -26,9 +31,9 @@ export function calcTotalMonthlyPremium(products: ProposalProduct[]): number {
 // 2. 案件ドラフト型（ローカル編集用）
 // ─────────────────────────────────────────────────────────────
 export type DraftOpportunity = Opportunity & {
-  _isNew: boolean;       // true = 新規追加（addOpportunity対象）
-  _isDirty: boolean;     // true = 編集済み（保存対象）
-  _isOpen: boolean;      // カードの開閉状態
+  _isNew: boolean; // true = 新規追加（addOpportunity対象）
+  _isDirty: boolean; // true = 編集済み（保存対象）
+  _isOpen: boolean; // カードの開閉状態
 };
 
 /** 既存 Opportunity からドラフトを生成 */
@@ -49,9 +54,9 @@ export function createEmptyDraft(params: {
     id,
     householdId: params.householdId,
     ownerId: params.ownerId,
-    title: '新規案件',
-    stage: 'approach',
-    status: 'open',
+    title: "新規案件",
+    stage: "approach",
+    status: "open",
     targetPersonIds: [],
     productCategories: [],
     proposalProducts: [],
@@ -60,7 +65,7 @@ export function createEmptyDraft(params: {
     illustrationProvided: false,
     stageHistory: [],
     tags: [],
-    memo: '',
+    memo: "",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     // B-2a 拡張フィールド
@@ -82,15 +87,17 @@ export function createEmptyDraft(params: {
 /** 既存ドラフトを複製（金額ゼロ化・確度リセット・B-2bフィールドは引き継がない） */
 export function duplicateDraft(
   source: DraftOpportunity,
-  params: { contractorPersonId?: string; channelId?: string }
+  params: { contractorPersonId?: string; channelId?: string },
 ): DraftOpportunity {
   const id = localUid();
-  const clonedProducts: ProposalProduct[] = source.proposalProducts.map(p => ({
-    ...p,
-    id: localUid(),
-    monthlyPremium: 0,
-    firstYearCommission: undefined,
-  }));
+  const clonedProducts: ProposalProduct[] = source.proposalProducts.map(
+    (p) => ({
+      ...p,
+      id: localUid(),
+      monthlyPremium: 0,
+      firstYearCommission: undefined,
+    }),
+  );
   return {
     ...source,
     id,
@@ -138,17 +145,17 @@ export function createEmptyContractTasks(): ContractTasks {
  */
 export function syncInsuredTasks(
   proposalProducts: ProposalProduct[],
-  currentTasks: InsuredTaskState[] | undefined
+  currentTasks: InsuredTaskState[] | undefined,
 ): InsuredTaskState[] {
   // insuredPersonId の重複を排除した一覧
   const personIds = Array.from(
-    new Set(proposalProducts.map(p => p.insuredPersonId).filter(Boolean))
+    new Set(proposalProducts.map((p) => p.insuredPersonId).filter(Boolean)),
   );
   const existingTasks = currentTasks ?? [];
   const result: InsuredTaskState[] = [...existingTasks];
 
   for (const personId of personIds) {
-    if (!result.some(t => t.personId === personId)) {
+    if (!result.some((t) => t.personId === personId)) {
       result.push({
         personId,
         intentSheetDone: false,
@@ -169,12 +176,12 @@ export function syncInsuredTasks(
 export function toggleAllIntentSheet(
   tasks: InsuredTaskState[],
   allDone: boolean,
-  today: string
+  today: string,
 ): InsuredTaskState[] {
-  return tasks.map(t => ({
+  return tasks.map((t) => ({
     ...t,
     intentSheetDone: allDone,
-    intentSheetDate: allDone ? (t.intentSheetDate || today) : t.intentSheetDate,
+    intentSheetDate: allDone ? t.intentSheetDate || today : t.intentSheetDate,
   }));
 }
 
@@ -186,12 +193,12 @@ export function toggleAllIntentSheet(
 export function toggleAllSignature(
   tasks: InsuredTaskState[],
   allDone: boolean,
-  today: string
+  today: string,
 ): InsuredTaskState[] {
-  return tasks.map(t => ({
+  return tasks.map((t) => ({
     ...t,
     signatureDone: allDone,
-    signatureDate: allDone ? (t.signatureDate || today) : t.signatureDate,
+    signatureDate: allDone ? t.signatureDate || today : t.signatureDate,
   }));
 }
 
@@ -199,8 +206,8 @@ export function toggleAllSignature(
 export function createEmptyDeficiency(): DeficiencyItem {
   return {
     id: localUid(),
-    item: '',
-    detail: '',
+    item: "",
+    detail: "",
     resolved: false,
     resolvedDate: undefined,
   };
@@ -209,18 +216,20 @@ export function createEmptyDeficiency(): DeficiencyItem {
 /** 不備アイテムを削除（id指定） */
 export function removeDeficiency(
   deficiencies: DeficiencyItem[],
-  deficiencyId: string
+  deficiencyId: string,
 ): DeficiencyItem[] {
-  return deficiencies.filter(d => d.id !== deficiencyId);
+  return deficiencies.filter((d) => d.id !== deficiencyId);
 }
 
 /** 不備アイテムを更新 */
 export function updateDeficiency(
   deficiencies: DeficiencyItem[],
   deficiencyId: string,
-  patch: Partial<DeficiencyItem>
+  patch: Partial<DeficiencyItem>,
 ): DeficiencyItem[] {
-  return deficiencies.map(d => d.id === deficiencyId ? { ...d, ...patch } : d);
+  return deficiencies.map((d) =>
+    d.id === deficiencyId ? { ...d, ...patch } : d,
+  );
 }
 
 /**
@@ -229,21 +238,22 @@ export function updateDeficiency(
  * ブロックはしない・注意喚起のみ（設計書§4-6）
  */
 export const MILESTONE_ORDER: Array<keyof ContractMilestones> = [
-  'firstConsultDate',
-  'lifePlanDate',
-  'proposalDate',
-  'applicationDate',
-  'establishedDate',
+  "firstConsultDate",
+  "lifePlanDate",
+  "proposalDate",
+  "applicationDate",
+  "establishedDate",
 ];
 
 export const MILESTONE_LABELS: Record<keyof ContractMilestones, string> = {
-  firstConsultDate: '初回相談',
-  lifePlanDate: 'LP提案',
-  proposalDate: '提案',
-  applicationDate: '申込(契約)',
-  establishedDate: '成立',
-  inceptionDate: '始期(損保)',
-  lostDate: '失注',
+  firstConsultDate: "初回相談",
+  lifePlanDate: "LP提案",
+  proposalDate: "提案",
+  applicationDate: "契約予定(申込)",
+  contractDate: "契約日", // ADR-B4 v2 追加
+  establishedDate: "成立",
+  inceptionDate: "始期(損保)",
+  lostDate: "失注",
 };
 
 export interface MilestoneOrderWarning {
@@ -258,7 +268,7 @@ export interface MilestoneOrderWarning {
  * MILESTONE_ORDER（firstConsult→lifePlan→proposal→application→established）の順序違反を検出
  */
 export function getMilestoneOrderWarnings(
-  milestones: ContractMilestones | undefined
+  milestones: ContractMilestones | undefined,
 ): MilestoneOrderWarning[] {
   if (!milestones) return [];
   const warnings: MilestoneOrderWarning[] = [];
@@ -289,15 +299,18 @@ export function getMilestoneOrderWarnings(
 export interface DraftValidationResult {
   isValid: boolean;
   errors: {
-    noChannel: boolean;        // channelId が葉でない
-    noConfidence: boolean;     // confidence が未設定
+    noChannel: boolean; // channelId が葉でない
+    noConfidence: boolean; // confidence が未設定
   };
 }
 
 /** チャネルが葉(子)かどうか判定 */
-export function isLeafChannel(channelId: string | undefined, channels: SalesChannel[]): boolean {
+export function isLeafChannel(
+  channelId: string | undefined,
+  channels: SalesChannel[],
+): boolean {
   if (!channelId) return false;
-  const ch = channels.find(c => c.id === channelId);
+  const ch = channels.find((c) => c.id === channelId);
   if (!ch) return false;
   return ch.parentId !== null; // 葉ノードは parentId が値あり
 }
@@ -305,7 +318,7 @@ export function isLeafChannel(channelId: string | undefined, channels: SalesChan
 /** 1案件ドラフトのバリデーション */
 export function validateDraft(
   draft: DraftOpportunity,
-  channels: SalesChannel[]
+  channels: SalesChannel[],
 ): DraftValidationResult {
   const noChannel = !isLeafChannel(draft.channelId, channels);
   const noConfidence = !draft.confidence;
@@ -318,40 +331,40 @@ export function validateDraft(
 /** 全ドラフトのバリデーション（保存バー用: 無効件数を返す） */
 export function countInvalidDrafts(
   drafts: DraftOpportunity[],
-  channels: SalesChannel[]
+  channels: SalesChannel[],
 ): number {
-  return drafts.filter(d => !validateDraft(d, channels).isValid).length;
+  return drafts.filter((d) => !validateDraft(d, channels).isValid).length;
 }
 
 // ─────────────────────────────────────────────────────────────
 // 4. 表示フィルタ
 // ─────────────────────────────────────────────────────────────
-export type ShowFilter = 'active' | 'all';
+export type ShowFilter = "active" | "all";
 
 /** 表示フィルタに応じてドラフト配列をフィルタリング */
 export function filterDrafts(
   drafts: DraftOpportunity[],
-  filter: ShowFilter
+  filter: ShowFilter,
 ): DraftOpportunity[] {
-  if (filter === 'all') return drafts;
+  if (filter === "all") return drafts;
   // 'active' = open + 新規（_isNew = true も表示）
-  return drafts.filter(d => d.status === 'open' || d._isNew);
+  return drafts.filter((d) => d.status === "open" || d._isNew);
 }
 
 // ─────────────────────────────────────────────────────────────
 // 5. 商品操作ヘルパー
 // ─────────────────────────────────────────────────────────────
 /** 空の ProposalProduct を生成 */
-export function createEmptyProduct(insuredPersonId = ''): ProposalProduct {
+export function createEmptyProduct(insuredPersonId = ""): ProposalProduct {
   return {
     id: localUid(),
-    productCategory: 'life',
-    productName: '',
-    insurer: '',
+    productCategory: "life",
+    productName: "",
+    insurer: "",
     insuredPersonId,
     monthlyPremium: 0,
     firstYearCommission: undefined,
-    memo: '',
+    memo: "",
   };
 }
 
@@ -370,32 +383,49 @@ export function duplicateProduct(product: ProposalProduct): ProposalProduct {
 // ─────────────────────────────────────────────────────────────
 /** 親チャネル一覧を取得 */
 export function getParentChannels(channels: SalesChannel[]): SalesChannel[] {
-  return channels.filter(c => c.parentId === null && c.isActive).sort((a, b) => a.order - b.order);
+  return channels
+    .filter((c) => c.parentId === null && c.isActive)
+    .sort((a, b) => a.order - b.order);
 }
 
 /** 指定親チャネルの子チャネル一覧を取得 */
-export function getChildChannels(parentId: string, channels: SalesChannel[]): SalesChannel[] {
-  return channels.filter(c => c.parentId === parentId && c.isActive).sort((a, b) => a.order - b.order);
+export function getChildChannels(
+  parentId: string,
+  channels: SalesChannel[],
+): SalesChannel[] {
+  return channels
+    .filter((c) => c.parentId === parentId && c.isActive)
+    .sort((a, b) => a.order - b.order);
 }
 
 /** channelId から親チャネルIDを導出 */
-export function getParentChannelId(channelId: string | undefined, channels: SalesChannel[]): string {
-  if (!channelId) return '';
-  const ch = channels.find(c => c.id === channelId);
-  if (!ch) return '';
-  return ch.parentId ?? '';
+export function getParentChannelId(
+  channelId: string | undefined,
+  channels: SalesChannel[],
+): string {
+  if (!channelId) return "";
+  const ch = channels.find((c) => c.id === channelId);
+  if (!ch) return "";
+  return ch.parentId ?? "";
 }
 
 // ─────────────────────────────────────────────────────────────
 // 7. 確度ラベル
 // ─────────────────────────────────────────────────────────────
 export const CONFIDENCE_LABELS: Record<ConfidenceUnified, string> = {
-  fixed: '確定',
-  S: 'S（申込済）',
-  A: 'A（高見込）',
-  B: 'B（中見込）',
-  C: 'C（要フォロー）',
-  D: 'D（初期接触）',
+  fixed: "確定",
+  S: "S（申込済）",
+  A: "A（高見込）",
+  B: "B（中見込）",
+  C: "C（要フォロー）",
+  D: "D（初期接触）",
 };
 
-export const CONFIDENCE_OPTIONS: ConfidenceUnified[] = ['fixed', 'S', 'A', 'B', 'C', 'D'];
+export const CONFIDENCE_OPTIONS: ConfidenceUnified[] = [
+  "fixed",
+  "S",
+  "A",
+  "B",
+  "C",
+  "D",
+];
