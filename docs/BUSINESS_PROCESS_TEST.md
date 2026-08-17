@@ -24,6 +24,10 @@
 | BPT-07 | 権限境界テスト（UI層+store層二層防御） | general / manager / executive | UC-G-18, UC-M-02〜04 |
 | BPT-08 | 経営ダッシュボード閲覧 | executive | UC-E-01〜02 |
 | BPT-09 | admin 運用（招待→無効化→監査ログ） | admin | UC-A-01〜06 |
+| BPT-10 | 契約ライフサイクル（受注後のステータス遷移） | general / manager | UC-G-13 |
+| BPT-11 | 商談活動報告 → 日報連携 | general | UC-G-17 |
+| BPT-12 | 付帯タスク管理（案件・被保険者単位） + 提案ラウンド | general | UC-G-11 |
+| BPT-13 | 商談ステータスの分岐（partial_won / on_hold） | general / manager | — |
 
 ---
 
@@ -334,6 +338,191 @@
 - ユーザー無効化後、該当ユーザーでのログインが拒否されること（loginアクションのエラー返却）
 - チーム削除時は確認ダイアログ+名前入力の二重確認が必要であること
 - 監査ログで `diff` フィールドに `{before, after}` の形式で変更前後が記録されること
+
+---
+
+## BPT-10: 契約ライフサイクル（受注後のステータス遷移）
+
+**関連UC**: UC-G-13
+
+| 項目 | 内容 |
+|---|---|
+| 前提条件 | ログインロール: `general`（または `manager`） / 該当 Policy が `status=inforce`（有効中）で存在すること / 担当者(ownerId)と currentUserId が一致するか、admin ロールであること |
+
+### PolicyStatus 遷移マップ（実コード `PolicyStatus` 型 / `changePolicyStatus` アクション準拠）
+
+| 遷移 | 操作ボタン（UI） | store アクション | 備考 |
+|---|---|---|---|
+| `inforce` → `paid_up` | 「💰 払済に変更」 | `changePolicyStatus(id, 'paid_up', note, userId)` | 保険会社への支払い停止・保障継続 |
+| `inforce` → `surrendered` | 「❌ 解約処理」 | `changePolicyStatus(id, 'surrendered', note, userId)` | 解約返戻金が発生するケース |
+| `inforce` → `matured` | 「🎉 満期処理」 | `changePolicyStatus(id, 'matured', note, userId)` | 満期日到来・保険期間終了 |
+| `inforce` → `lapsed` | UI ボタン未実装 [要確認] | `changePolicyStatus(id, 'lapsed', note, userId)` | 保険料未払いによる失効（store から直接呼出可） |
+| `inforce` → `reduced` | UI ボタン未実装 [要確認] | `changePolicyStatus(id, 'reduced', note, userId)` | 減額変更（store から直接呼出可） |
+
+### 操作手順（inforce → surrendered を例示）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 1 | `/policies` を開き、`status=inforce` の契約を選択して `/policies/:id` へ | PolicyDetailPage が表示される。ステータスバッジに「有効中」が表示される |
+| 2 | 「情報」タブ内のアクションボタン群を確認 | `canEdit=true`（自担当または admin）の場合のみ「💰 払済に変更」「❌ 解約処理」「🎉 満期処理」ボタンが表示される |
+| 3 | 「❌ 解約処理」ボタンをクリック → prompt ダイアログでメモを入力（省略可）→「OK」 | `changePolicyStatus(policyId, 'surrendered', note, currentUserId)` が実行される |
+| 4 | Policy のステータス変化を確認 | `Policy.status: inforce → surrendered`。ページのバッジが「解約」に更新される |
+| 5 | 「履歴」タブを開く | PolicyStatusHistory に新エントリが追加される。`status='surrendered'`、`changedAt`（ISO）、`changedByUserId`、`note`（入力したメモ）が記録されている |
+| 6 | 同じ手順で `paid_up`（払済）に変更したケースを確認 | ステップ 3〜5 と同様。ステータスバッジが「払済」に変わり、履歴に `status='paid_up'` が追加される |
+| 7 | 同じ手順で `matured`（満期）に変更したケースを確認 | ステータスバッジが「満期」。履歴に `status='matured'` が追加される |
+
+### 操作手順（権限テスト）
+
+| # | 操作 | ロール | 期待結果 |
+|---|---|---|---|
+| 8 | 他担当者の Policy（inforce）の `/policies/:id` を開く | `general`（非担当） | `canEdit = policy.ownerId === currentUserId` → false。アクションボタンが非表示になる（UI 層ガード） |
+| 9 | 同じ Policy を admin ロールで開く | `admin` | `canEdit = currentRole === 'admin' \| policy.ownerId === currentUserId` → true。アクションボタンが表示される |
+| 10 | manager ロールで他担当者 Policy を開く | `manager` | `canEdit = false`（コード上 admin または ownerId 一致のみ）。アクションボタン非表示 [要確認: manager が他担当 Policy のステータス変更を行う UI 導線は現行未実装] |
+
+### 検証観点
+
+- `changePolicyStatus` 実行後、`Policy.status` が即座に新ステータスに更新され localStorage に永続化（`nippou.policies.v1`）されること
+- PolicyStatusHistory に `{id, policyId, status, changedAt, changedByUserId, note}` の形式でエントリが追加されること（`nippou.policyHistory.v1` にも永続化）
+- `note` が空文字の場合は `undefined` が記録されること（`note || undefined` 変換による）
+- `canEdit = currentRole === 'admin' || policy.ownerId === currentUserId` の二値評価により、非担当 general ユーザーにはアクションボタンが非表示になること
+- `lapsed`（失効）・`reduced`（減額）への遷移は store の `changePolicyStatus` は対応しているが、PolicyDetailPage の UI ボタンは実装がない。2026-08-17時点で inforce 状態からは paid_up / surrendered / matured の 3 選択のみ対応されている
+
+---
+
+## BPT-11: 商談活動報告 → 日報連携
+
+**関連UC**: UC-G-17
+
+| 項目 | 内容 |
+|---|---|
+| 前提条件 | ログインロール: `general` / 担当 Opportunity（任意ステージ、status=open）が存在すること / 当日の DailyReport は存在していてもしなくてもよい |
+
+### 操作手順（活動報告作成）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 1 | `/opportunities/:id/report` を開く | OpportunityReportPage が表示される。報告日（`reportDate`）の初期値は当日日付。同日結果がすでにあれば既存値がプリフィルされる |
+| 2 | 報告日を入力（省略可: 当日がデフォルト） | `reportDate` に YYYY-MM-DD が設定される |
+| 3 | 活動タイプを選択（訪問/電話/オンライン/その他） | `activityType: 'visit' | 'phone' | 'web' | 'other'` が設定される |
+| 4 | 活動サマリ（必須）を入力 | `summary` が設定される。空欄では保存ボタンを押すと「活動サマリを入力してください」エラーとなる |
+| 5 | 提案内容・次アクション・次回アポ日を任意入力 | `proposalDetail`, `nextAction`, `nextActionDate` が設定される |
+| 6 | 確度ラダー（S/A/B/C/D/fixed）を選択 | `confidence` が設定される。また Opportunity.confidence にも反映される |
+| 7 | 「保存」ボタンをクリック | `addOppActivityReport` または `updateOppActivityReport`（同日・同案件・同ユーザーの既存報告があれば更新）が実行される |
+| 8 | 保存後、`syncOppReportToNippou(reportId)` が自動実行されることを確認 | 報告日の DailyReport（なければ自動作成）に TimeBlock（isActual=true）が自動追加される |
+| 9 | `/today`（または報告日の `/reports/:date`）を開く | 報告から生成された実績ブロックが履歴に表示される。タイトルは `「{Opportunity.title}: {summaryの先頤40文字}」` |
+
+### 操作手順（二重生成防止検証）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 10 | 同日同案件の報告ページを再度開き、内容を修正して「保存」 | 既存報告が `updateOppActivityReport` で更新される。「新規追加」ではなく「更新」となる |
+| 11 | `/today` の実績タイムラインを確認 | 同じ `sourceReportId` を持つブロックが 1 件のみ存在する（二重追加されていない） |
+
+### 検証観点
+
+- `activityType` と DailyReport TimeBlock.type のマッピング: `visit→visit`、`phone→phone`、`web→meeting`、`other→meeting`
+- TimeBlock に `sourceReportId = reportId`、`isActual = true`、`opportunityId` が設定されること
+- 当日日報が未作成の場合、`syncOppReportToNippou` 内部で `createReport` が自動呼び出され記録が先に作成されること
+- `reachedMilestones`（firstConsult/lifePlan/proposal/contract/established）をチェックした場合、对応する Opportunity.milestones の日付が未設定であれば自動に `reportDate` がセットされること（既に設定済みの場合は上書きしない）
+- `confidence` 選択時、`syncOppReportToNippou` 内で Opportunity.confidence も同時更新されること
+- 活動報告は localStorage `nippou.oppActivityReports.v1` に永続化されること
+
+---
+
+## BPT-12: 付帯タスク管理（案件・被保険者単位）+ 提案ラウンド
+
+**関連UC**: UC-G-11
+
+| 項目 | 内容 |
+|---|---|
+| 前提条件 | ログインロール: `general` / 担当 Opportunity（status=open）が存在すること / ProposalProduct（提案商品）が 1 件以上登録済み / Opportunity.targetPersonIds に被保険者（Person）が登録されていること |
+
+### BPT-12a: 案件共通タスク（ContractTasks）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 1 | `/opportunities/:id` を開き、「☑️ タスク」タブをクリック | タスク管理画面が表示される。タブラベルに 「☑️ タスク (done/total)」 が表示される |
+| 2 | 「案件共通タスク」セクションで「証券回収」のチェックボックスをクリック | `updateContractTasks(id, { policyCollected: true, policyCollectDate: today })` が呼び出される。チェックが done 表示に切り替わる |
+| 3 | タブの done/total カウントを確認 | done 数が +1 増えている。タブラベル表示も `1/N` 形式で更新される |
+| 4 | 「証券回収」を再度クリック（未完了に戻す） | `policyCollected: false` に戻る。done 数が -1 される |
+| 5 | 「ポリシーレビュー」のチェックボックスをクリック | `updateContractTasks(id, { policyReviewed: true, policyReviewDate: today })` が呼び出される |
+| 6 | ページリロード後、チェック状態が保持されていることを確認 | localStorage `nippou.opportunities.v1` に永続化されているため、リロード後もチェック状態が復元される |
+
+### BPT-12b: 被保険者単位タスク（InsuredTaskState）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 7 | 「被保険者単位タスク」セクションで被保険者の山（A山 Aさん等）の「意向シート」チェックボックスをクリック | `updateInsuredTask(id, personId, { intentSheetDone: true, intentSheetDate: today })` が呼び出される |
+| 8 | 同じ被保険者の「署名」チェックボックスをクリック | `updateInsuredTask(id, personId, { signatureDone: true, signatureDate: today })` が呼び出される |
+| 9 | 他の被保険者の意向シート・署名も順次チェック | 被保険者ごとに独立した `InsuredTaskState` が保持されている。別被保険者のチェックが別の被保険者の状態に影響しない |
+| 10 | done/total カウントを確認 | タスクタブの (done/total) に被保険者単位タスクの完了分も加算される |
+| 11 | ページリロード後、被保険者タスクの状態が保持されていることを確認 | localStorage 永続化済みのためリロード後も状態保持 |
+
+### BPT-12c: 提案ラウンド（ProposalRound）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 12 | 「📝 提案履歴」タブをクリック | タブラベルに「📝 提案履歴 (N)」が表示される。ラウンド一覧（初期状態は 0 件）が表示される |
+| 13 | 「第1回 提案ラウンドを追加」ボタンをクリック → 提案日を入力して保存 | `addProposalRound(id, { proposalDate, productIds })` が呼び出される。`roundNo=1` で新ラウンドが作成される |
+| 14 | 一覧に第 1 回提案が表示されることを確認 | `round.roundNo=1`、`round.proposalDate`、商品構成スナップショット（productIds）が表示される |
+| 15 | 再度「第2回 提案ラウンドを追加」ボタンをクリック → 別の提案日を入力して保存 | `roundNo=2` で第 2 回一覧に追加される（自動連番または更新後再採番） |
+| 16 | 第 1 回ラウンドの「削除」ボタンをクリック | `deleteProposalRound(id, roundId)` が呼び出される。履歴から該当ラウンドが削除され、次のラウンドの `roundNo` が再採番（1, 2, ...）される |
+| 17 | 一覧で各ラウンドの番号が連番で表示されることを確認 | 削除後の残りラウンドの roundNo が 1 からの連番に正しく再採番されている |
+
+### 検証観点
+
+- **案件共通タスク**: `updateContractTasks` 実行後、Opportunity.contractTasks に `policyCollected/policyReviewed`（boolean）および対応日付（設定時: `YYYY-MM-DD`）が保存されること
+- **被保険者単位タスク**: `updateInsuredTask` 実行後、Opportunity.insuredTasks 配列の該当 personId エントリに `intentSheetDone/signatureDone`（boolean）が正しく保存されること（新規の場合は配列に追加）
+- `getOppTaskRows` が返す `taskRows` の done 属性合計と `doneTaskCount` を done/total 表示が一致すること
+- **提案ラウンドの roundNo 連番**: `addProposalRound` 実装上 `roundNo = existing.length + 1`、`deleteProposalRound` 実装上削除後に `rounds.map((r, i) => ({ ...r, roundNo: i + 1 }))` で再採番されること
+- **productIds スナップショット**: 提案ラウンド作成時に選択した ProposalProduct.id 群が `productIds` 配列として当該回のラウンド内に保存されること（後から ProposalProduct を削除しても当時の構成を参照可能）
+- 全ティックの変更は localStorage `nippou.opportunities.v1` に即座永続化されること
+
+---
+
+## BPT-13: 商談ステータスの分岐（partial_won 一部成立 / on_hold 保留）
+
+**関連UC**: —
+
+| 項目 | 内容 |
+|---|---|
+| 前提条件 | ログインロール: `general`（または `manager`） / 担当 Opportunity（status=open）が存在すること / ProposalProduct が 2 件以上登録されていること（partial_won 検証の場合） |
+
+### OpportunityStatus 一覧（実コード `OpportunityStatus` 型）
+
+| status 値 | 意味 | UI 導線 | 遷移方法 |
+|---|---|---|---|
+| `open` | 商談中 | 初期値（新規作成時） | 初期値 |
+| `won` | 成約（全件） | `issuePoliciesFromOpportunity` 実行時、または `changeOpportunityStage('issued')` 実行時に自動遷移 | store 自動遷移 |
+| `partial_won` | 一部成立 | **UI 導線未実装** — `updateOpportunity(id, { status: 'partial_won' })` で store から直接セット可能 | store 直接 |
+| `lost` | 失注 | `changeOpportunityStage('lost')` 実行時に自動遷移 | store 自動遷移 |
+| `on_hold` | 保留 | **UI 導線未実装** — `updateOpportunity(id, { status: 'on_hold' })` で store から直接セット可能 | store 直接 |
+
+> **実装確認注**: `partial_won` および `on_hold` には OpportunityDetailPage および OpportunitiesPage 上に専用 UI ボタンの実装はない（src 内 grep 確認済み）。 `issuePoliciesFromOpportunity` は全 ProposalProduct を一括発行し `status='won'` に遷移する（一部のみ発行するロジックは実装なし）。 `partial_won` 遷移を引き起こす UI 導線は **[要確認: UI 導線未実装]** 。
+
+### 操作手順（won / lost の自動遷移検証）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 1 | `/opportunities/:id` を開き、ステージを `issued` に変更 | `changeOpportunityStage(id, 'issued')` 実行。`Opportunity.status: open → 'won'`、`actualCloseDate` が設定される。stageHistory に `stage='issued'` が追加される |
+| 2 | `/opportunities/:id` を開き、ステージを `lost` に変更 | `changeOpportunityStage(id, 'lost')` 実行。`Opportunity.status: open → 'lost'`。LostReason 選択 UI が出現すること |
+| 3 | `issuePoliciesFromOpportunity` 実行後のステータスを確認 | Opportunity.status `won`、Opportunity.stage `issued`。生成 Policy に `sourceOpportunityId = Opportunity.id` が入っていること |
+
+### 操作手順（on_hold の store 直接遷移 — デモ検証）
+
+| # | 操作 | 期待結果 |
+|---|---|---|
+| 4 | ブラウザコンソールから Zustand store を参照し、`updateOpportunity(id, { status: 'on_hold' })` を実行 | Opportunity.status が `on_hold` に更新され localStorage に永続化される |
+| 5 | `/opportunities` 一覧を確認 | status `on_hold` の案件が一覧に表示されること（待機中の件として検証できる） |
+| 6 | 同様に `updateOpportunity(id, { status: 'partial_won' })` を実行 | Opportunity.status が `partial_won` に更新される |
+
+### 検証観点
+
+- **`won`・`lost` は store 自動遷移** (`changeOpportunityStage`・`issuePoliciesFromOpportunity` 実行時)。`partial_won`・`on_hold` の UI 導線は **未実装**: `updateOpportunity` store API からの直接セットのみ確認可能
+- `changeOpportunityStage` のコード上、`newStage === 'issued'` 時のみ `status='won'`、`newStage === 'lost'` 時のみ `status='lost'` に自動遷移する。それ以外のステージ変更では status は変わらない
+- `issuePoliciesFromOpportunity` は **全 ProposalProduct を一括発行**し、Opportunity.status を `won` に遷移させる（一部成立ロジックは実装なし）
+- `isOpenOpportunity` ユーティリティ: `status ∈ {open, on_hold}` かつ `stage !== 'lost'` かつ `effectiveStage !== 'issued'` の場合にアクティブ判定する（`on_hold` は「保留中でもアクティブ」扱い）
+- **[要確認]**: `partial_won` 状態の Opportunity が一覧でどうフィルタリングされるか（status 別フィルター導線済み）・一覧バッジ表示の UI 実装は確認が必要
 
 ---
 
