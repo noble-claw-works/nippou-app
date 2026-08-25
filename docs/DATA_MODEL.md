@@ -5,8 +5,6 @@
 305-hrl-nippou-app は LocalStorage ベースの Zustand Store でデータを管理します。
 外部 API 通信は一切ありません。
 
-**更新**: 2026-08-25（日堃3点D1-D3・日報一覧タブ・タスク初期値マスタナビゲーション・ダッシュボード全幅化を反映）
-
 ---
 
 ## 認証・セッション
@@ -1347,41 +1345,6 @@ setRole: (role) => {
 
 ---
 
-## 2026-08-25 更新（日堃3点D1-D3・タスク初期値マスタ・ダッシュボード全幅化）
-
-### 日堃3点変更D1-D3
-
-**D1: 過去ブロック詳細住所の閑扣沙**: 日報上の過去実績ブロックをクリックして詳細関闘模ード(詳鞠read-only・署名不可).
-- `NippouPage.tsx` の `ReadOnlyTimeline.tsx` コンポーネントに `handleBlockClick` エベントハンドラ追加・詳細モードUI履歴(日付/詳細署名不可)を実装。
-
-**D2: 日付ナビ統一**: 日報上の日付前後ナビゲーション(←⇒)を更新(「前の日報/次の日報」ボタン削除・日報有り日のみをスキップ)。
-- `NippouPage` \u26 `ReportDetailPage` 上部ヘッダーに日付ナビ `← 2026-08-24 →` を配置(月初一日不可。赨稰)。
-
-**D3: 日報一覧タブ・ページ**: 過去日報検索・一覧詳細(読取円)。ロール別可視(general=自分、manager=全師一覧、executive=全師一覧、admin=全師一覧)。
-- `NippouListPage` 新規実装(日付範囲、検索キーワードを取そって提出済み日報一覧を詳細関闘)。
-- `nippou.reports.v1` 上で住例動作(日付範囲指定で約棲後の日報を絞り込み)。
-
-### タスク分金統也
-
-**ADR-TASK-MASTER 出機・設計確定・ナビゲーション**: `docs/ADR-TASK-MASTER.md` 参照・決裁穈开示一覚。
-- `Task` 型（世帯/案件/商品 3 スコープ・自由CRUD・預倒眞発行元追種）新斧。
-- `TaskTemplate` 種入(世帯既定\u26 全社共通案件既定\u26 物䲌別セット沙缠対象)》トリガー編知何饢」。
-- Store に `addTaskTemplate` / `updateTaskTemplate` / `removeTaskTemplate` 釸。
-- AdminPage に "タスク初期値マスタ" タブ追加（admin のみ絨認）。
-- deep-link: `/admin?tab=task_templates`
-- `nippou.taskTemplates.v1` localStorage 锻饗化追加。
-
-### IA 再編(メニュー 9 → 5 項目)
-
-詳細は `docs/UI_SPEC.md` ・ `docs/USER_GUIDE.md` ほかを参照。
-- IA-1: 営業実績ダッシュボード統合
-- IA-2: カレンダータブ統合。
-- IA-3: 顧客一覧統合(世帯・契約)。
-- IA-4: 検索のヘッダ移動。
-- IA-5: ダッシュボード全幅化（`max-w-4xl` 除去)。
-
----
-
 ## 改修履歴
 
 - **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — `src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。localStorage キー一覧に `nippou.currentRole.v1` / `nippou.currentUserId.v1` を追加
@@ -1400,3 +1363,5 @@ setRole: (role) => {
 - **2026-06-09 97cabc9**: Phase 2 商談案件管理 — `Opportunity` 型新設（9 ステージ + 5 ステータス）。`OpportunityStageHistory` / `ProposalProduct` 型新設。`LostReason` 10 種 / `ProductCategory` 10 種 追加。`TimeBlock` / `Todo` / `Compliment` に `opportunityId?` 追加。Store に `opportunities` State + 6 アクション（`addOpportunity` / `updateOpportunity` / `deleteOpportunity` / `changeOpportunityStage` / `getOpportunitiesByHousehold` / `getOpportunityById`）追加。Seed: OPPORTUNITIES 11 件 (全 9 ステージ網羅)。`nippou.opportunities.v1` localStorage 永続化追加。`/opportunities` + `/opportunities/:id` ルート追加
 - **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `Household` 型新設（旧 `Customer` の発展形、`headPersonId` / `address` / `familyMemo` 追加）。`Customer` を `Household` の互換エイリアスに降格（deprecated 予告）。`Person` 型新設（世帯員・続柄・生年月日・健康情報）。Store に `persons` State + 4 アクション追加。Seed: PERSONS 18 件 (c1-c10 世帯主 + 家族)。`/households` ルート追加 + `/customers` リダイレクト対応
 - **2026-06-06 3c16dbd**: submitted フラグ廃止 + デッドフィールド sentBackAt/sentBackReason 削除 — `DailyReport.submitted: boolean` を型から削除し `status` enum による一元判定に移行。`sentBackAt` / `sentBackReason` フィールドを削除（src 全体で参照なし）。仕様書 (DATA_MODEL.md / STATUS_FLOW.md) を同コミットに追従
+- **2026-08-25 タスク初期値マスタ + IA再編 + 日報3点**: `Task` 型新設（`scope`=household/opportunity/product、`sourceMasterId?`=自動生成の生成元・undefined は手動追加、`done`/`doneDate`/`priority`/`dueDate`/`rolledOver`/`memo`）。`TaskTemplate` 型新設（トリガー enum: household_created / opportunity_created / product_added / stage_reached、`productCategories?`=product スコープのみ、管理者編集可）。`Opportunity.tasks: Task[]` / `Household.tasks: Task[]` 追加。旧 `ContractTasks` / `InsuredTaskState` / `OppTaskRow` / `getOppTaskRows` は**撤去**（固定4タスク廃止・汎用タスクへ一本化。意向シート/署名は案件スコープの通常タスクに集約、被保険者分割は廃止）。Store に世帯/案件 Task CRUD（`addOppTask`/`updateOppTask`/`removeOppTask`/`toggleOppTaskDone` ほか世帯版）+ TaskTemplate CRUD（`addTaskTemplate`/`updateTaskTemplate`/`removeTaskTemplate`）+ 4トリガーの自動生成エンジン（`src/utils/taskGenerator.ts`・`sourceMasterId` で冪等）追加。自動生成タスク（sourceMasterId!=undefined）は UI から削除不可（編集は可）、手動タスクは削除可。商品削除時は当該 product スコープタスクを連動削除。`nippou.taskTemplates.v1` localStorage 永続化追加。`nippou.opportunities.v2`（tasks 対応）へキー更新 + **seed バージョンガード**（`SEED_VERSION` 定数不一致時に nippou.* データキーを破棄し新 seed を再読込＝モックの localStorage 陳腐化対策）。salesPerf 指標には影響なし（`policyCollected` は CSV import 由来で独立）。
+- **2026-08-25 日報3点（D1/D2/D3）**: D1=過去日報（提出済み/承認済み含む）のタイムラインブロックをクリックで詳細閲覧（read-only モーダル・opportunityId/sourceReportId でリンク辿り可）。D2=日付「←/→」ナビを「日報が存在する日へスキップ」挙動に統一（store の reports から算出）、旧「前の日報/次の日報」ボタン削除。D3=`NippouListPage` 新設（過去日報の検索・一覧・ロール別可視: general=自分 / manager・executive・admin=全員）。
