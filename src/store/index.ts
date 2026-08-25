@@ -461,7 +461,7 @@ const uid = () => `id_${++idCounter}_${Date.now()}`;
 // ※ デモ（モック）のみの割り切り。認証/ロール切替等の
 //    UI 状態キーは残し、シード由来のデータキーのみ消す。
 // ============================================================
-const SEED_VERSION = "2026-08-25-fb1";
+const SEED_VERSION = "2026-08-25-fb2";
 const SEED_VERSION_KEY = "nippou.seedVersion";
 // seed を巻き戻す対象（永続データキー）。UI状態系は含めない。
 const SEED_DATA_KEYS = [

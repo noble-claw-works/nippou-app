@@ -830,7 +830,7 @@ const buildReports = (): DailyReport[] => {
         ];
       }
       if (date === _oarDate2) {
-        // oar_demo_opp2: 齋藤家 医療保険（告知書・奥様同席確認）
+        // oar_demo_opp2: 齋藤家 医療保険（告知書・奥様同席確認）+ opp5 高橋家 証券確認電話
         return [
           makeBlock(`b_${rid}_opp_report2`, rid, {
             type: "phone",
@@ -844,10 +844,21 @@ const buildReports = (): DailyReport[] => {
             isActual: true,
             sourceReportId: "oar_demo_opp2",
           }),
+          makeBlock(`b_${rid}_opp5`, rid, {
+            type: "phone",
+            startTime: "17:00",
+            endTime: "17:30",
+            title: "高橋家 自動車保険: 現行保険証券確認・更新タイミングヒアリング",
+            customerId: "c8",
+            opportunityId: "opp5",
+            memo: "証券内容を電話で確認。年中更新のため今から検討開始。次回面談の日程を調整中。",
+            isPlanned: false,
+            isActual: true,
+          }),
         ];
       }
       if (date === _oarDate3) {
-        // oar_demo_opp3: 水野家 自動車保険（申込書案内・特約説明）
+        // oar_demo_opp3: 水野家 自動車保険（申込書案内・特約説明）+ opp10 鈴木学資 + opp11 水野生命
         return [
           makeBlock(`b_${rid}_opp_report3`, rid, {
             type: "phone",
@@ -860,6 +871,82 @@ const buildReports = (): DailyReport[] => {
             isPlanned: false,
             isActual: true,
             sourceReportId: "oar_demo_opp3",
+          }),
+          makeBlock(`b_${rid}_opp10`, rid, {
+            type: "visit",
+            startTime: "13:00",
+            endTime: "14:00",
+            title: "鈴木家 学資保険: 学費計画ヒアリング",
+            customerId: "c6",
+            opportunityId: "opp10",
+            memo: "子供3人の学費計画についてヒアリング。学資ねるきんの暫定見積もりを説明し温かい反応。",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_opp11`, rid, {
+            type: "phone",
+            startTime: "16:00",
+            endTime: "16:30",
+            title: "水野家 生命保険: 初回アポ確認電話",
+            customerId: "c4",
+            opportunityId: "opp11",
+            memo: "自動車保険更新時に生命保険の興味を示されたため面談のアポを持ちかけ。日程調整中。",
+            isPlanned: false,
+            isActual: true,
+          }),
+        ];
+      }
+      // opp4: 鈴木家 生命保険—初回面談
+      if (date === _recentWeekdays[1]) {
+        return [
+          makeBlock(`b_${rid}_opp4`, rid, {
+            type: "visit",
+            startTime: "10:00",
+            endTime: "11:30",
+            title: "鈴木家 生命保険: 初回面談・家族構成ヒアリング",
+            customerId: "c6",
+            opportunityId: "opp4",
+            memo: "紹介さらに初回面談。子供3人分の保障内容を確認。暫定見積もりを提示し前向きな反応。",
+            isPlanned: true,
+            isActual: true,
+          }),
+        ];
+      }
+      // opp7+opp8+opp_demo1: 受注・失注・複合提案の活動履歴
+      if (date === _recentWeekdays[4]) {
+        return [
+          makeBlock(`b_${rid}_opp7`, rid, {
+            type: "visit",
+            startTime: "10:00",
+            endTime: "11:00",
+            title: "GILSON家 自動車保険 受注後フォロー: 証券確認",
+            customerId: "c1",
+            opportunityId: "opp7",
+            memo: "証券発行後の内容確認訪問。次回更新が楽しみというお言葉をいただいた。",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_opp8`, rid, {
+            type: "phone",
+            startTime: "14:00",
+            endTime: "14:30",
+            title: "齋藤家 生命保険 (失注): 最終フォロー電話",
+            customerId: "c2",
+            opportunityId: "opp8",
+            memo: "失注の確認電話。他社に決まったことを確認。今後の別の案件の投購をお願いするとお伝えした。",
+            isPlanned: false,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_opp_demo1`, rid, {
+            type: "visit",
+            startTime: "15:30",
+            endTime: "17:00",
+            title: "松本家 総合保険 見直し: 申込書類 確認・回収",
+            customerId: "c_demo1",
+            opportunityId: "opp_demo1",
+            memo: "生命保険の申込書類を回収。医療・自動車は配偶者相談待ち。",
+            isPlanned: true,
+            isActual: true,
           }),
         ];
       }
@@ -1040,6 +1127,171 @@ const buildReports = (): DailyReport[] => {
                   d(Math.max(1, i - 3)),
                   "high",
                 ),
+              ]
+            : []),
+          // ★ 案件結付 TODO — 各日報の内容に应じて opportunityId を付属
+          ...(date === _lastWeekday
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp1`,
+                    rid,
+                    "GILSON家: 配偶者分設計書の作成",
+                    false,
+                    f(2),
+                    "high",
+                  ),
+                  opportunityId: "opp1",
+                },
+              ]
+            : []),
+          ...(date === _oarDate2
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp2`,
+                    rid,
+                    "齋藤家: 奥様同席面談の日程確定",
+                    false,
+                    f(5),
+                    "high",
+                  ),
+                  opportunityId: "opp2",
+                },
+              ]
+            : []),
+          ...(date === _oarDate3
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp3`,
+                    rid,
+                    "水野家: 申込書類の回収・引受審査提出",
+                    false,
+                    f(2),
+                    "high",
+                  ),
+                  opportunityId: "opp3",
+                },
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp6`,
+                    rid,
+                    "伊藤家: ニーズ分析シートの送付・確認",
+                    false,
+                    f(10),
+                    "medium",
+                  ),
+                  opportunityId: "opp6",
+                },
+              ]
+            : []),
+          ...(date === _recentWeekdays[1]
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp4`,
+                    rid,
+                    "鈴木家: ニーズヒアリング結果をメモ・共有",
+                    false,
+                    f(7),
+                    "medium",
+                  ),
+                  opportunityId: "opp4",
+                },
+              ]
+            : []),
+          ...(date === _recentWeekdays[2]
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp5`,
+                    rid,
+                    "高橋家: 証券確認後の暫定見積もり提出",
+                    false,
+                    f(5),
+                    "high",
+                  ),
+                  opportunityId: "opp5",
+                },
+              ]
+            : []),
+          ...(date === _recentWeekdays[3]
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp10`,
+                    rid,
+                    "鈴木家: 学資保険の暫定設計書送付",
+                    false,
+                    f(10),
+                    "medium",
+                  ),
+                  opportunityId: "opp10",
+                },
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp11`,
+                    rid,
+                    "水野家: 初回面談の日程調整",
+                    false,
+                    f(14),
+                    "medium",
+                  ),
+                  opportunityId: "opp11",
+                },
+              ]
+            : []),
+          ...(date === _recentWeekdays[4]
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp7`,
+                    rid,
+                    "GILSON家 自動車: 継続更新の案内送付",
+                    true,
+                    undefined,
+                    "medium",
+                  ),
+                  opportunityId: "opp7",
+                },
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp8`,
+                    rid,
+                    "齋藤家: 失注対応・別案件のリファー依頼",
+                    false,
+                    d(1),
+                    "medium",
+                  ),
+                  opportunityId: "opp8",
+                },
+                {
+                  ...makeTodo(
+                    `td_${rid}_demo1`,
+                    rid,
+                    "松本家: 医療・自動車の申込日定確認",
+                    false,
+                    f(7),
+                    "high",
+                  ),
+                  opportunityId: "opp_demo1",
+                },
+              ]
+            : []),
+          ...(date === _recentWeekdays[0]
+            ? [
+                {
+                  ...makeTodo(
+                    `td_${rid}_opp9`,
+                    rid,
+                    "暁和化学ゴム: 査定結果待ち・進捗フォロー",
+                    false,
+                    f(14),
+                    "medium",
+                  ),
+                  opportunityId: "opp9",
+                },
               ]
             : []),
         ],
@@ -1490,6 +1742,25 @@ export const OPPORTUNITIES: Opportunity[] = [
       lifePlanDate: d(18),
       proposalDate: d(5),
     } as ContractMilestones,
+    // ★ 提案履歴 (ProposalRound)
+    proposals: [
+      {
+        id: "pr_opp1_1",
+        roundNo: 1,
+        proposalDate: d(14),
+        productIds: ["pp1"],
+        memo: "収入保障保険の第1回設計書を提示。保障額・保険料について説明。",
+        createdAt: d(14) + "T10:00:00",
+      },
+      {
+        id: "pr_opp1_2",
+        roundNo: 2,
+        proposalDate: d(5),
+        productIds: ["pp1", "pp2"],
+        memo: "医療保険を追加提案。配偶者分の追加設計書も準備中とお伝えした。",
+        createdAt: d(5) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
     // ★ Batch-B デモ用タスク（項目3）
     tasks: [
       {
@@ -1603,6 +1874,25 @@ export const OPPORTUNITIES: Opportunity[] = [
         resolved: false,
       } as DeficiencyItem,
     ],
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp2_1",
+        roundNo: 1,
+        proposalDate: d(10),
+        productIds: ["pp3"],
+        memo: "メディカルKit R 第1回設計書を提示。がん特約の詳細を説明。",
+        createdAt: d(10) + "T10:00:00",
+      },
+      {
+        id: "pr_opp2_2",
+        roundNo: 2,
+        proposalDate: d(3),
+        productIds: ["pp3"],
+        memo: "告知上の費用等を考慮した修正設計書を提示。奶様機宜を考慮中。",
+        createdAt: d(3) + "T16:30:00",
+      },
+    ] as import("../types").ProposalRound[],
     // F3: タスク登載（自動生成タスク+手動タスク混在）
     tasks: [
       {
@@ -1695,6 +1985,17 @@ export const OPPORTUNITIES: Opportunity[] = [
       applicationDate: d(1),
       inceptionDate: f(30),
     } as ContractMilestones,
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp3_1",
+        roundNo: 1,
+        proposalDate: d(7),
+        productIds: ["pp4"],
+        memo: "タフ・くるまの保険 自動車更新。弁護士費用特約の付加を提案。",
+        createdAt: d(7) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
   }),
 
   // c6: 鈴木 花代 — 生命保険 見直し (approach ステージ)
@@ -1702,6 +2003,19 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ["p_c6_head"],
     contractorPersonId: "p_c6_head",
     productCategories: ["life"],
+    proposalProducts: [
+      {
+        id: "pp_opp4_life",
+        productCategory: "life",
+        productName: "定期保険スーパー割引",
+        insurer: "日本生命",
+        insuredPersonId: "p_c6_head",
+        monthlyPremium: 3500,
+        faceAmount: 20000000,
+        firstYearCommission: 42000,
+        memo: "暗定見積もり。子供3人分の保障設計予定。",
+      },
+    ],
     needsAnalysisDone: false,
     illustrationProvided: false,
     nextAction: "家族構成ヒアリング",
@@ -1723,6 +2037,7 @@ export const OPPORTUNITIES: Opportunity[] = [
     milestones: {
       firstConsultDate: d(5),
     } as ContractMilestones,
+    // opp4 は approach 段階のため ProposalRound なし（暫定見積もりのみ）
   }),
 
   // c8: 高橋 誠 — 自動車保険 (fact_finding ステージ)
@@ -1730,6 +2045,17 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ["p_c8_head"],
     contractorPersonId: "p_c8_head",
     productCategories: ["auto"],
+    proposalProducts: [
+      {
+        id: "pp_opp5_auto",
+        productCategory: "auto",
+        productName: "タフ・くるまの保険(付帯)",
+        insurer: "東京海上日動",
+        insuredPersonId: "p_c8_head",
+        monthlyPremium: 6800,
+        memo: "暫定見積もり。現行保険の内容確認待ち。",
+      },
+    ],
     needsAnalysisDone: false,
     illustrationProvided: false,
     nextAction: "現在の保険内容確認",
@@ -1784,6 +2110,17 @@ export const OPPORTUNITIES: Opportunity[] = [
         createdAt: d(7) + "T09:00:00",
       },
     ] as Task[],
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp5_1",
+        roundNo: 1,
+        proposalDate: d(7),
+        productIds: ["pp_opp5_auto"],
+        memo: "実況認識時に暫定見積もりを提示。現行保険の証券確認待ち。",
+        createdAt: d(7) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
   }),
 
   // c10: 伊藤 幸子 — 医療保険 (needs_analysis ステージ)
@@ -1791,6 +2128,26 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ["p_c10_head"],
     contractorPersonId: "p_c10_head",
     productCategories: ["medical", "cancer"],
+    proposalProducts: [
+      {
+        id: "pp_opp6_medical",
+        productCategory: "medical",
+        productName: "エクセルエイド 医療保険",
+        insurer: "朝日生命",
+        insuredPersonId: "p_c10_head",
+        monthlyPremium: 4200,
+        memo: "がん特約付。以前加入保険の内容を確認中。",
+      },
+      {
+        id: "pp_opp6_cancer",
+        productCategory: "cancer",
+        productName: "ファン がん保険",
+        insurer: "アフラック生命",
+        insuredPersonId: "p_c10_head",
+        monthlyPremium: 2800,
+        memo: "がん診断一時金形式。母親のがん経験より希望高い。",
+      },
+    ],
     needsAnalysisDone: false,
     illustrationProvided: false,
     nextAction: "ニーズ分析シート記入",
@@ -1816,6 +2173,17 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: "がん特約への関心が高い。母親がガン経験者",
     tags: ["医療保険", "がん保険"],
     expectedCloseDate: f(45),
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp6_1",
+        roundNo: 1,
+        proposalDate: d(7),
+        productIds: ["pp_opp6_medical", "pp_opp6_cancer"],
+        memo: "医療保険・がん保険の暫定見積もりを提示。ニーズ分析中。",
+        createdAt: d(7) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
   }),
 
   // c1: GILSON — 受注案件 (issued / won)
@@ -1867,6 +2235,25 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: "継続更新を確保",
     tags: ["自動車保険", "受注済み"],
     actualCloseDate: d(14),
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp7_1",
+        roundNo: 1,
+        proposalDate: d(45),
+        productIds: ["pp5"],
+        memo: "自動車保険更新の第1回設計書を提示。車両保険・弁護士費用特約を説明。",
+        createdAt: d(45) + "T10:00:00",
+      },
+      {
+        id: "pr_opp7_2",
+        roundNo: 2,
+        proposalDate: d(30),
+        productIds: ["pp5"],
+        memo: "申込内容確認。申込書提出。",
+        createdAt: d(30) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
   }),
 
   // c2: 齋藤 — 失注案件
@@ -1874,6 +2261,19 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ["p_c2_head"],
     contractorPersonId: "p_c2_head",
     productCategories: ["life"],
+    proposalProducts: [
+      {
+        id: "pp_opp8_life",
+        productCategory: "life",
+        productName: "定期保険ドリーム",
+        insurer: "明治安田生命",
+        insuredPersonId: "p_c2_head",
+        monthlyPremium: 5200,
+        faceAmount: 20000000,
+        firstYearCommission: 62400,
+        memo: "失注。他社より安い見積もりが出たため。",
+      },
+    ],
     needsAnalysisDone: true,
     illustrationProvided: true,
     stageHistory: [
@@ -1904,6 +2304,25 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: "",
     tags: [],
     actualCloseDate: d(30),
+    // ★ 提案履歴
+    proposals: [
+      {
+        id: "pr_opp8_1",
+        roundNo: 1,
+        proposalDate: d(60),
+        productIds: ["pp_opp8_life"],
+        memo: "定期保険ドリームの第1回設計書を提示。保障額と保険料の説明。",
+        createdAt: d(60) + "T10:00:00",
+      },
+      {
+        id: "pr_opp8_2",
+        roundNo: 2,
+        proposalDate: d(45),
+        productIds: ["pp_opp8_life"],
+        memo: "保険料山消しの修正設計書を提示。最終的に他社が安く失注。",
+        createdAt: d(45) + "T10:00:00",
+      },
+    ] as import("../types").ProposalRound[],
   }),
 
   // c3: 暁和化学ゴム — 法人 火災保険 (underwriting)
@@ -1969,6 +2388,24 @@ export const OPPORTUNITIES: Opportunity[] = [
       memo: "山田部長承認済み",
       tags: ["法人", "火災保険"],
       expectedCloseDate: f(21),
+      // ★ milestones: contractDate があることで underwriting タブ（contract）に分類される
+      milestones: {
+        firstConsultDate: d(40),
+        proposalDate: d(14),
+        applicationDate: d(7),
+        contractDate: d(3),
+      } as ContractMilestones,
+      // ★ 提案履歴
+      proposals: [
+        {
+          id: "pr_opp9_1",
+          roundNo: 1,
+          proposalDate: d(14),
+          productIds: ["pp6"],
+          memo: "企業総合保険の第1回設計書を提示。工場・在庫一式の内容を説明。山田部長が出席。",
+          createdAt: d(14) + "T10:00:00",
+        },
+      ] as import("../types").ProposalRound[],
     },
   ),
 
@@ -1977,6 +2414,18 @@ export const OPPORTUNITIES: Opportunity[] = [
     targetPersonIds: ["p_c6_head"],
     contractorPersonId: "p_c6_head",
     productCategories: ["savings"],
+    proposalProducts: [
+      {
+        id: "pp_opp10_savings",
+        productCategory: "savings",
+        productName: "学資ねるきん(小学校型)",
+        insurer: "ソニー生命",
+        insuredPersonId: "p_c6_head",
+        monthlyPremium: 8000,
+        faceAmount: 2000000,
+        memo: "小学校入学時から満期金が受取れるタイプ。暗定見積もり。",
+      },
+    ],
     needsAnalysisDone: false,
     illustrationProvided: false,
     nextAction: "子供の年齢・学費計画確認",
@@ -1997,6 +2446,7 @@ export const OPPORTUNITIES: Opportunity[] = [
     memo: "小学生3名分の学費積み立て",
     tags: ["学資保険", "積立"],
     expectedCloseDate: f(60),
+    // opp10 は fact_finding 段階のため ProposalRound なし（暫定見積もりのみ）
   }),
 
   // c4: 水野 — 生命保険 (approach)
@@ -2011,6 +2461,18 @@ export const OPPORTUNITIES: Opportunity[] = [
       targetPersonIds: ["p_c4_head"],
       contractorPersonId: "p_c4_head",
       productCategories: ["life"],
+      proposalProducts: [
+        {
+          id: "pp_opp11_life",
+          productCategory: "life",
+          productName: "定期保険(暫定見積もり)",
+          insurer: "第一生命",
+          insuredPersonId: "p_c4_head",
+          monthlyPremium: 4000,
+          faceAmount: 15000000,
+          memo: "自動車保険更新の障に提案予定。暫定見積もり。",
+        },
+      ],
       needsAnalysisDone: false,
       illustrationProvided: false,
       nextAction: "初回面談のアポ取得",
@@ -2026,6 +2488,7 @@ export const OPPORTUNITIES: Opportunity[] = [
       memo: "自動車保険更新ついでに生命保険も提案",
       tags: ["生命保険", "新規"],
       expectedCloseDate: f(90),
+      // opp11 は approach 段階のため ProposalRound なし（暫定見積もりのみ）
     },
   ),
 
@@ -2182,6 +2645,25 @@ export const OPPORTUNITIES: Opportunity[] = [
           createdAt: d(3) + "T10:00:00",
         },
       ] as Task[],
+      // ★ 提案履歴
+      proposals: [
+        {
+          id: "pr_opp_demo1_1",
+          roundNo: 1,
+          proposalDate: d(15),
+          productIds: ["pp_demo1_life"],
+          memo: "生命保険の第1回設計書を提示。家族収入保障の重要性を説明。",
+          createdAt: d(15) + "T10:00:00",
+        },
+        {
+          id: "pr_opp_demo1_2",
+          roundNo: 2,
+          proposalDate: d(6),
+          productIds: ["pp_demo1_life", "pp_demo1_medical", "pp_demo1_auto"],
+          memo: "3商品まとめ提案。生命または医療・自動車の詳細を説明。配偶者分は相談待ち。",
+          createdAt: d(6) + "T10:00:00",
+        },
+      ] as import("../types").ProposalRound[],
     },
   ),
 ];
