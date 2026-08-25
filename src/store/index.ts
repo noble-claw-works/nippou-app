@@ -454,6 +454,39 @@ interface AppState {
 let idCounter = 10000;
 const uid = () => `id_${++idCounter}_${Date.now()}`;
 
+// ============================================================
+// seed バージンガード（モックデモの localStorage 陳腐防止）
+// seed を更新したらこの定数を上げると、古い永続データを
+// 破棄して新しい seed を読み直す（返り客ユーザー対策）。
+// ※ デモ（モック）のみの割り切り。認証/ロール切替等の
+//    UI 状態キーは残し、シード由来のデータキーのみ消す。
+// ============================================================
+const SEED_VERSION = "2026-08-25-fb1";
+const SEED_VERSION_KEY = "nippou.seedVersion";
+// seed を巻き戻す対象（永続データキー）。UI状態系は含めない。
+const SEED_DATA_KEYS = [
+  "nippou.opportunities.v2",
+  "nippou.opportunities.v1",
+  "nippou.oppActivityReports.v1",
+  "nippou.taskTemplates.v1",
+  "nippou.policies.v1",
+  "nippou.policyHistory.v1",
+  "nippou.salesTargets.v1",
+  "nippou.deletedCustomerIds.v1",
+];
+(() => {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    const stored = window.localStorage.getItem(SEED_VERSION_KEY);
+    if (stored !== SEED_VERSION) {
+      for (const k of SEED_DATA_KEYS) window.localStorage.removeItem(k);
+      window.localStorage.setItem(SEED_VERSION_KEY, SEED_VERSION);
+    }
+  } catch {
+    /* ignore */
+  }
+})();
+
 // ストア初期化時に、以前のセッションを localStorage から復元
 const _initialAuthSession = loadAuthSession();
 const _initialUser = _initialAuthSession
