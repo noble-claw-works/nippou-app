@@ -24,13 +24,14 @@ export function DashboardPage() {
     });
 
   return (
-    <div>
-      <div className="max-w-4xl mx-auto px-4 py-4">
+    <div className="flex flex-col h-full">
+      {/* ヘッダ部（全幅） */}
+      <div className="px-4 py-4 flex-shrink-0">
         <div className="flex items-center gap-3 mb-4">
           <h1 className="text-lg font-bold text-gray-900">📊 ダッシュボード</h1>
         </div>
         {canSeeTeam && (
-          <div className="inline-flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
+          <div className="inline-flex gap-1 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setTab('personal')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
@@ -54,7 +55,10 @@ export function DashboardPage() {
           </div>
         )}
       </div>
-      {tab === 'personal' ? <SalesDashboardPage /> : <TeamDashboardPage />}
+      {/* コンテンツ（全幅） */}
+      <div className="flex-1 overflow-auto">
+        {tab === 'personal' ? <SalesDashboardPage /> : <TeamDashboardPage />}
+      </div>
     </div>
   );
 }

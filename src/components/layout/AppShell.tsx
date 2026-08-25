@@ -1,29 +1,31 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Home, Calendar, Search, BarChart3, Users, FileText,
+  Home, Search, BarChart3, Users, FileText,
   Settings, ShieldCheck, ChevronDown, RefreshCw,
-  Menu, X as XIcon, LogOut, Handshake, ScrollText,
-  ClipboardList, TrendingUp
+  Menu, X as XIcon, LogOut, Handshake,
+  ClipboardList
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ROLE_LABELS, ROLE_DEMO_USERS } from '../../utils';
 import type { Role } from '../../types';
 import { NotificationBell } from '../notifications/NotificationBell';
 
+// IA-5: メニュー順序 ①ダッシュボード ②商談一覧 ③顧客一覧 ④日報 ⑤設定
+// IA-1: 営業実績はダッシュボード配下タブへ統合（単独項目削除）
+// IA-2: カレンダーは日報配下タブへ統合（単独項目削除）
+// IA-3: 世帯・契約は顧客一覧配下タブへ統合（単独項目削除）
+// IA-4: 検索はヘッダへ移動（単独項目削除）
 const NAV_ITEMS = [
-  { to: '/dashboard',  icon: BarChart3,      label: 'ダッシュボード', roles: ['general','manager','executive','admin'] },
-  { to: '/sales-perf', icon: TrendingUp,     label: '営業実績',     roles: ['general','manager','executive','admin'] },
-  { to: '/today',      icon: Home,            label: 'Today',         roles: ['general','manager','executive','admin'] },
-  { to: '/calendar',   icon: Calendar,        label: 'カレンダー',    roles: ['general','manager','executive','admin'] },
-  { to: '/search',     icon: Search,          label: '検索',          roles: ['general','manager','executive','admin'] },
-  { to: '/households', icon: Users,           label: '世帯',          roles: ['general','manager','executive','admin'] },
-  { to: '/opportunities', icon: Handshake,    label: '商談',          roles: ['general','manager','executive','admin'] },
-  { to: '/policies',   icon: ScrollText,      label: '契約',          roles: ['general','manager','executive','admin'] },
-  { to: '/report-admin', icon: ClipboardList, label: '日報管理',      roles: ['manager','executive'] },
-  { to: '/templates',  icon: FileText,        label: 'テンプレート',  roles: ['admin'] },
-  { to: '/admin',      icon: ShieldCheck,     label: '管理',          roles: ['admin', 'executive'] },
-  { to: '/settings',   icon: Settings,        label: '設定',          roles: ['general','manager','executive','admin'] },
+  { to: '/dashboard',     icon: BarChart3,      label: 'ダッシュボード', roles: ['general','manager','executive','admin'] },
+  { to: '/opportunities', icon: Handshake,      label: '商談一覧',       roles: ['general','manager','executive','admin'] },
+  { to: '/customers',     icon: Users,          label: '顧客一覧',       roles: ['general','manager','executive','admin'] },
+  { to: '/nippou',        icon: Home,           label: '日報',           roles: ['general','manager','executive','admin'] },
+  { to: '/settings',      icon: Settings,       label: '設定',           roles: ['general','manager','executive','admin'] },
+  // ロール限定項目（当面残す）
+  { to: '/report-admin',  icon: ClipboardList,  label: '日報管理',       roles: ['manager','executive'] },
+  { to: '/templates',     icon: FileText,       label: 'テンプレート',   roles: ['admin'] },
+  { to: '/admin',         icon: ShieldCheck,    label: '管理',           roles: ['admin','executive'] },
 ];
 
 const ROLES: Role[] = ['general', 'manager', 'executive', 'admin'];
@@ -32,6 +34,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { currentRole, setRole, addToast, resetAll, logout } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState('');
+  const headerInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const user = useAppStore(s => s.users.find(u => u.id === s.currentUserId));
 
@@ -46,7 +50,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     setRole(role);
     addToast({ type: 'info', message: `ロールを切り替えました: ${ROLE_LABELS[role]} (${ROLE_DEMO_USERS[role]})` });
     setMenuOpen(false);
-    navigate('/today');
+    navigate('/dashboard');
   };
 
   const visibleNav = NAV_ITEMS.filter(n => (n.roles as Role[]).includes(currentRole));
@@ -111,7 +115,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100" onClick={() => setMobileNavOpen(true)}>
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
-          <div className="flex-1" />
+
+          {/* IA-4: ヘッダ検索窓 */}
+          <form
+            className="flex-1 mx-3 hidden sm:flex items-center max-w-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = headerQuery.trim();
+              if (q) {
+                navigate(`/search?q=${encodeURIComponent(q)}`);
+              } else {
+                navigate('/search');
+              }
+              setHeaderQuery('');
+              headerInputRef.current?.blur();
+            }}
+          >
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <input
+                ref={headerInputRef}
+                type="search"
+                value={headerQuery}
+                onChange={(e) => setHeaderQuery(e.target.value)}
+                placeholder="検索..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 placeholder:text-gray-400"
+              />
+            </div>
+          </form>
 
           {/* Notification Bell */}
           <NotificationBell />

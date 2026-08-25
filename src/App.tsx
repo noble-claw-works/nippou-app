@@ -5,24 +5,18 @@ import {
   Route,
   Navigate,
   useLocation,
-  useParams,
 } from "react-router-dom";
 import { AppShell } from "./components/layout/AppShell";
 import { ToastContainer } from "./components/ui/Toast";
 import { LoginPage } from "./pages/LoginPage";
-import { TodayPage } from "./pages/TodayPage";
 import { ReportDetailPage } from "./pages/ReportDetailPage";
-import { CalendarPage } from "./pages/CalendarPage";
 import { SearchPage } from "./pages/SearchPage";
-import { DashboardPage } from "./pages/DashboardPage";
 import { ReportAdminPage } from "./pages/ReportAdminPage";
-import { HouseholdsPage } from "./pages/HouseholdsPage";
 import { HouseholdDetailPage } from "./pages/HouseholdDetailPage";
 import { HouseholdBatchEntryPage } from "./pages/HouseholdBatchEntryPage";
 import { OpportunitiesPage } from "./pages/OpportunitiesPage";
 import { OpportunityDetailPage } from "./pages/OpportunityDetailPage";
 import { OpportunityReportPage } from "./pages/OpportunityReportPage";
-import { PoliciesPage } from "./pages/PoliciesPage";
 import { PolicyDetailPage } from "./pages/PolicyDetailPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { AdminPage } from "./pages/AdminPage";
@@ -31,14 +25,10 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SalesDashboardPage } from "./pages/SalesDashboardPage";
 import { TeamDashboardPage } from "./pages/TeamDashboardPage";
-import { SalesPerfPage } from "./features/salesPerf/SalesPerfPage";
+import { DashboardWithPerfPage, SalesPerfRedirect } from "./pages/DashboardWithPerfPage";
+import { NippouPage } from "./pages/NippouPage";
+import { CustomerListPage } from "./pages/CustomerListPage";
 import { useAppStore } from "./store";
-
-/** /customers/:customerId → /households/:customerId リダイレクト */
-function RedirectCustomerToHousehold() {
-  const { customerId } = useParams<{ customerId: string }>();
-  return <Navigate to={`/households/${customerId}`} replace />;
-}
 
 /** 認証ガード: 未ログインなら /login へリダイレクト */
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -102,15 +92,27 @@ function AppLayout() {
   return (
     <AppShell>
       <Routes>
-        <Route path="/" element={<Navigate to="/today" replace />} />
-        <Route path="/today" element={<TodayPage />} />
+        {/* デフォルト: /dashboard へ */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* IA-1: ダッシュボード＋営業実績タブ統合 */}
+        <Route path="/dashboard" element={<DashboardWithPerfPage />} />
+        {/* IA-1: /sales-perf → /dashboard?tab=salesperf リダイレクト */}
+        <Route path="/sales-perf" element={<SalesPerfRedirect />} />
+        {/* IA-2: 日報＋カレンダータブ統合（/nippou） */}
+        <Route path="/nippou" element={<NippouPage />} />
+        {/* 後方互換: /today → /nippou */}
+        <Route path="/today" element={<Navigate to="/nippou" replace />} />
+        {/* 後方互換: /calendar → /nippou?tab=calendar */}
+        <Route path="/calendar" element={<Navigate to="/nippou?tab=calendar" replace />} />
         <Route path="/reports/:date" element={<ReportDetailPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<SearchPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/report-admin" element={<ReportAdminPage />} />
-        {/* Household routes (Phase 1) */}
-        <Route path="/households" element={<HouseholdsPage />} />
+        {/* IA-3: 顧客一覧（世帯＋契約タブ統合、/customers） */}
+        <Route path="/customers" element={<CustomerListPage />} />
+        {/* 後方互換: /households → /customers（顧客一覧・世帯タブ） */}
+        <Route path="/households" element={<Navigate to="/customers" replace />} />
+        {/* 後方互換: /policies → /customers?tab=policies */}
+        <Route path="/policies" element={<Navigate to="/customers?tab=policies" replace />} />
+        {/* 詳細ページはそのまま維持 */}
         <Route
           path="/households/:customerId"
           element={<HouseholdDetailPage />}
@@ -119,15 +121,11 @@ function AppLayout() {
           path="/households/:customerId/batch-entry"
           element={<HouseholdBatchEntryPage />}
         />
-        {/* Legacy /customers/* → /households/* リダイレクト */}
-        <Route
-          path="/customers"
-          element={<Navigate to="/households" replace />}
-        />
         <Route
           path="/customers/:customerId"
-          element={<RedirectCustomerToHousehold />}
+          element={<HouseholdDetailPage />}
         />
+        <Route path="/policies/:id" element={<PolicyDetailPage />} />
         {/* Opportunity routes (Phase 2) */}
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
@@ -136,18 +134,14 @@ function AppLayout() {
           path="/opportunities/:id/report"
           element={<OpportunityReportPage />}
         />
-        {/* Policy routes (Phase 3) */}
-        <Route path="/policies" element={<PoliciesPage />} />
-        <Route path="/policies/:id" element={<PolicyDetailPage />} />
+        <Route path="/report-admin" element={<ReportAdminPage />} />
         <Route path="/templates" element={<TemplatesPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        {/* Sales Dashboard routes (Phase 4) */}
+        {/* Sales Dashboard routes (Phase 4) - 直接アクセス用に残す */}
         <Route path="/sales-dashboard" element={<SalesDashboardPage />} />
         <Route path="/team-dashboard" element={<TeamDashboardPage />} />
-        {/* 営業実績ダッシュボード v1 (P0) */}
-        <Route path="/sales-perf" element={<SalesPerfPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AppShell>
