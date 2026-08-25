@@ -47,6 +47,21 @@ const _lastWeekday = (() => {
   return d(1); // fallback
 })();
 
+// F4: 直近の平日一覧（土日スキップ済み）を取得して商談報告日程に使う
+const _recentWeekdays = (() => {
+  const result: string[] = [];
+  for (let i = 1; i <= 30 && result.length < 5; i++) {
+    const candidate = subDays(new Date(), i);
+    const dow = candidate.getDay();
+    if (dow !== 0 && dow !== 6) result.push(format(candidate, "yyyy-MM-dd"));
+  }
+  return result; // [0]=1営業日前, [1]=2営業日前, [2]=3営業日前...
+})();
+// _lastWeekday = _recentWeekdays[0]（既存との整合）
+// 商談報告2件目: 2営業日前 / 3件目: 3営業日前
+const _oarDate2 = _recentWeekdays[2] ?? _recentWeekdays[1] ?? _lastWeekday; // 3営業日前
+const _oarDate3 = _recentWeekdays[3] ?? _recentWeekdays[2] ?? _lastWeekday; // 4営業日前
+
 // =====================================================
 // ユーザー
 // =====================================================
@@ -144,7 +159,7 @@ export const CUSTOMERS: Customer[] = [
     area: "袋井",
     primaryUserId: "u1",
     headPersonId: "p_c1_head",
-    familyMemo: "家族: 配偶者、孟２名あり",
+    familyMemo: "家族: 配偶者、子２名あり",
     tags: ["自動車保険", "継続", "2026更新"],
     memo: "ピアさん引継ぎ案件。7月更新案件あり。",
     tasks: [],
@@ -160,7 +175,7 @@ export const CUSTOMERS: Customer[] = [
     area: "磐田",
     primaryUserId: "u1",
     headPersonId: "p_c2_head",
-    familyMemo: "家族: 富婦、子１名",
+    familyMemo: "家族: 夫婦、子１名",
     tags: ["生命保険"],
     memo: "",
     tasks: [],
@@ -215,7 +230,7 @@ export const CUSTOMERS: Customer[] = [
     area: "掛川",
     primaryUserId: "u2",
     headPersonId: "p_c6_head",
-    familyMemo: "家族: 小学3名",
+    familyMemo: "家族: 配偶者、子3名（小学生）",
     tags: ["生命保険", "見直し"],
     memo: "",
     tasks: [],
@@ -795,24 +810,191 @@ const buildReports = (): DailyReport[] => {
           ]
         : [];
 
-    // 項目6デモ: _lastWeekdayの日報に商談報告由来ブロックを挿入
-    const extraBlocks: TimeBlock[] =
-      date === _lastWeekday
-        ? [
-            makeBlock(`b_${rid}_opp_report`, rid, {
-              type: "visit",
-              startTime: "14:00",
-              endTime: "15:00",
-              title: "GILSON家 生命保険見直し: 設計書説明・質問対応",
-              customerId: "c1",
-              opportunityId: "opp1",
-              memo: "設計書の詳細を説明。主宿より「配偶者分も检討したい」と式の御希望。次回面談で配偶者用設計書を提出予定。",
-              isPlanned: false,
-              isActual: true,
-              sourceReportId: "oar_demo_opp1",
-            }),
-          ]
-        : [];
+    // F4: 商談報告→日報反映デモ用 extraBlocks（3案件・3日に分散）
+    const extraBlocks: TimeBlock[] = (() => {
+      if (date === _lastWeekday) {
+        // oar_demo_opp1: GILSON家 生命保険見直し（設計書説明）
+        return [
+          makeBlock(`b_${rid}_opp_report`, rid, {
+            type: "visit",
+            startTime: "14:00",
+            endTime: "15:00",
+            title: "GILSON家 生命保険見直し: 設計書説明・質問対応",
+            customerId: "c1",
+            opportunityId: "opp1",
+            memo: "設計書の詳細を説明。お客様より「配偶者分も検討したい」とのご意向。次回面談で配偶者用設計書を提出予定。",
+            isPlanned: false,
+            isActual: true,
+            sourceReportId: "oar_demo_opp1",
+          }),
+        ];
+      }
+      if (date === _oarDate2) {
+        // oar_demo_opp2: 齋藤家 医療保険（告知書・奥様同席確認）
+        return [
+          makeBlock(`b_${rid}_opp_report2`, rid, {
+            type: "phone",
+            startTime: "16:00",
+            endTime: "16:30",
+            title: "齋藤家 医療保険: 告知書確認・奥様同席日程調整",
+            customerId: "c2",
+            opportunityId: "opp2",
+            memo: "告知書の未記入箇所（貧血歴）について電話確認。主治医への問い合わせを依頼。奥様同席の面談日程を来週に調整中。",
+            isPlanned: false,
+            isActual: true,
+            sourceReportId: "oar_demo_opp2",
+          }),
+        ];
+      }
+      if (date === _oarDate3) {
+        // oar_demo_opp3: 水野家 自動車保険（申込書案内・特約説明）
+        return [
+          makeBlock(`b_${rid}_opp_report3`, rid, {
+            type: "phone",
+            startTime: "10:30",
+            endTime: "11:00",
+            title: "水野家 自動車保険 更新: 申込書記入案内・弁護士費用特約説明",
+            customerId: "c4",
+            opportunityId: "opp3",
+            memo: "申込書の記入方法を電話でご案内。今週中に書類を持参いただける見込み。弁護士費用特約の追加説明も実施。申込確度はS。",
+            isPlanned: false,
+            isActual: true,
+            sourceReportId: "oar_demo_opp3",
+          }),
+        ];
+      }
+      return [];
+    })();
+
+    // F4: _oarDate2/_oarDate3 の日報は商談報告が入る充実モックにする
+    const baseBlocks: TimeBlock[] = (() => {
+      if (date === _oarDate2) {
+        // 齋藤家フォロー日: 午前訪問+昼食+見積+夕方電話（商談報告はextraBlocksで16:00-16:30）
+        return [
+          makeBlock(`b_${rid}_1`, rid, {
+            type: "meeting",
+            startTime: "09:00",
+            endTime: "09:30",
+            title: "朝礼・案件共有",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_2`, rid, {
+            type: "visit",
+            startTime: "10:00",
+            endTime: "11:30",
+            title: "GILSON家フォロー訪問: 追加設計書準備状況の確認",
+            customerId: "c1",
+            opportunityId: "opp1",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_3`, rid, {
+            type: "lunch",
+            startTime: "12:00",
+            endTime: "13:00",
+            title: "昼食",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_4`, rid, {
+            type: "office",
+            startTime: "13:00",
+            endTime: "16:00",
+            title: "設計書作成・見積書修正（配偶者分）",
+            isPlanned: true,
+            isActual: true,
+          }),
+          // extraBlocks: 16:00-16:30 齋藤家電話（oar_demo_opp2）
+          makeBlock(`b_${rid}_5`, rid, {
+            type: "office",
+            startTime: "16:30",
+            endTime: "17:30",
+            title: "翌日訪問準備・申込書セット",
+            isPlanned: true,
+            isActual: true,
+          }),
+        ];
+      }
+      if (date === _oarDate3) {
+        // 水野家電話対応日: 午前電話（商談報告10:30-11:00）+訪問+午後事務
+        return [
+          makeBlock(`b_${rid}_1`, rid, {
+            type: "meeting",
+            startTime: "09:00",
+            endTime: "09:30",
+            title: "朝礼",
+            isPlanned: true,
+            isActual: true,
+          }),
+          // extraBlocks: 10:30-11:00 水野家電話（oar_demo_opp3）
+          makeBlock(`b_${rid}_2`, rid, {
+            type: "visit",
+            startTime: "11:30",
+            endTime: "12:30",
+            title: "暁和化学ゴム 火災保険 査定立会い",
+            customerId: "c3",
+            opportunityId: "opp9",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_3`, rid, {
+            type: "lunch",
+            startTime: "12:30",
+            endTime: "13:30",
+            title: "昼食",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_4`, rid, {
+            type: "office",
+            startTime: "13:30",
+            endTime: "15:30",
+            title: "査定結果まとめ・申込書チェック",
+            isPlanned: true,
+            isActual: true,
+          }),
+          makeBlock(`b_${rid}_5`, rid, {
+            type: "visit",
+            startTime: "15:30",
+            endTime: "17:00",
+            title: "伊藤家 医療保険 ニーズヒアリング",
+            customerId: "c10",
+            opportunityId: "opp6",
+            isPlanned: true,
+            isActual: true,
+          }),
+        ];
+      }
+      // 通常日報（既存）
+      return [
+        makeBlock(`b_${rid}_1`, rid, {
+          type: "meeting",
+          startTime: "09:00",
+          endTime: "09:30",
+          title: "朝礼",
+        }),
+        makeBlock(`b_${rid}_2`, rid, {
+          type: "visit",
+          startTime: "10:00",
+          endTime: "11:00",
+          title: "顧客訪問",
+          customerId: "c1",
+        }),
+        makeBlock(`b_${rid}_3`, rid, {
+          type: "lunch",
+          startTime: "12:00",
+          endTime: "13:00",
+          title: "昼食",
+        }),
+        makeBlock(`b_${rid}_4`, rid, {
+          type: "office",
+          startTime: "14:00",
+          endTime: "17:00",
+          title: "事務作業",
+        }),
+      ];
+    })();
 
     reports.push(
       makeReport(
@@ -821,31 +1003,7 @@ const buildReports = (): DailyReport[] => {
         date,
         status,
         [
-          makeBlock(`b_${rid}_1`, rid, {
-            type: "meeting",
-            startTime: "09:00",
-            endTime: "09:30",
-            title: "朝礼",
-          }),
-          makeBlock(`b_${rid}_2`, rid, {
-            type: "visit",
-            startTime: "10:00",
-            endTime: "11:00",
-            title: "顧客訪問",
-            customerId: "c1",
-          }),
-          makeBlock(`b_${rid}_3`, rid, {
-            type: "lunch",
-            startTime: "12:00",
-            endTime: "13:00",
-            title: "昼食",
-          }),
-          makeBlock(`b_${rid}_4`, rid, {
-            type: "office",
-            startTime: "14:00",
-            endTime: "17:00",
-            title: "事務作業",
-          }),
+          ...baseBlocks,
           ...extraBlocks,
         ],
         [
@@ -2878,8 +3036,10 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
 ];
 
 // =====================================================
-// 商談活動報告 シードデータ（項目6: 報告→日報反映デモ）
-// id="oar_demo_opp1" を d(2)の日報 TimeBlock.sourceReportId と導線する
+// 商談活動報告 シードデータ（F4: 報告→日報反映デモ充実）
+// oar_demo_opp1: _lastWeekday の日報 (u1) に sourceReportId で紐付け
+// oar_demo_opp2: d(3) の日報 (u1) に sourceReportId で紐付け（齋藤家）
+// oar_demo_opp3: d(5) の日報 (u1) に sourceReportId で紐付け（水野家）
 // ※ ストアの oppActivityReports 初期値として使用
 // =====================================================
 export const OPP_ACTIVITY_REPORTS: OpportunityActivityReport[] = [
@@ -2890,12 +3050,44 @@ export const OPP_ACTIVITY_REPORTS: OpportunityActivityReport[] = [
     reportDate: _lastWeekday,
     activityType: "visit",
     summary:
-      "設計書の詳細を説明。主宿より「配偶者分も检討したい」と式の御希望。次回面談で配偶者用設計書を提出予定。",
+      "設計書の詳細を説明。お客様より「配偶者分も検討したい」とのご意向。次回面談で配偶者用設計書を提出予定。",
     nextAction: "配偶者分の追加設計書作成・提出",
     nextActionDate: f(2),
     reachedMilestones: {},
     confidence: "A",
     createdAt: _lastWeekday + "T15:00:00",
     updatedAt: _lastWeekday + "T15:00:00",
+  },
+  {
+    id: "oar_demo_opp2",
+    opportunityId: "opp2",
+    userId: "u1",
+    reportDate: _oarDate2,
+    activityType: "phone",
+    summary:
+      "告知書の未記入箇所（貧血歴）について電話で確認。本人記憶が曖昧なため、主治医への問い合わせを依頼した。奥様の同席希望を再確認し、来週の面談日程を調整中。",
+    nextAction: "奥様同席の面談日程確定・告知書再記入",
+    nextActionDate: f(5),
+    reachedMilestones: {},
+    confidence: "B",
+    createdAt: _oarDate2 + "T16:30:00",
+    updatedAt: _oarDate2 + "T16:30:00",
+  },
+  {
+    id: "oar_demo_opp3",
+    opportunityId: "opp3",
+    userId: "u1",
+    reportDate: _oarDate3,
+    activityType: "phone",
+    summary:
+      "申込書の記入方法について電話でご案内。記入済みの書類を今週中に持参いただけるとのこと。弁護士費用特約の説明も追加で実施。お客様の意向は高く、申込確度はS。",
+    nextAction: "申込書類の回収・引受審査提出",
+    nextActionDate: f(2),
+    reachedMilestones: {
+      contract: true,
+    },
+    confidence: "S",
+    createdAt: _oarDate3 + "T11:00:00",
+    updatedAt: _oarDate3 + "T11:00:00",
   },
 ];

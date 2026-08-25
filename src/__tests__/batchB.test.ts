@@ -300,3 +300,67 @@ describe("§6: 商談報告→日報反映 seed", () => {
     }
   });
 });
+
+// ─── §6-F4: oar_demo_opp2/opp3 の sourceReportId 連携（F4 追加テスト）────────
+
+describe("§6-F4: 商談報告→日報反映 seed F4 追加", () => {
+  it("OPP_ACTIVITY_REPORTS が3件以上存在すること（F4 充実確認）", () => {
+    expect(OPP_ACTIVITY_REPORTS.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("oar_demo_opp2（齋藤家 医療保険）が対応日報に sourceReportId ブロックを持つこと", () => {
+    const actReport = OPP_ACTIVITY_REPORTS.find((r) => r.id === "oar_demo_opp2");
+    expect(actReport).toBeDefined();
+    expect(actReport!.opportunityId).toBe("opp2");
+    expect(actReport!.userId).toBe("u1");
+
+    const nippou = REPORTS.find(
+      (r) => r.date === actReport!.reportDate && r.userId === actReport!.userId,
+    );
+    expect(nippou).toBeDefined();
+
+    const linkedBlock = nippou!.blocks.find(
+      (b) => b.sourceReportId === "oar_demo_opp2",
+    );
+    expect(linkedBlock, "oar_demo_opp2 に対応する sourceReportId ブロックが日報にありません").toBeDefined();
+    expect(linkedBlock!.opportunityId).toBe("opp2");
+    expect(linkedBlock!.isActual).toBe(true);
+    expect(linkedBlock!.title.length).toBeGreaterThan(0);
+  });
+
+  it("oar_demo_opp3（水野家 自動車保険）が対応日報に sourceReportId ブロックを持つこと", () => {
+    const actReport = OPP_ACTIVITY_REPORTS.find((r) => r.id === "oar_demo_opp3");
+    expect(actReport).toBeDefined();
+    expect(actReport!.opportunityId).toBe("opp3");
+    expect(actReport!.userId).toBe("u1");
+
+    const nippou = REPORTS.find(
+      (r) => r.date === actReport!.reportDate && r.userId === actReport!.userId,
+    );
+    expect(nippou).toBeDefined();
+
+    const linkedBlock = nippou!.blocks.find(
+      (b) => b.sourceReportId === "oar_demo_opp3",
+    );
+    expect(linkedBlock, "oar_demo_opp3 に対応する sourceReportId ブロックが日報にありません").toBeDefined();
+    expect(linkedBlock!.opportunityId).toBe("opp3");
+    expect(linkedBlock!.isActual).toBe(true);
+    expect(linkedBlock!.title.length).toBeGreaterThan(0);
+  });
+
+  it("全 OPP_ACTIVITY_REPORTS に対応日報 sourceReportId ブロックが存在すること", () => {
+    for (const report of OPP_ACTIVITY_REPORTS) {
+      const nippou = REPORTS.find(
+        (r) => r.date === report.reportDate && r.userId === report.userId,
+      );
+      expect(nippou, `${report.id} に対応する日報が見つかりません`).toBeDefined();
+      const linkedBlock = nippou!.blocks.find(
+        (b) => b.sourceReportId === report.id,
+      );
+      expect(
+        linkedBlock,
+        `${report.id} に対応する sourceReportId ブロックが日報にありません`,
+      ).toBeDefined();
+    }
+  });
+});

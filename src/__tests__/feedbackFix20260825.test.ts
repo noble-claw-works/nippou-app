@@ -7,7 +7,7 @@
 // =====================================================
 import { describe, it, expect } from "vitest";
 import type { DailyReport, Task, TaskPriority } from "../types";
-import { OPPORTUNITIES } from "../data/seed";
+import { OPPORTUNITIES, REPORTS, OPP_ACTIVITY_REPORTS } from "../data/seed";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function mkReport(status: DailyReport["status"]): DailyReport {
@@ -170,5 +170,81 @@ describe("F3: seed に複数案件のタスクが登載されている", () => {
     );
     const unique = new Set(allTaskIds);
     expect(unique.size).toBe(allTaskIds.length);
+  });
+});
+
+// ─── F4: 商談報告→日報 sourceReportId 紐付け検証 ──────────────────────────
+describe("F4: 商談報告と日報ブロックの双方向紐付け", () => {
+  it("OPP_ACTIVITY_REPORTS に3件登録されている", () => {
+    expect(OPP_ACTIVITY_REPORTS).toHaveLength(3);
+    const ids = OPP_ACTIVITY_REPORTS.map((r) => r.id);
+    expect(ids).toContain("oar_demo_opp1");
+    expect(ids).toContain("oar_demo_opp2");
+    expect(ids).toContain("oar_demo_opp3");
+  });
+
+  it("各OARに対応する日報ブロックが sourceReportId で紐付いている", () => {
+    for (const oar of OPP_ACTIVITY_REPORTS) {
+      const linkedBlocks = REPORTS.flatMap((r) =>
+        r.blocks.filter((b) => b.sourceReportId === oar.id),
+      );
+      expect(
+        linkedBlocks.length,
+        `oar.id=${oar.id} に対応する日報ブロックが見つからない`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("oar_demo_opp1 は opp1 に紐付き、日報ブロックも opportunityId=opp1", () => {
+    const oar = OPP_ACTIVITY_REPORTS.find((r) => r.id === "oar_demo_opp1")!;
+    expect(oar.opportunityId).toBe("opp1");
+    const block = REPORTS.flatMap((r) => r.blocks).find(
+      (b) => b.sourceReportId === "oar_demo_opp1",
+    )!;
+    expect(block).toBeDefined();
+    expect(block.opportunityId).toBe("opp1");
+  });
+
+  it("oar_demo_opp2 は opp2 に紐付き、日報ブロックも opportunityId=opp2", () => {
+    const oar = OPP_ACTIVITY_REPORTS.find((r) => r.id === "oar_demo_opp2")!;
+    expect(oar.opportunityId).toBe("opp2");
+    const block = REPORTS.flatMap((r) => r.blocks).find(
+      (b) => b.sourceReportId === "oar_demo_opp2",
+    )!;
+    expect(block).toBeDefined();
+    expect(block.opportunityId).toBe("opp2");
+  });
+
+  it("oar_demo_opp3 は opp3 に紐付き、日報ブロックも opportunityId=opp3", () => {
+    const oar = OPP_ACTIVITY_REPORTS.find((r) => r.id === "oar_demo_opp3")!;
+    expect(oar.opportunityId).toBe("opp3");
+    const block = REPORTS.flatMap((r) => r.blocks).find(
+      (b) => b.sourceReportId === "oar_demo_opp3",
+    )!;
+    expect(block).toBeDefined();
+    expect(block.opportunityId).toBe("opp3");
+  });
+
+  it("各日報ブロックの reportDate と OAR の reportDate が一致する", () => {
+    for (const oar of OPP_ACTIVITY_REPORTS) {
+      const report = REPORTS.find((r) =>
+        r.blocks.some((b) => b.sourceReportId === oar.id),
+      )!;
+      expect(
+        report.date,
+        `oar.id=${oar.id}: 日報の日付(${report.date}) と OAR.reportDate(${oar.reportDate}) が不一致`,
+      ).toBe(oar.reportDate);
+    }
+  });
+
+  it("誤字が修正されている（主宿・检討が含まれない）", () => {
+    const allSummaries = OPP_ACTIVITY_REPORTS.map((r) => r.summary).join("");
+    const allMemos = REPORTS.flatMap((r) =>
+      r.blocks.map((b) => b.memo ?? ""),
+    ).join("");
+    expect(allSummaries).not.toContain("主宿");
+    expect(allSummaries).not.toContain("检討");
+    expect(allMemos).not.toContain("主宿");
+    expect(allMemos).not.toContain("检討");
   });
 });
