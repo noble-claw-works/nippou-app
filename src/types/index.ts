@@ -54,6 +54,7 @@ export interface Household {
   nextAppointment?: string;
   isFavorite?: boolean;
   annualIncome?: number; // ★NEW 年収（円）契約者=世帯に従属 (§3-6)
+  tasks?: Task[]; // ★NEW 世帯スコープの汎用タスク (ADR-TASK-MASTER)
 }
 
 // 互換エイリアス — 既存コードを壊さない (deprecated)
@@ -139,6 +140,80 @@ export interface OpportunityStageHistory {
   changedByUserId: string;
   note?: string;
 }
+
+// =====================================================
+// 汎用タスク (ADR-TASK-MASTER) — 2026-08-25
+// =====================================================
+
+/** タスク付与スコープ（主上決裁 2026-08-17 14:07） */
+export type TaskScope = "household" | "opportunity" | "product";
+
+/** タスク優先度 */
+export type TaskPriority = "high" | "medium" | "low";
+
+/** 自動登録トリガー種別 */
+export type TaskTriggerType =
+  | "household_created" // 世帯作成時
+  | "opportunity_created" // 案件作成時
+  | "product_added" // 商品追加時
+  | "stage_reached"; // ステージ到達時
+
+/**
+ * 汎用タスク（永続）。世帯／案件／商品のいずれかに紐づき0..n個。
+ * 自動生成（マスタ由来）と手動追加が同一型で共存する。
+ */
+export interface Task {
+  id: string;
+  title: string; // タスク名（自由入力可）
+  done: boolean; // 完了フラグ
+  doneDate?: string; // 完了日 (YYYY-MM-DD)
+  dueDate?: string; // 期限 (YYYY-MM-DD)
+  ownerId?: string; // 担当 User.id
+  memo?: string; // メモ
+  priority: TaskPriority; // 優先度（既定 'medium'）
+  rolledOver: boolean; // 繰越フラグ
+  scope: TaskScope; // 'household' | 'opportunity' | 'product'
+  householdId?: string; // scope='household' のとき対象 Household.id
+  productId?: string; // scope='product' のとき対象 ProposalProduct.id
+  sourceMasterId?: string; // 生成元 TaskTemplate.id。手動追加は undefined
+  createdAt: string;
+}
+
+/**
+ * タスク初期値マスタ。管理者編集可。
+ */
+export interface TaskTemplate {
+  id: string;
+  title: string; // 生成されるタスクのタイトル
+  scope: TaskScope; // 生成タスクの scope
+  trigger: TaskTriggerType; // 発火トリガー
+  productCategories: ProductCategory[] | null; // 商品カテゴリ条件 (productスコープのみ適用)
+  triggerStage?: OpportunityStage; // trigger='stage_reached' のとき定義ステージ
+  defaultDueOffsetDays?: number; // 期限オフセット（N日後）
+  defaultPriority: TaskPriority; // 生成タスクの既定優先度
+  defaultMemo?: string; // 生成タスクの既定メモ
+  order: number; // 表示順
+  isActive: boolean; // falseの定義は生成に使わない
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** 生保系カテゴリ定数 (LIFE_CATEGORIES) */
+export const LIFE_CATEGORIES: ProductCategory[] = [
+  "life",
+  "medical",
+  "cancer",
+  "income",
+  "nursing",
+  "savings",
+];
+
+/** 損保系カテゴリ定数 (NONLIFE_CATEGORIES) */
+export const NONLIFE_CATEGORIES: ProductCategory[] = [
+  "auto",
+  "fire",
+  "liability",
+];
 
 // =====================================================
 // 案件管理パイプライン拡張型 — Phase B-1 (§3・§9 準拠 2026-07-08)
@@ -295,8 +370,11 @@ export interface Opportunity {
   channelId?: string; // チャネル（葉）SalesChannel.id
   confidence?: ConfidenceUnified; // 見込確度（★統一ラダー・案件単位1値・主上確定）
   milestones?: ContractMilestones; // ステージ日付（8種・ADR-B4 v2 contractDate 追加）
-  contractTasks?: ContractTasks; // 証券回収 / ポリシーレビュー
-  insuredTasks?: InsuredTaskState[]; // 意向シート / 署名（被保険者単位）
+  /** @deprecated ADR-TASK-MASTER: tasks[]に移行済み。seed・新規コードでは使用禁止 */
+  contractTasks?: ContractTasks;
+  /** @deprecated ADR-TASK-MASTER: tasks[]に移行済み。seed・新規コードでは使用禁止 */
+  insuredTasks?: InsuredTaskState[];
+  tasks?: Task[]; // ★NEW 案件・商品スコープの汎用タスク (ADR-TASK-MASTER)
   deficiencies?: DeficiencyItem[]; // ★不備（項目化・転記方式。主上確定 2026-07-08）
   proposals?: ProposalRound[]; // ★NEW 提案ラウンド履歴（ADR-B4 v2 追加機能2）
 }

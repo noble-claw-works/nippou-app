@@ -35,6 +35,10 @@ import type {
   ContractTasks,
   InsuredTaskState,
   ProposalRound,
+  Task,
+  TaskTemplate,
+  Household,
+  ProposalProduct,
 } from "../types";
 import {
   USERS,
@@ -50,6 +54,7 @@ import {
   POLICIES,
   POLICY_STATUS_HISTORY,
   SALES_TARGETS,
+  TASK_TEMPLATES,
 } from "../data/seed";
 import { format } from "date-fns";
 
@@ -92,6 +97,12 @@ import {
 import { isTodoReadOnly } from "../utils/todoReadOnly";
 import type { ReportStatus as TodoReportStatus } from "../utils/todoReadOnly";
 import { hasCustomerAttachment } from "../utils/customerAttachment";
+import {
+  generateTasksOnHouseholdCreated,
+  generateTasksOnOpportunityCreated,
+  generateTasksOnProductAdded,
+  generateTasksOnStageReached,
+} from "../utils/taskGenerator";
 
 // 再エクスポート (既存の import パス互換用)
 export {
@@ -123,6 +134,9 @@ interface AppState {
   emailChangeRequests: EmailChangeRequest[];
   managerComments: ManagerComment[];
   compliments: Compliment[];
+
+  // Data: TaskTemplate (ADR-TASK-MASTER)
+  taskTemplates: TaskTemplate[];
 
   // Data: OpportunityActivityReport (ADR-B4 v2 要件6)
   oppActivityReports: OpportunityActivityReport[];
@@ -371,13 +385,46 @@ interface AppState {
     options?: { openOnly?: boolean },
   ) => Opportunity[];
   getOpportunityById: (id: string) => Opportunity | undefined;
-  // ADR-B4 v2 req7: タスク
+  // ADR-B4 v2 req7: タスク (溏物化 — 内部互换性のために残存)
   updateContractTasks: (id: string, patch: Partial<ContractTasks>) => void;
   updateInsuredTask: (
     id: string,
     personId: string,
     patch: Partial<InsuredTaskState>,
   ) => void;
+  // ADR-TASK-MASTER: 案件/商品スコープ Task CRUD (Opportunity.tasks)
+  addOppTask: (oppId: string, task: Omit<Task, "id" | "createdAt">) => void;
+  updateOppTask: (oppId: string, taskId: string, patch: Partial<Task>) => void;
+  removeOppTask: (oppId: string, taskId: string) => void;
+  toggleOppTaskDone: (
+    oppId: string,
+    taskId: string,
+    done: boolean,
+    today?: string,
+  ) => void;
+  // ADR-TASK-MASTER: 世帯スコープ Task CRUD (Household.tasks)
+  addHouseholdTask: (
+    householdId: string,
+    task: Omit<Task, "id" | "createdAt">,
+  ) => void;
+  updateHouseholdTask: (
+    householdId: string,
+    taskId: string,
+    patch: Partial<Task>,
+  ) => void;
+  removeHouseholdTask: (householdId: string, taskId: string) => void;
+  toggleHouseholdTaskDone: (
+    householdId: string,
+    taskId: string,
+    done: boolean,
+    today?: string,
+  ) => void;
+  // ADR-TASK-MASTER: TaskTemplate CRUD
+  addTaskTemplate: (
+    tmpl: Omit<TaskTemplate, "id" | "createdAt" | "updatedAt">,
+  ) => TaskTemplate;
+  updateTaskTemplate: (id: string, patch: Partial<TaskTemplate>) => void;
+  removeTaskTemplate: (id: string) => void;
   // ADR-B4 v2 req8: 提案ラウンド
   addProposalRound: (
     id: string,
@@ -465,8 +512,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   opportunities: (() => {
     if (typeof window !== "undefined" && window.localStorage) {
       try {
-        const raw = window.localStorage.getItem("nippou.opportunities.v1");
+        const raw = window.localStorage.getItem("nippou.opportunities.v2");
         if (raw) return JSON.parse(raw) as Opportunity[];
+      } catch {
+        /* ignore */
+      }
+      // v1 マイグレーション: tasks フィールドを追加
+      try {
+        const rawV1 = window.localStorage.getItem("nippou.opportunities.v1");
+        if (rawV1) {
+          const parsed = JSON.parse(rawV1) as Opportunity[];
+          return parsed.map((o) => ({ ...o, tasks: o.tasks ?? [] }));
+        }
       } catch {
         /* ignore */
       }
@@ -505,6 +562,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
     return [];
+  })(),
+  taskTemplates: (() => {
+    if (typeof window !== "undefined" && window.localStorage) {
+      try {
+        const raw = window.localStorage.getItem("nippou.taskTemplates.v1");
+        if (raw) return JSON.parse(raw) as TaskTemplate[];
+      } catch {
+        /* ignore */
+      }
+    }
+    return TASK_TEMPLATES;
   })(),
   toasts: [],
 
@@ -1060,9 +1128,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addCustomer: (customer) => {
-    const newCustomer: Customer = { ...customer, id: uid() };
-    set((s) => ({ customers: [...s.customers, newCustomer] }));
-    return newCustomer;
+    const today = format(new Date(), "yyyy-MM-dd");
+    const masters = get().taskTemplates;
+    const newCustomer: Customer = {
+      ...customer,
+      id: uid(),
+      tasks: (customer as Household).tasks ?? [],
+    };
+    // 世帯作成トリガー — 自動タスク生成
+    const generatedTasks = generateTasksOnHouseholdCreated(
+      newCustomer as Household,
+      masters,
+      today,
+    );
+    const customerWithTasks: Customer = {
+      ...newCustomer,
+      tasks: [...((newCustomer as Household).tasks ?? []), ...generatedTasks],
+    } as Customer;
+    set((s) => ({ customers: [...s.customers, customerWithTasks] }));
+    return customerWithTasks;
   },
 
   updateCustomer: (customerId, updates) => {
@@ -1571,7 +1655,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           JSON.stringify(updatedPolicies),
         );
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updatedOpps),
         );
       }
@@ -1710,12 +1794,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   // ----------------------------------------------------
   addOpportunity: (partial) => {
     const now = new Date().toISOString();
+    const today = format(new Date(), "yyyy-MM-dd");
     const totalMonthlyPremium = (partial.proposalProducts ?? []).reduce(
       (sum, p) => sum + p.monthlyPremium,
       0,
     );
-    const opp: Opportunity = {
+    const baseOpp: Opportunity = {
       ...partial,
+      tasks: partial.tasks ?? [],
       id: uid(),
       totalMonthlyPremium:
         totalMonthlyPremium > 0 ? totalMonthlyPremium : undefined,
@@ -1729,11 +1815,35 @@ export const useAppStore = create<AppState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
     };
+    // 案件作成トリガーー 自動タスク生成
+    const masters = get().taskTemplates;
+    const generatedTasks = generateTasksOnOpportunityCreated(
+      baseOpp,
+      masters,
+      today,
+    );
+    // 商品追加トリガー
+    let productTasks: Task[] = [];
+    for (const product of baseOpp.proposalProducts ?? []) {
+      productTasks = [
+        ...productTasks,
+        ...generateTasksOnProductAdded(
+          { ...baseOpp, tasks: [...generatedTasks, ...productTasks] },
+          product,
+          masters,
+          today,
+        ),
+      ];
+    }
+    const opp: Opportunity = {
+      ...baseOpp,
+      tasks: [...(partial.tasks ?? []), ...generatedTasks, ...productTasks],
+    };
     set((s) => {
       const updated = [...s.opportunities, opp];
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -1743,6 +1853,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateOpportunity: (id, patch) => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const masters = get().taskTemplates;
     set((s) => {
       const updated = s.opportunities.map((o) => {
         if (o.id !== id) return o;
@@ -1754,12 +1866,43 @@ export const useAppStore = create<AppState>((set, get) => ({
             0,
           );
           merged.totalMonthlyPremium = total > 0 ? total : undefined;
+          // 商品追加トリガー: 新規商品を検出しタスク生成
+          const oldIds = new Set((o.proposalProducts ?? []).map((p) => p.id));
+          const newProducts = (merged.proposalProducts ?? []).filter(
+            (p) => !oldIds.has(p.id),
+          );
+          let addedTasks: Task[] = [];
+          for (const product of newProducts) {
+            const newForProduct = generateTasksOnProductAdded(
+              { ...merged, tasks: [...(merged.tasks ?? []), ...addedTasks] },
+              product as ProposalProduct,
+              masters,
+              today,
+            );
+            addedTasks = [...addedTasks, ...newForProduct];
+          }
+          // 商品削除時の連動削除: scope='product' かつ productId が削除された商品に属するタスク
+          const remainingIds = new Set(
+            (merged.proposalProducts ?? []).map((p) => p.id),
+          );
+          const removedProductIds = (o.proposalProducts ?? [])
+            .filter((p) => !remainingIds.has(p.id))
+            .map((p) => p.id);
+          const existingTasks = (merged.tasks ?? []).filter(
+            (t) =>
+              !(
+                t.scope === "product" &&
+                t.productId &&
+                removedProductIds.includes(t.productId)
+              ),
+          );
+          merged.tasks = [...existingTasks, ...addedTasks];
         }
         return merged;
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -1772,7 +1915,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const updated = s.opportunities.filter((o) => o.id !== id);
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -1782,6 +1925,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   changeOpportunityStage: (id, newStage, note?, userId?) => {
     const now = new Date().toISOString();
+    const today = format(new Date(), "yyyy-MM-dd");
+    const masters = get().taskTemplates;
     const currentUserId = userId ?? get().currentUserId;
     set((s) => {
       const updated = s.opportunities.map((o) => {
@@ -1801,18 +1946,26 @@ export const useAppStore = create<AppState>((set, get) => ({
           status = "lost";
           actualCloseDate = actualCloseDate ?? now.slice(0, 10);
         }
+        // ステージ到達トリガー — 自動タスク生成
+        const stageTasks = generateTasksOnStageReached(
+          { ...o, tasks: o.tasks ?? [] },
+          newStage,
+          masters,
+          today,
+        );
         return {
           ...o,
           stage: newStage,
           status,
           actualCloseDate,
           stageHistory: [...o.stageHistory, historyEntry],
+          tasks: [...(o.tasks ?? []), ...stageTasks],
           updatedAt: now,
         };
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -2023,7 +2176,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -2061,11 +2214,205 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
       return { opportunities: updated };
+    });
+  },
+
+  // ADR-TASK-MASTER: 案件/商品スコープ Task CRUD
+  addOppTask: (oppId, task) => {
+    const now = new Date().toISOString();
+    const newTask: Task = { ...task, id: uid(), createdAt: now };
+    set((s) => {
+      const updated = s.opportunities.map((o) =>
+        o.id !== oppId
+          ? o
+          : { ...o, tasks: [...(o.tasks ?? []), newTask], updatedAt: now },
+      );
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updated),
+        );
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  updateOppTask: (oppId, taskId, patch) => {
+    const now = new Date().toISOString();
+    set((s) => {
+      const updated = s.opportunities.map((o) => {
+        if (o.id !== oppId) return o;
+        const tasks = (o.tasks ?? []).map((t) =>
+          t.id === taskId ? { ...t, ...patch } : t,
+        );
+        return { ...o, tasks, updatedAt: now };
+      });
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updated),
+        );
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  removeOppTask: (oppId, taskId) => {
+    const now = new Date().toISOString();
+    set((s) => {
+      const updated = s.opportunities.map((o) => {
+        if (o.id !== oppId) return o;
+        // 自動生成タスク（sourceMasterId != undefined）は削除不可
+        const task = (o.tasks ?? []).find((t) => t.id === taskId);
+        if (task?.sourceMasterId !== undefined) return o;
+        const tasks = (o.tasks ?? []).filter((t) => t.id !== taskId);
+        return { ...o, tasks, updatedAt: now };
+      });
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updated),
+        );
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  toggleOppTaskDone: (oppId, taskId, done, today) => {
+    const now = new Date().toISOString();
+    const todayStr = today ?? format(new Date(), "yyyy-MM-dd");
+    set((s) => {
+      const updated = s.opportunities.map((o) => {
+        if (o.id !== oppId) return o;
+        const tasks = (o.tasks ?? []).map((t) => {
+          if (t.id !== taskId) return t;
+          return {
+            ...t,
+            done,
+            doneDate: done ? (t.doneDate ?? todayStr) : undefined,
+          };
+        });
+        return { ...o, tasks, updatedAt: now };
+      });
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updated),
+        );
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  // ADR-TASK-MASTER: 世帯スコープ Task CRUD
+  addHouseholdTask: (householdId, task) => {
+    const now = new Date().toISOString();
+    const newTask: Task = { ...task, id: uid(), createdAt: now };
+    set((s) => ({
+      customers: s.customers.map((c) =>
+        c.id !== householdId
+          ? c
+          : { ...c, tasks: [...(c.tasks ?? []), newTask] },
+      ),
+    }));
+  },
+
+  updateHouseholdTask: (householdId, taskId, patch) => {
+    set((s) => ({
+      customers: s.customers.map((c) => {
+        if (c.id !== householdId) return c;
+        const tasks = (c.tasks ?? []).map((t) =>
+          t.id === taskId ? { ...t, ...patch } : t,
+        );
+        return { ...c, tasks };
+      }),
+    }));
+  },
+
+  removeHouseholdTask: (householdId, taskId) => {
+    set((s) => ({
+      customers: s.customers.map((c) => {
+        if (c.id !== householdId) return c;
+        // 自動生成タスク（sourceMasterId != undefined）は削除不可
+        const task = (c.tasks ?? []).find((t) => t.id === taskId);
+        if (task?.sourceMasterId !== undefined) return c;
+        const tasks = (c.tasks ?? []).filter((t) => t.id !== taskId);
+        return { ...c, tasks };
+      }),
+    }));
+  },
+
+  toggleHouseholdTaskDone: (householdId, taskId, done, today) => {
+    const todayStr = today ?? format(new Date(), "yyyy-MM-dd");
+    set((s) => ({
+      customers: s.customers.map((c) => {
+        if (c.id !== householdId) return c;
+        const tasks = (c.tasks ?? []).map((t) => {
+          if (t.id !== taskId) return t;
+          return {
+            ...t,
+            done,
+            doneDate: done ? (t.doneDate ?? todayStr) : t.doneDate,
+          };
+        });
+        return { ...c, tasks };
+      }),
+    }));
+  },
+
+  // ADR-TASK-MASTER: TaskTemplate CRUD
+  addTaskTemplate: (tmpl) => {
+    const now = new Date().toISOString();
+    const newTmpl: TaskTemplate = {
+      ...tmpl,
+      id: uid(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    set((s) => {
+      const updated = [...s.taskTemplates, newTmpl];
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.taskTemplates.v1",
+          JSON.stringify(updated),
+        );
+      }
+      return { taskTemplates: updated };
+    });
+    return newTmpl;
+  },
+
+  updateTaskTemplate: (id, patch) => {
+    const now = new Date().toISOString();
+    set((s) => {
+      const updated = s.taskTemplates.map((t) =>
+        t.id === id ? { ...t, ...patch, updatedAt: now } : t,
+      );
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.taskTemplates.v1",
+          JSON.stringify(updated),
+        );
+      }
+      return { taskTemplates: updated };
+    });
+  },
+
+  removeTaskTemplate: (id) => {
+    set((s) => {
+      const updated = s.taskTemplates.filter((t) => t.id !== id);
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.taskTemplates.v1",
+          JSON.stringify(updated),
+        );
+      }
+      return { taskTemplates: updated };
     });
   },
 
@@ -2090,7 +2437,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -2109,7 +2456,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -2132,7 +2479,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       });
       if (typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(
-          "nippou.opportunities.v1",
+          "nippou.opportunities.v2",
           JSON.stringify(updated),
         );
       }
@@ -2237,10 +2584,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.removeItem("nippou.deletedCustomerIds.v1");
       window.localStorage.removeItem("nippou.opportunities.v1");
+      window.localStorage.removeItem("nippou.opportunities.v2");
       window.localStorage.removeItem("nippou.policies.v1");
       window.localStorage.removeItem("nippou.policyHistory.v1");
       window.localStorage.removeItem("nippou.salesTargets.v1");
       window.localStorage.removeItem("nippou.oppActivityReports.v1");
+      window.localStorage.removeItem("nippou.taskTemplates.v1");
     }
     set({
       currentRole: "general",
@@ -2267,6 +2616,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       policyStatusHistory: POLICY_STATUS_HISTORY,
       salesTargets: SALES_TARGETS,
       oppActivityReports: [],
+      taskTemplates: TASK_TEMPLATES,
       toasts: [],
     });
   },
