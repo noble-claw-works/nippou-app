@@ -22,8 +22,6 @@ import type {
   Coverage,
   SalesTarget,
   ContractMilestones,
-  ContractTasks,
-  InsuredTaskState,
   DeficiencyItem,
   TaskTemplate,
   TaskPriority,
@@ -1226,12 +1224,6 @@ function mkOpp(
     ...(opts.channelId !== undefined ? { channelId: opts.channelId } : {}),
     ...(opts.confidence !== undefined ? { confidence: opts.confidence } : {}),
     ...(opts.milestones !== undefined ? { milestones: opts.milestones } : {}),
-    ...(opts.contractTasks !== undefined
-      ? { contractTasks: opts.contractTasks }
-      : {}),
-    ...(opts.insuredTasks !== undefined
-      ? { insuredTasks: opts.insuredTasks }
-      : {}),
     ...(opts.deficiencies !== undefined
       ? { deficiencies: opts.deficiencies }
       : {}),
@@ -1307,15 +1299,6 @@ export const OPPORTUNITIES: Opportunity[] = [
       lifePlanDate: d(18),
       proposalDate: d(5),
     } as ContractMilestones,
-    insuredTasks: [
-      {
-        personId: "p_c1_head",
-        intentSheetDone: true,
-        intentSheetDate: d(14),
-        signatureDone: false,
-        memo: "署名は次回面談時",
-      } as InsuredTaskState,
-    ],
   }),
 
   // c2: 齋藤 和久 — 医療保険 (negotiation ステージ)
@@ -1443,10 +1426,6 @@ export const OPPORTUNITIES: Opportunity[] = [
       applicationDate: d(1),
       inceptionDate: f(30),
     } as ContractMilestones,
-    contractTasks: {
-      policyCollected: false,
-      policyReviewed: false,
-    } as ContractTasks,
   }),
 
   // c6: 鈴木 花代 — 生命保険 見直し (approach ステージ)
@@ -1855,21 +1834,6 @@ export const OPPORTUNITIES: Opportunity[] = [
         proposalDate: d(6),
         // applicationDate: 未入力（商品ごとに異なるため商品側で管理）
       } as ContractMilestones,
-      insuredTasks: [
-        {
-          personId: "p_demo1_head",
-          intentSheetDone: true,
-          intentSheetDate: d(6),
-          signatureDone: false,
-          memo: "生命保険の意向シートは回収済み",
-        } as InsuredTaskState,
-        {
-          personId: "p_demo1_spouse",
-          intentSheetDone: false,
-          signatureDone: false,
-          memo: "次回面談で回収予定",
-        } as InsuredTaskState,
-      ],
     },
   ),
 ];

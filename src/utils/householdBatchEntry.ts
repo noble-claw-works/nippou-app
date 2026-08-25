@@ -7,8 +7,6 @@ import type {
   ProposalProduct,
   ConfidenceUnified,
   ContractMilestones,
-  ContractTasks,
-  InsuredTaskState,
   DeficiencyItem,
 } from "../types";
 import type { SalesChannel } from "../types";
@@ -74,8 +72,6 @@ export function createEmptyDraft(params: {
     confidence: undefined,
     // B-2b 拡張フィールド（新規は空で初期化）
     milestones: undefined,
-    contractTasks: undefined,
-    insuredTasks: undefined,
     deficiencies: undefined,
     // ドラフト専用
     _isNew: true,
@@ -110,8 +106,6 @@ export function duplicateDraft(
     channelId: params.channelId ?? source.channelId,
     // B-2b フィールドは複製時に引き継がない（新規案件は空）
     milestones: undefined,
-    contractTasks: undefined,
-    insuredTasks: undefined,
     deficiencies: undefined,
     stageHistory: [],
     createdAt: new Date().toISOString(),
@@ -129,77 +123,6 @@ export function duplicateDraft(
 /** ContractMilestones の空オブジェクトを生成 */
 export function createEmptyMilestones(): ContractMilestones {
   return {};
-}
-
-/** ContractTasks の空オブジェクトを生成 */
-export function createEmptyContractTasks(): ContractTasks {
-  return {
-    policyCollected: false,
-    policyReviewed: false,
-  };
-}
-
-/**
- * proposalProducts の insuredPersonId 集合から InsuredTaskState[] を遅延生成する
- * 既存の insuredTasks があれば保持し、不足する personId のみ追加する（削除はしない）
- */
-export function syncInsuredTasks(
-  proposalProducts: ProposalProduct[],
-  currentTasks: InsuredTaskState[] | undefined,
-): InsuredTaskState[] {
-  // insuredPersonId の重複を排除した一覧
-  const personIds = Array.from(
-    new Set(proposalProducts.map((p) => p.insuredPersonId).filter(Boolean)),
-  );
-  const existingTasks = currentTasks ?? [];
-  const result: InsuredTaskState[] = [...existingTasks];
-
-  for (const personId of personIds) {
-    if (!result.some((t) => t.personId === personId)) {
-      result.push({
-        personId,
-        intentSheetDone: false,
-        intentSheetDate: undefined,
-        signatureDone: false,
-        signatureDate: undefined,
-      });
-    }
-  }
-  return result;
-}
-
-/**
- * 全被保険者の意向シートを一括トグル
- * allDone=true: 全員チェック+当日日付
- * allDone=false: 全員チェック解除
- */
-export function toggleAllIntentSheet(
-  tasks: InsuredTaskState[],
-  allDone: boolean,
-  today: string,
-): InsuredTaskState[] {
-  return tasks.map((t) => ({
-    ...t,
-    intentSheetDone: allDone,
-    intentSheetDate: allDone ? t.intentSheetDate || today : t.intentSheetDate,
-  }));
-}
-
-/**
- * 全被保険者の署名を一括トグル
- * allDone=true: 全員チェック+当日日付
- * allDone=false: 全員チェック解除
- */
-export function toggleAllSignature(
-  tasks: InsuredTaskState[],
-  allDone: boolean,
-  today: string,
-): InsuredTaskState[] {
-  return tasks.map((t) => ({
-    ...t,
-    signatureDone: allDone,
-    signatureDate: allDone ? t.signatureDate || today : t.signatureDate,
-  }));
 }
 
 /** 不備アイテムを新規作成 */

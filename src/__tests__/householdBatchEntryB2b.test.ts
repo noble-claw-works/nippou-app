@@ -1,15 +1,12 @@
 // =====================================================
 // 世帯まとめ入力 B-2b — 単体テスト (Vitest)
+// ADR-TASK-MASTER 第2パス: syncInsuredTasks/toggleAll* 削除に伴いテスト書き換え済み
+// 現在テスト対象: getMilestoneOrderWarnings / 不備操作 / duplicateDraft / toDraft / createEmptyDraft
 // testing-standards 準拠: 「<条件>のとき<期待結果>」形式
-// 対象: ステージ日付順序警告・被保険者タスク遅延生成/一括トグル・
-//       不備の追加削除・複製時B-2bフィールドを継承しないこと
 // =====================================================
 import { describe, test, expect } from 'vitest';
 import {
   getMilestoneOrderWarnings,
-  syncInsuredTasks,
-  toggleAllIntentSheet,
-  toggleAllSignature,
   createEmptyDeficiency,
   removeDeficiency,
   updateDeficiency,
@@ -20,10 +17,8 @@ import {
   MILESTONE_LABELS,
 } from '../utils/householdBatchEntry';
 import type {
-  ProposalProduct,
   Opportunity,
   ContractMilestones,
-  InsuredTaskState,
   DeficiencyItem,
 } from '../types';
 
@@ -45,17 +40,8 @@ const baseOpportunity: Opportunity = {
   memo: '',
   createdAt: '2026-07-01T00:00:00.000Z',
   updatedAt: '2026-07-01T00:00:00.000Z',
+  tasks: [],
 };
-
-const makeProduct = (id: string, insuredPersonId: string): ProposalProduct => ({
-  id,
-  productCategory: 'life',
-  productName: '生保',
-  insurer: '◯◯生命',
-  insuredPersonId,
-  monthlyPremium: 8000,
-  memo: '',
-});
 
 // ─────────────────────────────────────────────────────────────
 // 1. ステージ日付順序警告 (getMilestoneOrderWarnings)
@@ -136,147 +122,23 @@ describe('getMilestoneOrderWarnings', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 2. 被保険者タスクの遅延生成 (syncInsuredTasks)
-// ─────────────────────────────────────────────────────────────
-describe('syncInsuredTasks', () => {
-  test('商品が0件のとき空配列を返すこと', () => {
-    const result = syncInsuredTasks([], undefined);
-    expect(result).toHaveLength(0);
-  });
-
-  test('商品が1件のとき被保険者が1件生成されること', () => {
-    const products = [makeProduct('pp1', 'per1')];
-    const result = syncInsuredTasks(products, undefined);
-    expect(result).toHaveLength(1);
-    expect(result[0].personId).toBe('per1');
-    expect(result[0].intentSheetDone).toBe(false);
-    expect(result[0].signatureDone).toBe(false);
-  });
-
-  test('同じ被保険者が複数商品にいるとき重複排除されること', () => {
-    const products = [
-      makeProduct('pp1', 'per1'),
-      makeProduct('pp2', 'per1'),  // 同じper1
-      makeProduct('pp3', 'per2'),
-    ];
-    const result = syncInsuredTasks(products, undefined);
-    expect(result).toHaveLength(2);
-    const personIds = result.map(t => t.personId);
-    expect(personIds).toContain('per1');
-    expect(personIds).toContain('per2');
-  });
-
-  test('既存のタスクがある場合、既存を保持して不足分だけ追加すること', () => {
-    const products = [
-      makeProduct('pp1', 'per1'),
-      makeProduct('pp2', 'per2'),
-    ];
-    const existing: InsuredTaskState[] = [
-      { personId: 'per1', intentSheetDone: true, intentSheetDate: '2026-07-01', signatureDone: false },
-    ];
-    const result = syncInsuredTasks(products, existing);
-    expect(result).toHaveLength(2);
-    const per1Task = result.find(t => t.personId === 'per1');
-    expect(per1Task?.intentSheetDone).toBe(true);  // 既存を保持
-    const per2Task = result.find(t => t.personId === 'per2');
-    expect(per2Task?.intentSheetDone).toBe(false);  // 新規追加
-  });
-
-  test('insuredPersonIdが空文字の商品は無視されること', () => {
-    const products = [
-      makeProduct('pp1', ''),   // 空文字
-      makeProduct('pp2', 'per1'),
-    ];
-    const result = syncInsuredTasks(products, undefined);
-    expect(result).toHaveLength(1);
-    expect(result[0].personId).toBe('per1');
-  });
-});
-
-// ─────────────────────────────────────────────────────────────
-// 3. 一括トグル (toggleAllIntentSheet / toggleAllSignature)
-// ─────────────────────────────────────────────────────────────
-describe('toggleAllIntentSheet', () => {
-  const tasks: InsuredTaskState[] = [
-    { personId: 'per1', intentSheetDone: false, signatureDone: false },
-    { personId: 'per2', intentSheetDone: false, signatureDone: false },
-  ];
-
-  test('allDone=trueのとき全員の意向シートがチェックされること', () => {
-    const result = toggleAllIntentSheet(tasks, true, '2026-07-11');
-    expect(result.every(t => t.intentSheetDone)).toBe(true);
-  });
-
-  test('allDone=trueのとき日付が当日で設定されること', () => {
-    const result = toggleAllIntentSheet(tasks, true, '2026-07-11');
-    expect(result.every(t => t.intentSheetDate === '2026-07-11')).toBe(true);
-  });
-
-  test('allDone=trueのとき既に日付があれば既存を維持すること', () => {
-    const tasksWithDate: InsuredTaskState[] = [
-      { personId: 'per1', intentSheetDone: true, intentSheetDate: '2026-07-01', signatureDone: false },
-    ];
-    const result = toggleAllIntentSheet(tasksWithDate, true, '2026-07-11');
-    expect(result[0].intentSheetDate).toBe('2026-07-01');  // 既存の日付を維持
-  });
-
-  test('allDone=falseのとき全員のチェックが外れること', () => {
-    const checkedTasks: InsuredTaskState[] = [
-      { personId: 'per1', intentSheetDone: true, intentSheetDate: '2026-07-01', signatureDone: false },
-      { personId: 'per2', intentSheetDone: true, intentSheetDate: '2026-07-02', signatureDone: false },
-    ];
-    const result = toggleAllIntentSheet(checkedTasks, false, '2026-07-11');
-    expect(result.every(t => !t.intentSheetDone)).toBe(true);
-  });
-
-  test('signatureDoneには影響しないこと', () => {
-    const result = toggleAllIntentSheet(tasks, true, '2026-07-11');
-    expect(result.every(t => !t.signatureDone)).toBe(true);
-  });
-});
-
-describe('toggleAllSignature', () => {
-  const tasks: InsuredTaskState[] = [
-    { personId: 'per1', intentSheetDone: false, signatureDone: false },
-    { personId: 'per2', intentSheetDone: false, signatureDone: false },
-  ];
-
-  test('allDone=trueのとき全員の署名がチェックされること', () => {
-    const result = toggleAllSignature(tasks, true, '2026-07-11');
-    expect(result.every(t => t.signatureDone)).toBe(true);
-  });
-
-  test('allDone=trueのとき日付が当日で設定されること', () => {
-    const result = toggleAllSignature(tasks, true, '2026-07-11');
-    expect(result.every(t => t.signatureDate === '2026-07-11')).toBe(true);
-  });
-
-  test('allDone=falseのとき全員のチェックが外れること', () => {
-    const checkedTasks: InsuredTaskState[] = [
-      { personId: 'per1', intentSheetDone: false, signatureDone: true, signatureDate: '2026-07-01' },
-    ];
-    const result = toggleAllSignature(checkedTasks, false, '2026-07-11');
-    expect(result.every(t => !t.signatureDone)).toBe(true);
-  });
-
-  test('intentSheetDoneには影響しないこと', () => {
-    const result = toggleAllSignature(tasks, true, '2026-07-11');
-    expect(result.every(t => !t.intentSheetDone)).toBe(true);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────
-// 4. 不備の追加削除 (createEmptyDeficiency / removeDeficiency / updateDeficiency)
+// 2. 不備の CRUD (createEmptyDeficiency / removeDeficiency / updateDeficiency)
+// ADR-TASK-MASTER: 旧 syncInsuredTasks/toggleAll* は tasks[] に統合済みにつき削除
 // ─────────────────────────────────────────────────────────────
 describe('createEmptyDeficiency', () => {
-  test('空の不備アイテムが生成されること', () => {
+  test('idが非空文字列であること', () => {
+    const def = createEmptyDeficiency();
+    expect(typeof def.id).toBe('string');
+    expect(def.id.length).toBeGreaterThan(0);
+  });
+
+  test('初期値 item は空文字・resolved は false であること', () => {
     const def = createEmptyDeficiency();
     expect(def.item).toBe('');
     expect(def.resolved).toBe(false);
-    expect(def.id).toBeTruthy();
   });
 
-  test('複数回呼ぶとそれぞれ異なるIDが生成されること', () => {
+  test('2回生成されたIDが異なること（一意性）', () => {
     const def1 = createEmptyDeficiency();
     const def2 = createEmptyDeficiency();
     expect(def1.id).not.toBe(def2.id);
@@ -334,7 +196,8 @@ describe('updateDeficiency', () => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// 5. 複製時にB-2bフィールドを引き継がないこと
+// 3. 複製時にB-2bフィールドを引き継がないこと
+// ADR-TASK-MASTER: 旧固定タスクフィールド廃止済み（tasks[] に統合）
 // ─────────────────────────────────────────────────────────────
 describe('duplicateDraft — B-2bフィールドの非継承', () => {
   const milestones: ContractMilestones = {
@@ -347,24 +210,12 @@ describe('duplicateDraft — B-2bフィールドの非継承', () => {
     channelId: 'ch_agency_shinjuku',
     confidence: 'A',
     milestones,
-    contractTasks: { policyCollected: true, policyCollectDate: '2026-07-01', policyReviewed: false },
-    insuredTasks: [{ personId: 'per1', intentSheetDone: true, signatureDone: false }],
     deficiencies: [{ id: 'def1', item: '告知書未記入', resolved: false }],
   });
 
   test('複製時にmilestonesが引き継がれないこと(undefined)', () => {
     const dup = duplicateDraft(sourceWithB2b, {});
     expect(dup.milestones).toBeUndefined();
-  });
-
-  test('複製時にcontractTasksが引き継がれないこと(undefined)', () => {
-    const dup = duplicateDraft(sourceWithB2b, {});
-    expect(dup.contractTasks).toBeUndefined();
-  });
-
-  test('複製時にinsuredTasksが引き継がれないこと(undefined)', () => {
-    const dup = duplicateDraft(sourceWithB2b, {});
-    expect(dup.insuredTasks).toBeUndefined();
   });
 
   test('複製時にdeficienciesが引き継がれないこと(undefined)', () => {
@@ -381,10 +232,16 @@ describe('duplicateDraft — B-2bフィールドの非継承', () => {
     const dup = duplicateDraft(sourceWithB2b, {});
     expect(dup.confidence).toBeUndefined();
   });
+
+  test('複製時に tasks は空配列でリセットされること', () => {
+    // ADR-TASK-MASTER: tasks は複製時に引き継がない（新案件として再生成される）
+    const dup = duplicateDraft(sourceWithB2b, {});
+    expect(dup.tasks ?? []).toHaveLength(0);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
-// 6. createEmptyDraft の B-2bフィールド初期化
+// 4. createEmptyDraft の B-2bフィールド初期化
 // ─────────────────────────────────────────────────────────────
 describe('createEmptyDraft — B-2bフィールドの初期化', () => {
   test('新規ドラフトはmilestonesがundefinedで生成されること', () => {
@@ -392,24 +249,20 @@ describe('createEmptyDraft — B-2bフィールドの初期化', () => {
     expect(draft.milestones).toBeUndefined();
   });
 
-  test('新規ドラフトはcontractTasksがundefinedで生成されること', () => {
-    const draft = createEmptyDraft({ householdId: 'hh1', ownerId: 'u1' });
-    expect(draft.contractTasks).toBeUndefined();
-  });
-
-  test('新規ドラフトはinsuredTasksがundefinedで生成されること', () => {
-    const draft = createEmptyDraft({ householdId: 'hh1', ownerId: 'u1' });
-    expect(draft.insuredTasks).toBeUndefined();
-  });
-
   test('新規ドラフトはdeficienciesがundefinedで生成されること', () => {
     const draft = createEmptyDraft({ householdId: 'hh1', ownerId: 'u1' });
     expect(draft.deficiencies).toBeUndefined();
   });
+
+  test('新規ドラフトは tasks が空配列で生成されること', () => {
+    // ADR-TASK-MASTER: tasks は空配列（案件作成後に taskGenerator で生成される）
+    const draft = createEmptyDraft({ householdId: 'hh1', ownerId: 'u1' });
+    expect(draft.tasks ?? []).toHaveLength(0);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────
-// 7. 既存案件のtoDraftはB-2bフィールドを保持すること
+// 5. 既存案件のtoDraftはB-2bフィールドを保持すること
 // ─────────────────────────────────────────────────────────────
 describe('toDraft — B-2bフィールドの保持', () => {
   const milestones: ContractMilestones = {
@@ -423,8 +276,6 @@ describe('toDraft — B-2bフィールドの保持', () => {
   const existing: Opportunity = {
     ...baseOpportunity,
     milestones,
-    contractTasks: { policyCollected: true, policyReviewed: false },
-    insuredTasks: [{ personId: 'per1', intentSheetDone: true, signatureDone: false }],
     deficiencies,
   };
 
@@ -433,18 +284,23 @@ describe('toDraft — B-2bフィールドの保持', () => {
     expect(draft.milestones).toEqual(milestones);
   });
 
-  test('既存案件のcontractTasksがドラフトに引き継がれること', () => {
-    const draft = toDraft(existing);
-    expect(draft.contractTasks?.policyCollected).toBe(true);
-  });
-
-  test('既存案件のinsuredTasksがドラフトに引き継がれること', () => {
-    const draft = toDraft(existing);
-    expect(draft.insuredTasks?.[0]?.intentSheetDone).toBe(true);
-  });
-
   test('既存案件のdeficienciesがドラフトに引き継がれること', () => {
     const draft = toDraft(existing);
     expect(draft.deficiencies?.[0]?.item).toBe('告知書未記入');
+  });
+
+  test('既存案件の tasks がドラフトに引き継がれること', () => {
+    // ADR-TASK-MASTER: tasks は toDraft で保持される
+    const existingWithTasks: Opportunity = {
+      ...baseOpportunity,
+      tasks: [
+        { id: 'task1', title: '初回面談メモ', scope: 'opportunity', done: true,
+          doneDate: '2026-06-01', sourceMasterId: 'm1', createdAt: '2026-06-01T00:00:00Z',
+          rolledOver: false, priority: 'medium' },
+      ],
+    };
+    const draft = toDraft(existingWithTasks);
+    expect(draft.tasks).toHaveLength(1);
+    expect(draft.tasks?.[0]?.done).toBe(true);
   });
 });

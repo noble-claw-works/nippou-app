@@ -245,24 +245,6 @@ export interface ContractMilestones {
   lostDate?: string; // 失注日
 }
 
-/** 案件単位のタスク（証券回収・ポリシーレビュー）。日付は予定 or 実施日。(§3-3) */
-export interface ContractTasks {
-  policyCollectDate?: string; // 証券回収日 (YYYY-MM-DD)
-  policyCollected: boolean; // 回収済みフラグ（salesPerf policy_collected 源泉）
-  policyReviewDate?: string; // ポリシーレビュー日
-  policyReviewed: boolean; // レビュー済みフラグ
-}
-
-/** 被保険者(Person)単位の意向シート・署名タスク状態。(§3-3) */
-export interface InsuredTaskState {
-  personId: string; // 対象被保険者 Person.id
-  intentSheetDone: boolean; // 意向シート回収済み
-  intentSheetDate?: string; // 意向シート日付
-  signatureDone: boolean; // 署名済み
-  signatureDate?: string; // 署名日付
-  memo?: string;
-}
-
 /**
  * 不備項目。選択式ではなく「転記方式」——項目名と内容を書き写す。(§3-5)
  * ★主上確定 2026-07-08: 選択ではなく転記方式
@@ -327,19 +309,6 @@ export interface OpportunityActivityReport {
   updatedAt: string;
 }
 
-/** UI 表示用の統一タスク行（永続型ではなく導出ビュー）。ADR-B4 v2 追加機能1。 */
-export interface OppTaskRow {
-  key: string; // 例 'policyCollect' / `intentSheet:${personId}`
-  kind: "policyCollect" | "policyReview" | "intentSheet" | "signature";
-  label: string; // '証券回収' / 'ポリシーレビュー' / '意向シート' / '署名'
-  scope: "opportunity" | "insured";
-  personId?: string; // scope='insured' のとき対象被保険者
-  personName?: string;
-  done: boolean;
-  date?: string; // 完了日 or 予定日
-  ownerId?: string; // 担当（既定=案件 ownerId）
-}
-
 export interface Opportunity {
   id: string;
   householdId: string;
@@ -370,10 +339,6 @@ export interface Opportunity {
   channelId?: string; // チャネル（葉）SalesChannel.id
   confidence?: ConfidenceUnified; // 見込確度（★統一ラダー・案件単位1値・主上確定）
   milestones?: ContractMilestones; // ステージ日付（8種・ADR-B4 v2 contractDate 追加）
-  /** @deprecated ADR-TASK-MASTER: tasks[]に移行済み。seed・新規コードでは使用禁止 */
-  contractTasks?: ContractTasks;
-  /** @deprecated ADR-TASK-MASTER: tasks[]に移行済み。seed・新規コードでは使用禁止 */
-  insuredTasks?: InsuredTaskState[];
   tasks?: Task[]; // ★NEW 案件・商品スコープの汎用タスク (ADR-TASK-MASTER)
   deficiencies?: DeficiencyItem[]; // ★不備（項目化・転記方式。主上確定 2026-07-08）
   proposals?: ProposalRound[]; // ★NEW 提案ラウンド履歴（ADR-B4 v2 追加機能2）

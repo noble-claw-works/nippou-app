@@ -32,8 +32,6 @@ import type {
   TargetScope,
   TargetPeriodType,
   OpportunityActivityReport,
-  ContractTasks,
-  InsuredTaskState,
   ProposalRound,
   Task,
   TaskTemplate,
@@ -385,13 +383,6 @@ interface AppState {
     options?: { openOnly?: boolean },
   ) => Opportunity[];
   getOpportunityById: (id: string) => Opportunity | undefined;
-  // ADR-B4 v2 req7: タスク (溏物化 — 内部互换性のために残存)
-  updateContractTasks: (id: string, patch: Partial<ContractTasks>) => void;
-  updateInsuredTask: (
-    id: string,
-    personId: string,
-    patch: Partial<InsuredTaskState>,
-  ) => void;
   // ADR-TASK-MASTER: 案件/商品スコープ Task CRUD (Opportunity.tasks)
   addOppTask: (oppId: string, task: Omit<Task, "id" | "createdAt">) => void;
   updateOppTask: (oppId: string, taskId: string, patch: Partial<Task>) => void;
@@ -2154,72 +2145,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   getOpportunityById: (id) => {
     return get().opportunities.find((o) => o.id === id);
-  },
-
-  // ADR-B4 v2 req7: タスク操作
-  updateContractTasks: (id, patch) => {
-    set((s) => {
-      const updated = s.opportunities.map((o) => {
-        if (o.id !== id) return o;
-        const merged = {
-          ...o,
-          contractTasks: {
-            ...(o.contractTasks ?? {
-              policyCollected: false,
-              policyReviewed: false,
-            }),
-            ...patch,
-          },
-          updatedAt: new Date().toISOString(),
-        };
-        return merged;
-      });
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(
-          "nippou.opportunities.v2",
-          JSON.stringify(updated),
-        );
-      }
-      return { opportunities: updated };
-    });
-  },
-
-  updateInsuredTask: (id, personId, patch) => {
-    set((s) => {
-      const updated = s.opportunities.map((o) => {
-        if (o.id !== id) return o;
-        const existing = o.insuredTasks ?? [];
-        const idx = existing.findIndex((t) => t.personId === personId);
-        let nextTasks;
-        if (idx >= 0) {
-          nextTasks = existing.map((t, i) =>
-            i === idx ? { ...t, ...patch } : t,
-          );
-        } else {
-          nextTasks = [
-            ...existing,
-            {
-              personId,
-              intentSheetDone: false,
-              signatureDone: false,
-              ...patch,
-            },
-          ];
-        }
-        return {
-          ...o,
-          insuredTasks: nextTasks,
-          updatedAt: new Date().toISOString(),
-        };
-      });
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(
-          "nippou.opportunities.v2",
-          JSON.stringify(updated),
-        );
-      }
-      return { opportunities: updated };
-    });
   },
 
   // ADR-TASK-MASTER: 案件/商品スコープ Task CRUD

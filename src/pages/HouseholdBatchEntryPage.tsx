@@ -17,7 +17,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import type {
   Opportunity, ProposalProduct, ProductCategory, ConfidenceUnified,
-  ContractMilestones, ContractTasks, InsuredTaskState, DeficiencyItem,
+  ContractMilestones, DeficiencyItem,
 } from '../types';
 import {
   calcTotalMonthlyPremium,
@@ -37,9 +37,6 @@ import {
   MILESTONE_LABELS,
   MILESTONE_ORDER,
   getMilestoneOrderWarnings,
-  syncInsuredTasks,
-  toggleAllIntentSheet,
-  toggleAllSignature,
   createEmptyDeficiency,
   removeDeficiency,
   updateDeficiency,
@@ -360,48 +357,6 @@ function OpportunityCard({
     [milestones, onUpdate]
   );
 
-  // B-2b: contractTasks 操作（useMemoで安定化）
-  const contractTasks = useMemo<ContractTasks>(
-    () => draft.contractTasks ?? { policyCollected: false, policyReviewed: false },
-    [draft.contractTasks]
-  );
-
-  const handleContractTaskChange = useCallback(
-    (patch: Partial<ContractTasks>) => {
-      onUpdate({ contractTasks: { ...contractTasks, ...patch } });
-    },
-    [contractTasks, onUpdate]
-  );
-
-  // B-2b: insuredTasks 操作（proposalProducts の insuredPersonId から遅延生成）
-  const insuredTasks = useMemo<InsuredTaskState[]>(
-    () => syncInsuredTasks(draft.proposalProducts, draft.insuredTasks),
-    [draft.proposalProducts, draft.insuredTasks]
-  );
-
-  const allIntentDone = insuredTasks.length > 0 && insuredTasks.every(t => t.intentSheetDone);
-  const allSignatureDone = insuredTasks.length > 0 && insuredTasks.every(t => t.signatureDone);
-
-  const handleToggleAllIntent = useCallback(() => {
-    const next = toggleAllIntentSheet(insuredTasks, !allIntentDone, todayStr);
-    onUpdate({ insuredTasks: next });
-  }, [insuredTasks, allIntentDone, todayStr, onUpdate]);
-
-  const handleToggleAllSignature = useCallback(() => {
-    const next = toggleAllSignature(insuredTasks, !allSignatureDone, todayStr);
-    onUpdate({ insuredTasks: next });
-  }, [insuredTasks, allSignatureDone, todayStr, onUpdate]);
-
-  const handleInsuredTaskChange = useCallback(
-    (personId: string, patch: Partial<InsuredTaskState>) => {
-      const updated = insuredTasks.map(t =>
-        t.personId === personId ? { ...t, ...patch } : t
-      );
-      onUpdate({ insuredTasks: updated });
-    },
-    [insuredTasks, onUpdate]
-  );
-
   // B-2b: deficiencies 操作（useMemoで安定化）
   const deficiencies = useMemo<DeficiencyItem[]>(
     () => draft.deficiencies ?? [],
@@ -640,8 +595,7 @@ function OpportunityCard({
               </span>
               <span className="text-xs font-semibold text-gray-700">▸ 詳細（日付・タスク・不備）</span>
               {(Object.values(milestones).some(Boolean) || deficiencies.length > 0 ||
-                contractTasks.policyCollected || contractTasks.policyReviewed ||
-                insuredTasks.some(t => t.intentSheetDone || t.signatureDone)) && (
+                (draft.tasks ?? []).some(t => t.done)) && (
                 <span className="ml-1 text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">入力済</span>
               )}
               {milestoneWarnings.length > 0 && (
@@ -686,122 +640,44 @@ function OpportunityCard({
                   </div>
                 </div>
 
-                {/* --- 案件単位タスク --- */}
+                {/* --- 案件タスク（scope='opportunity'）--- */}
                 <div>
                   <p className="text-[11px] font-semibold text-gray-600 mb-2">☑️ タスク</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[44px]">
-                        <input type="checkbox" checked={contractTasks.policyCollected}
-                          onChange={e => handleContractTaskChange({ policyCollected: e.target.checked })}
-                          className="w-4 h-4 rounded accent-blue-600" />
-                        <span>証券回収</span>
-                      </label>
-                      <input type="date" value={contractTasks.policyCollectDate ?? ''}
-                        onChange={e => handleContractTaskChange({ policyCollectDate: e.target.value || undefined })}
-                        className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        aria-label="証券回収日" />
-                      {!contractTasks.policyCollectDate && (
-                        <button type="button" onClick={() => handleContractTaskChange({ policyCollectDate: todayStr })}
-                          className="text-[11px] px-1.5 py-0.5 text-blue-600 hover:text-blue-700 border border-blue-300 rounded">今日</button>
-                      )}
+                  {(draft.tasks ?? []).filter(t => t.scope === 'opportunity').length === 0 ? (
+                    <div className="px-3 py-4 border border-dashed border-gray-200 rounded-lg text-center">
+                      <p className="text-xs text-gray-400">タスクなし（案件作成後に自動生成されます）</p>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[44px]">
-                        <input type="checkbox" checked={contractTasks.policyReviewed}
-                          onChange={e => handleContractTaskChange({ policyReviewed: e.target.checked })}
-                          className="w-4 h-4 rounded accent-blue-600" />
-                        <span>ポリシーレビュー</span>
-                      </label>
-                      <input type="date" value={contractTasks.policyReviewDate ?? ''}
-                        onChange={e => handleContractTaskChange({ policyReviewDate: e.target.value || undefined })}
-                        className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        aria-label="ポリシーレビュー日" />
-                      {!contractTasks.policyReviewDate && (
-                        <button type="button" onClick={() => handleContractTaskChange({ policyReviewDate: todayStr })}
-                          className="text-[11px] px-1.5 py-0.5 text-blue-600 hover:text-blue-700 border border-blue-300 rounded">今日</button>
-                      )}
+                  ) : (
+                    <div className="space-y-2">
+                      {(draft.tasks ?? []).filter(t => t.scope === 'opportunity').map(task => (
+                        <div key={task.id} className="flex items-center gap-2 flex-wrap">
+                          <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer min-h-[44px]">
+                            <input
+                              type="checkbox"
+                              checked={task.done}
+                              onChange={e => {
+                                const done = e.target.checked;
+                                const updatedTasks = (draft.tasks ?? []).map(t =>
+                                  t.id === task.id
+                                    ? { ...t, done, doneDate: done ? (t.doneDate || todayStr) : t.doneDate }
+                                    : t
+                                );
+                                onUpdate({ tasks: updatedTasks });
+                              }}
+                              className="w-4 h-4 rounded accent-blue-600"
+                            />
+                            <span className={task.done ? 'line-through text-gray-400' : ''}>{task.title}</span>
+                          </label>
+                          {task.done && task.doneDate && (
+                            <span className="text-[10px] text-gray-400">{task.doneDate}</span>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* --- 被保険者単位タスク --- */}
-                {insuredTasks.length > 0 ? (
-                  <div>
-                    <p className="text-[11px] font-semibold text-gray-600 mb-2">📝 意向シート・署名（被保険者単位）</p>
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="grid grid-cols-[1fr_auto_auto] bg-gray-50 border-b border-gray-200 px-3 py-2 gap-2">
-                        <span className="text-[10px] font-medium text-gray-500">被保険者</span>
-                        <button type="button" onClick={handleToggleAllIntent}
-                          className={`text-[10px] font-medium px-2 py-1 rounded min-h-[36px] min-w-[72px] border transition-colors ${
-                            allIntentDone ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
-                          }`}
-                          aria-pressed={allIntentDone}>
-                          意向シート {allIntentDone ? '☑' : '☐'}
-                        </button>
-                        <button type="button" onClick={handleToggleAllSignature}
-                          className={`text-[10px] font-medium px-2 py-1 rounded min-h-[36px] min-w-[64px] border transition-colors ${
-                            allSignatureDone ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300 hover:bg-blue-50'
-                          }`}
-                          aria-pressed={allSignatureDone}>
-                          署名 {allSignatureDone ? '☑' : '☐'}
-                        </button>
-                      </div>
-                      {insuredTasks.map(task => {
-                        const personName = persons.find(p => p.id === task.personId)?.name ?? task.personId;
-                        return (
-                          <div key={task.personId} className="grid grid-cols-[1fr_auto_auto] border-b border-gray-100 last:border-0 px-3 py-2 gap-2 items-center">
-                            <span className="text-xs text-gray-700 truncate">{personName}</span>
-                            <div className="flex flex-col items-center gap-1">
-                              <label className="flex items-center gap-1 cursor-pointer min-h-[36px]">
-                                <input type="checkbox" checked={task.intentSheetDone}
-                                  onChange={e => {
-                                    const done = e.target.checked;
-                                    handleInsuredTaskChange(task.personId, {
-                                      intentSheetDone: done,
-                                      intentSheetDate: done ? (task.intentSheetDate || todayStr) : task.intentSheetDate,
-                                    });
-                                  }}
-                                  className="w-4 h-4 accent-blue-600" />
-                              </label>
-                              <input type="date" value={task.intentSheetDate ?? ''}
-                                onChange={e => handleInsuredTaskChange(task.personId, { intentSheetDate: e.target.value || undefined })}
-                                className="border border-gray-200 rounded px-1 py-0.5 text-[10px] w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                aria-label={`${personName} 意向シート日付`} />
-                            </div>
-                            <div className="flex flex-col items-center gap-1">
-                              <label className="flex items-center gap-1 cursor-pointer min-h-[36px]">
-                                <input type="checkbox" checked={task.signatureDone}
-                                  onChange={e => {
-                                    const done = e.target.checked;
-                                    handleInsuredTaskChange(task.personId, {
-                                      signatureDone: done,
-                                      signatureDate: done ? (task.signatureDate || todayStr) : task.signatureDate,
-                                    });
-                                  }}
-                                  className="w-4 h-4 accent-blue-600" />
-                              </label>
-                              <input type="date" value={task.signatureDate ?? ''}
-                                onChange={e => handleInsuredTaskChange(task.personId, { signatureDate: e.target.value || undefined })}
-                                className="border border-gray-200 rounded px-1 py-0.5 text-[10px] w-28 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                aria-label={`${personName} 署名日付`} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1">商品の被保険者が確定すると行が生成されます</p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-[11px] font-semibold text-gray-600 mb-2">📝 意向シート・署名（被保険者単位）</p>
-                    <div className="px-3 py-4 border border-dashed border-gray-200 rounded-lg text-center">
-                      <p className="text-xs text-gray-400">商品を登録すると被保険者単位のタスクが表示されます</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* --- 不備 --- */}
+                                {/* --- 不備 --- */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[11px] font-semibold text-gray-600">⚠️ 不備（転記方式）</p>

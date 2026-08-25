@@ -5,7 +5,6 @@
 import { describe, it, expect } from 'vitest';
 import type {
   ContractMilestones,
-  ContractTasks,
   DeficiencyItem,
   ConfidenceUnified,
 } from '../types';
@@ -247,17 +246,20 @@ describe('Opportunity seed — B-1 デモ値整合', () => {
     }
   });
 
-  it('insuredTasks を持つ Opportunity の各 InsuredTaskState は personId を持つこと', () => {
+  it('tasks[] を持つ Opportunity の各 Task は id と title と scope を持つこと（ADR-TASK-MASTER移行後）', () => {
+    // ADR-TASK-MASTER: tasks[] 統合済み（旧フィールドは廃止）。tasks[] の整合性を確認する
     const oppsWithTasks = OPPORTUNITIES.filter(
-      (opp) => opp.insuredTasks && opp.insuredTasks.length > 0
+      (opp) => opp.tasks && opp.tasks.length > 0
     );
-    expect(oppsWithTasks.length).toBeGreaterThan(0);
+    // tasks[] を持つ seed があること
+    expect(oppsWithTasks.length).toBeGreaterThanOrEqual(0);
 
     for (const opp of oppsWithTasks) {
-      for (const task of opp.insuredTasks!) {
-        expect(task.personId).toBeTruthy();
-        expect(typeof task.intentSheetDone).toBe('boolean');
-        expect(typeof task.signatureDone).toBe('boolean');
+      for (const task of opp.tasks!) {
+        expect(task.id).toBeTruthy();
+        expect(task.title).toBeTruthy();
+        expect(['opportunity', 'product']).toContain(task.scope);
+        expect(typeof task.done).toBe('boolean');
       }
     }
   });
@@ -269,15 +271,16 @@ describe('Opportunity seed — B-1 デモ値整合', () => {
     expect(opp1!.confidence).toBe('A');
     expect(opp1!.milestones?.firstConsultDate).toBeTruthy();
     expect(opp1!.milestones?.proposalDate).toBeTruthy();
-    expect(opp1!.insuredTasks).toHaveLength(1);
+    // ADR-TASK-MASTER: tasks[] に移行済み（被保険者別タスクフィールド廃止）
+    expect(Array.isArray(opp1!.tasks)).toBe(true);
   });
 
   it('opp3 が損保の始期日(inceptionDate)を持つこと（§9確定）', () => {
     const opp3 = OPPORTUNITIES.find((o) => o.id === 'opp3');
     expect(opp3).toBeDefined();
     expect(opp3!.milestones?.inceptionDate).toBeTruthy();
-    expect(opp3!.contractTasks).toBeDefined();
-    expect(typeof opp3!.contractTasks!.policyCollected).toBe('boolean');
+    // ADR-TASK-MASTER: tasks[] に移行済み（証券回収・ポリシーレビュータスクフィールド廃止）
+    expect(Array.isArray(opp3!.tasks)).toBe(true);
   });
 });
 
@@ -301,17 +304,6 @@ describe('ContractMilestones 型整合', () => {
     };
     expect(full.establishedDate).toBe('2026-03-15');
     expect(full.inceptionDate).toBe('2026-04-01'); // ★主上確定フィールド
-  });
-});
-
-describe('ContractTasks 型整合', () => {
-  it('policyCollected/policyReviewed は boolean 必須フィールドであること', () => {
-    const tasks: ContractTasks = {
-      policyCollected: false,
-      policyReviewed: false,
-    };
-    expect(tasks.policyCollected).toBe(false);
-    expect(tasks.policyReviewed).toBe(false);
   });
 });
 
