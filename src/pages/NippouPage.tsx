@@ -1,19 +1,21 @@
 // =====================================================
-// NippouPage — 日報＋カレンダー 統合タブ (IA-2)
-// - 「日報」(Today) と「カレンダー」をタブで切替
+// NippouPage — 日報＋カレンダー＋日報一覧 統合タブ (IA-2 + D3)
+// - 「日報」(Today) / 「カレンダー」/ 「日報一覧」をタブで切替
 // - /today, /calendar への直アクセスは初期タブ選択で吸収
 // =====================================================
 import { useSearchParams } from 'react-router-dom';
 import { TodayPage } from './TodayPage';
 import { CalendarPage } from './CalendarPage';
+import { NippouListPage } from './NippouListPage';
 
-type NippouTab = 'today' | 'calendar';
+type NippouTab = 'today' | 'calendar' | 'list';
 
 export function NippouPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const raw = searchParams.get('tab');
-  const tab: NippouTab = raw === 'calendar' ? 'calendar' : 'today';
+  const tab: NippouTab =
+    raw === 'calendar' ? 'calendar' : raw === 'list' ? 'list' : 'today';
 
   const setTab = (t: NippouTab) =>
     setSearchParams(
@@ -54,12 +56,28 @@ export function NippouPage() {
           >
             カレンダー
           </button>
+          <button
+            onClick={() => setTab('list')}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === 'list'
+                ? 'border-blue-600 text-blue-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            日報一覧
+          </button>
         </nav>
       </div>
 
       {/* コンテンツ */}
       <div className="flex-1 overflow-auto">
-        {tab === 'today' ? <TodayPage /> : <CalendarPage />}
+        {tab === 'today' ? (
+          <TodayPage />
+        ) : tab === 'calendar' ? (
+          <CalendarPage />
+        ) : (
+          <NippouListPage />
+        )}
       </div>
     </div>
   );

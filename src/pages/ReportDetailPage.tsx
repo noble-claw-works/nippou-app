@@ -103,7 +103,28 @@ export function ReportDetailPage() {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
+            {/* D2: 日付ナビ — 日報が存在する日へスキップ（「前の日報/次の日報」に一本化） */}
+            <button
+              type="button"
+              onClick={() => prevReport && goToReport(prevReport)}
+              disabled={!prevReport}
+              className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="前の日報"
+              title={prevReport ? `前の日報 (${formatDate(prevReport.date)})` : '前の日報なし'}
+            >
+              <ArrowLeft className="w-4 h-4 text-gray-600" />
+            </button>
             <h1 className="text-lg font-bold text-gray-900">{formatDate(report.date)}</h1>
+            <button
+              type="button"
+              onClick={() => nextReport && goToReport(nextReport)}
+              disabled={!nextReport}
+              className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="次の日報"
+              title={nextReport ? `次の日報 (${formatDate(nextReport.date)})` : '次の日報なし'}
+            >
+              <ArrowRight className="w-4 h-4 text-gray-600" />
+            </button>
             <StatusBadge status={report.status} />
             {reportUser && <span className="text-sm text-gray-500">作成者: {reportUser.name}</span>}
           </div>
@@ -124,54 +145,30 @@ export function ReportDetailPage() {
         </div>
       </div>
 
-      {/* 前後ナビゲーション */}
-      <nav aria-label="日報ナビゲーション" className="flex flex-wrap items-center justify-between gap-2 mb-4 px-2 py-2 bg-blue-50 border border-blue-100 rounded-lg">
-        <div className="flex items-center gap-2">
+      {/* D2: 未確認ナビゲーション（上長ビュー専用・日報間移動は日付ナビに一本化） */}
+      {isManagerView && unconfirmedReports.length > 0 && (
+        <nav aria-label="未確認ナビゲーション" className="flex flex-wrap items-center gap-2 mb-4 px-2 py-2 bg-orange-50 border border-orange-100 rounded-lg">
+          <span className="text-xs text-orange-700 font-medium">⚠ 未確認 {unconfirmedReports.length} 件</span>
           <button
             type="button"
-            onClick={() => prevReport && goToReport(prevReport)}
-            disabled={!prevReport}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="前の日報"
+            onClick={() => prevUnconfirmed && goToReport(prevUnconfirmed)}
+            disabled={!prevUnconfirmed || prevUnconfirmed.id === report.id}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="前の未確認"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> 前の日報
-            {prevReport && <span className="text-xs text-gray-500 ml-1">({formatDate(prevReport.date)})</span>}
+            <ArrowLeft className="w-3.5 h-3.5" /> 前の未確認
           </button>
           <button
             type="button"
-            onClick={() => nextReport && goToReport(nextReport)}
-            disabled={!nextReport}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
-            aria-label="翌日の日報"
+            onClick={() => nextUnconfirmed && goToReport(nextUnconfirmed)}
+            disabled={!nextUnconfirmed || nextUnconfirmed.id === report.id}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="次の未確認"
           >
-            次の日報 <ArrowRight className="w-3.5 h-3.5" />
-            {nextReport && <span className="text-xs text-gray-500 ml-1">({formatDate(nextReport.date)})</span>}
+            次の未確認 <ArrowRight className="w-3.5 h-3.5" />
           </button>
-        </div>
-        {isManagerView && unconfirmedReports.length > 0 && (
-          <div className="flex items-center gap-2" aria-label="未確認ナビゲーション">
-            <span className="text-xs text-orange-700 font-medium">⚠ 未確認 {unconfirmedReports.length} 件</span>
-            <button
-              type="button"
-              onClick={() => prevUnconfirmed && goToReport(prevUnconfirmed)}
-              disabled={!prevUnconfirmed || prevUnconfirmed.id === report.id}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="前の未確認"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> 前の未確認
-            </button>
-            <button
-              type="button"
-              onClick={() => nextUnconfirmed && goToReport(nextUnconfirmed)}
-              disabled={!nextUnconfirmed || nextUnconfirmed.id === report.id}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="次の未確認"
-            >
-              次の未確認 <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-      </nav>
+        </nav>
+      )}
 
       {/* BUG-A: Today と同じ 2 列レイアウト（左=タイムライン / 右=TODO+振り返り+上長コメント） */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

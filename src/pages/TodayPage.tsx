@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { format, subDays, addDays } from "date-fns";
+import { format } from "date-fns";
 import { Clock, ArrowLeft, ArrowRight } from "lucide-react";
 import { useAppStore } from "../store";
 import { StatusBadge } from "../components/ui/StatusBadge";
@@ -71,6 +71,7 @@ export function TodayPage() {
     startTracking,
     stopTracking,
     discardTracking,
+    reports,
   } = useAppStore();
 
   // MGR-1 + MGR-5: 上長ビューは原則 /report-admin へだが、`?self=1` 付きなら自身の日報作成を許可
@@ -84,6 +85,22 @@ export function TodayPage() {
       navigate("/report-admin", { replace: true });
     }
   }, [currentRole, navigate, selfMode]);
+
+  // D2: 日報が存在する日付のソート済一覧（該当ユーザーの分のみ）
+  const myReportDates = [
+    ...new Set(
+      reports
+        .filter((r) => r.userId === currentUserId)
+        .map((r) => r.date)
+        .sort(),
+    ),
+  ];
+  const todayIdx = myReportDates.indexOf(today);
+  const prevReportDate = todayIdx > 0 ? myReportDates[todayIdx - 1] : null;
+  const nextReportDate =
+    todayIdx >= 0 && todayIdx < myReportDates.length - 1
+      ? myReportDates[todayIdx + 1]
+      : null;
 
   const isMobile = useIsMobile();
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -450,34 +467,32 @@ export function TodayPage() {
           {/* M-1: ヘッダーを圧縮しタイムラインをファーストビューに */}
           <div className="flex items-center justify-between mb-1.5 gap-2">
             <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-              {/* EMP-1: 前日ナビ */}
+              {/* D2: 前の日報ナビ（日報存在日のみに移動） */}
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    `/reports/${format(subDays(new Date(today), 1), "yyyy-MM-dd")}`,
-                  )
+                  prevReportDate && navigate(`/reports/${prevReportDate}`)
                 }
-                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded"
-                aria-label="昨日の日報"
-                title="昨日の日報"
+                disabled={!prevReportDate}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="前の日報"
+                title={prevReportDate ? `前の日報 (${prevReportDate})` : '前の日報なし'}
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <h1 className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                 {formatDate(today)}
               </h1>
-              {/* EMP-1: 翌日ナビ */}
+              {/* D2: 次の日報ナビ（日報存在日のみに移動） */}
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    `/reports/${format(addDays(new Date(today), 1), "yyyy-MM-dd")}`,
-                  )
+                  nextReportDate && navigate(`/reports/${nextReportDate}`)
                 }
-                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded"
-                aria-label="翌日の日報"
-                title="翌日の日報"
+                disabled={!nextReportDate}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="次の日報"
+                title={nextReportDate ? `次の日報 (${nextReportDate})` : '次の日報なし'}
               >
                 <ArrowRight className="w-4 h-4" />
               </button>
