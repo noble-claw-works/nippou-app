@@ -77,7 +77,7 @@ export function SalesDashboardPage() {
     currentRole === 'manager' || currentRole === 'executive' || currentRole === 'admin';
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-4">
+    <div className="w-full px-4 py-4">
       {/* ヘッダー */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <h1 className="text-lg font-bold text-gray-900">🎯 営業進捗</h1>
