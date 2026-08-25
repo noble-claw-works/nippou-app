@@ -449,24 +449,45 @@ export function OpportunityDetailPage() {
     deleteProposalRound(id!, roundId);
   };
 
+  // 概要・タスクは常に表示。データ源が空になり得るタブ（提案商品/提案履歴/活動履歴/TODO/契約発行）は
+  // 件数0のときは非表示にして「(0)」タブを出さない（ドメイン上0が正しい場合＝例: 未成約案件の契約発行 を無理にサンプルで埋めない）。
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "\u{1f4ca} 概要" },
-    {
-      key: "products",
-      label: `\u{1f4c4} 提案商品 (${opp.proposalProducts.length})`,
-    },
+    ...(opp.proposalProducts.length > 0
+      ? [
+          {
+            key: "products" as Tab,
+            label: `\u{1f4c4} 提案商品 (${opp.proposalProducts.length})`,
+          },
+        ]
+      : []),
     { key: "tasks", label: `☑️ タスク (${doneTaskCount}/${oppTasks.length})` },
-    { key: "proposals", label: `\u{1f4dd} 提案履歴 (${proposals.length})` },
-    {
-      key: "activities",
-      label: `\u{1f4c5} 活動履歴 (${relatedBlocks.length})`,
-    },
-    { key: "todos", label: `✅ TODO (${relatedTodos.length})` },
-    {
-      key: "issued_policies",
-      label: `\u{1f4dc} 契約発行 (${issuedPolicies.length})`,
-    },
+    ...(proposals.length > 0
+      ? [{ key: "proposals" as Tab, label: `\u{1f4dd} 提案履歴 (${proposals.length})` }]
+      : []),
+    ...(relatedBlocks.length > 0
+      ? [
+          {
+            key: "activities" as Tab,
+            label: `\u{1f4c5} 活動履歴 (${relatedBlocks.length})`,
+          },
+        ]
+      : []),
+    ...(relatedTodos.length > 0
+      ? [{ key: "todos" as Tab, label: `✅ TODO (${relatedTodos.length})` }]
+      : []),
+    ...(issuedPolicies.length > 0
+      ? [
+          {
+            key: "issued_policies" as Tab,
+            label: `\u{1f4dc} 契約発行 (${issuedPolicies.length})`,
+          },
+        ]
+      : []),
   ];
+
+  // アクティブタブが非表示(件数0で隔された)になった場合は概要にフォールバックし、空白コンテンツを防ぐ。
+  const activeTab: Tab = TABS.some((t) => t.key === tab) ? tab : "overview";
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
@@ -559,7 +580,7 @@ export function OpportunityDetailPage() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
-                tab === t.key
+                activeTab === t.key
                   ? "border-blue-500 text-blue-600 font-medium"
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
@@ -571,7 +592,7 @@ export function OpportunityDetailPage() {
       </div>
 
       {/* Tab content */}
-      {tab === "overview" && (
+      {activeTab === "overview" && (
         <div className="space-y-4">
           {/* Info grid */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -754,7 +775,7 @@ export function OpportunityDetailPage() {
         </div>
       )}
 
-      {tab === "products" && (
+      {activeTab === "products" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-800">提案商品一覧</h2>
@@ -837,7 +858,7 @@ export function OpportunityDetailPage() {
       )}
 
       {/* ── ADR-TASK-MASTER: タスクタブ ─────────────────────────────── */}
-      {tab === "tasks" && (
+      {activeTab === "tasks" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-800">タスク管理</h2>
@@ -1002,7 +1023,7 @@ export function OpportunityDetailPage() {
       )}
 
       {/* ── req8: 提案履歴タブ ───────────────────────────────── */}
-      {tab === "proposals" && (
+      {activeTab === "proposals" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-gray-800">提案履歴</h2>
@@ -1200,7 +1221,7 @@ export function OpportunityDetailPage() {
         </div>
       )}
 
-      {tab === "activities" && (
+      {activeTab === "activities" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="font-semibold text-gray-800 mb-4">活動履歴</h2>
           {relatedBlocks.length === 0 ? (
@@ -1232,7 +1253,7 @@ export function OpportunityDetailPage() {
         </div>
       )}
 
-      {tab === "todos" && (
+      {activeTab === "todos" && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="font-semibold text-gray-800 mb-4">TODO</h2>
           {relatedTodos.length === 0 ? (
@@ -1268,7 +1289,7 @@ export function OpportunityDetailPage() {
       )}
 
       {/* 契約発行タブ */}
-      {tab === "issued_policies" && (
+      {activeTab === "issued_policies" && (
         <div className="space-y-3">
           {issuedPolicies.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
