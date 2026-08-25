@@ -72,35 +72,22 @@ function SortIcon({
 
 // ─── タスク進捗バッジ（項目3） ─────────────────────────────────────────────────
 // コンパクトなバッジ＋細い進捗バー + 展開式タスクリスト
+// F2: タスク進捗バッジ（トグル剪除・進捗バーのみ）
 interface TaskProgressProps {
   tasks: Task[];
-  expanded: boolean;
-  onToggle: (e: React.MouseEvent) => void;
 }
 
-function TaskProgressBadge({ tasks, expanded, onToggle }: TaskProgressProps) {
+function TaskProgressBadge({ tasks }: TaskProgressProps) {
   const done = tasks.filter((t) => t.done).length;
   const total = tasks.length;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
 
   return (
-    <div className="flex items-center gap-1.5 min-w-[100px]">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors select-none"
-        title="タスクを展開"
-      >
-        <CheckSquare className="w-3.5 h-3.5" />
-        <span className="font-medium">
-          {done}/{total}
-        </span>
-        {total > 0 && (
-          <ChevronDown
-            className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
-          />
-        )}
-      </button>
+    <div className="flex items-center gap-1.5">
+      <CheckSquare className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+      <span className="text-xs font-medium text-gray-500">
+        {done}/{total}
+      </span>
       {total > 0 && (
         <div className="flex-1 min-w-[40px] h-1 bg-gray-200 rounded-full overflow-hidden">
           <div
@@ -258,10 +245,7 @@ export function OpportunitiesPage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   // 項目5: ビュー切替
   const [viewMode, setViewMode] = useState<ViewMode>("household");
-  // 項目3: 展開中タスクリスト（opp.id → bool）
-  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>(
-    {},
-  );
+  // F2: タスク一覧は既定表示のため expandedTasks ステート削除
 
   // Role-based filtering
   const visibleOpportunities = useMemo(() => {
@@ -461,12 +445,6 @@ export function OpportunitiesPage() {
     }
   };
 
-  // 項目3: タスク展開トグル
-  const toggleTaskExpand = (oppId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpandedTasks((prev) => ({ ...prev, [oppId]: !prev[oppId] }));
-  };
-
   const renderTableHeader = () => (
     <tr>
       <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">
@@ -509,7 +487,7 @@ export function OpportunitiesPage() {
 
   const renderItem = (opp: Opportunity) => {
     const tasks = opp.tasks ?? [];
-    const isExpanded = !!expandedTasks[opp.id];
+    // F2: タスク一覧は展開トグルなしで常時表示
     return (
       <>
         <tr
@@ -542,13 +520,9 @@ export function OpportunitiesPage() {
               ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
               : "—"}
           </td>
-          {/* 項目3: タスク進捗バッジ */}
+          {/* F2: タスク進捗バッジ（トグルなし・進捗バーのみ） */}
           <td className="px-4 py-3 hidden lg:table-cell">
-            <TaskProgressBadge
-              tasks={tasks}
-              expanded={isExpanded}
-              onToggle={(e) => toggleTaskExpand(opp.id, e)}
-            />
+            <TaskProgressBadge tasks={tasks} />
           </td>
           <td className="px-4 py-3 text-gray-600 hidden lg:table-cell max-w-[180px] truncate">
             {opp.nextAction ?? "—"}
@@ -557,17 +531,15 @@ export function OpportunitiesPage() {
             {effectiveExpectedCloseDate(opp) ?? "—"}
           </td>
         </tr>
-        {/* 項目3: タスクリスト展開パネル */}
-        {isExpanded && (
-          <tr key={`${opp.id}-tasks`}>
-            <td colSpan={7} className="p-0">
-              <TaskListPreview
-                tasks={tasks}
-                onNavigate={() => navigate(`/opportunities/${opp.id}`)}
-              />
-            </td>
-          </tr>
-        )}
+        {/* F2: タスクリストは常時既定表示 */}
+        <tr key={`${opp.id}-tasks`}>
+          <td colSpan={7} className="p-0">
+            <TaskListPreview
+              tasks={tasks}
+              onNavigate={() => navigate(`/opportunities/${opp.id}`)}
+            />
+          </td>
+        </tr>
       </>
     );
   };
@@ -598,7 +570,7 @@ export function OpportunitiesPage() {
           <div className="divide-y divide-gray-100">
             {group.items.map((opp) => {
               const tasks = opp.tasks ?? [];
-              const isExpanded = !!expandedTasks[opp.id];
+              // F2: タスク一覧は常時既定表示
               return (
                 <div key={opp.id}>
                   <div
@@ -622,13 +594,9 @@ export function OpportunitiesPage() {
                         </div>
                       )}
                     </div>
-                    {/* タスク進捗（項目3 + 5の組み合わせ） */}
+                    {/* F2: タスク進捗（トグルなし） */}
                     <div className="flex-shrink-0">
-                      <TaskProgressBadge
-                        tasks={tasks}
-                        expanded={isExpanded}
-                        onToggle={(e) => toggleTaskExpand(opp.id, e)}
-                      />
+                      <TaskProgressBadge tasks={tasks} />
                     </div>
                     {/* 期日 */}
                     <div className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 hidden md:block">
@@ -641,13 +609,11 @@ export function OpportunitiesPage() {
                         : "—"}
                     </div>
                   </div>
-                  {/* タスク展開 */}
-                  {isExpanded && (
-                    <TaskListPreview
-                      tasks={tasks}
-                      onNavigate={() => navigate(`/opportunities/${opp.id}`)}
-                    />
-                  )}
+                  {/* F2: タスクリストは常時表示 */}
+                  <TaskListPreview
+                    tasks={tasks}
+                    onNavigate={() => navigate(`/opportunities/${opp.id}`)}
+                  />
                 </div>
               );
             })}

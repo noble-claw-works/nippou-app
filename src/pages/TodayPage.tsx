@@ -141,6 +141,9 @@ export function TodayPage() {
   const canEditPlanned = (r: typeof report) =>
     !!r && (r.status === "planning" || r.status === "in_progress");
   const canEditActual = (r: typeof report) => !!r && r.status === "in_progress";
+  // F1: 提出前であれば既存実績ブロックのD&D編集を許可
+  const canDragActual = (r: typeof report) =>
+    !!r && r.status !== "submitted" && r.status !== "confirmed";
   const isReadOnly = (r: typeof report) =>
     !!r && (r.status === "submitted" || r.status === "confirmed");
 
@@ -598,6 +601,7 @@ export function TodayPage() {
                   onActualChipSelected={handleActualChipSelected}
                   onActualDragWithoutType={handleActualWithoutType}
                   isActualEnabled={canEditActual(report)}
+                  canDragActual={canDragActual(report)}
                 />
               </div>
               {/* サイドパネル: モバイルではタイムラインの後 */}

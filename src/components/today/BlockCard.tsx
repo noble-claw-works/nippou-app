@@ -12,7 +12,8 @@ export interface BlockCardProps {
   origEnd: number;
   col: 'planned' | 'actual';
   showActualizeBtn: boolean;
-  onDragStart: (e: React.MouseEvent, mode: 'move' | 'resizeTop' | 'resizeBottom') => void;
+  /** undefined = D&D無効（F1: 提出済み実績ブロックのD&Dを封じる時に undefined を渡す） */
+  onDragStart?: (e: React.MouseEvent, mode: 'move' | 'resizeTop' | 'resizeBottom') => void;
   onClick: (e: React.MouseEvent) => void;
   onActualize: (e: React.MouseEvent) => void;
 }
@@ -35,19 +36,19 @@ export function BlockCard({
       style={{
         top: `${top}px`, height: `${height}px`,
         left: '4px', right: '4px',
-        cursor: isDragging ? 'grabbing' : 'grab',
+        cursor: isDragging ? 'grabbing' : onDragStart ? 'grab' : 'default',
         opacity: isDragging ? 0.85 : 1,
         zIndex: isDragging ? 20 : 10,
         transition: isDragging ? 'none' : 'box-shadow 0.15s',
       }}
       className={`absolute rounded-lg px-2 py-1 select-none group hover:shadow-md border ${borderStyle} ${colorClass}`}
-      onMouseDown={e => onDragStart(e, 'move')}
+      onMouseDown={onDragStart ? e => onDragStart(e, 'move') : undefined}
       onClick={onClick}
     >
       {/* resize top handle */}
       <div
-        className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize z-10"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'resizeTop'); }}
+        className={`absolute top-0 left-0 right-0 h-2 z-10 ${onDragStart ? 'cursor-ns-resize' : ''}`}
+        onMouseDown={onDragStart ? e => { e.stopPropagation(); onDragStart(e, 'resizeTop'); } : undefined}
       />
       <div className="flex items-center gap-1 text-xs font-medium truncate pointer-events-none">
         <span>{BLOCK_EMOJIS[block.type]}</span>
@@ -88,8 +89,8 @@ export function BlockCard({
       )}
       {/* resize bottom handle */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize z-10"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'resizeBottom'); }}
+        className={`absolute bottom-0 left-0 right-0 h-2 z-10 ${onDragStart ? 'cursor-ns-resize' : ''}`}
+        onMouseDown={onDragStart ? e => { e.stopPropagation(); onDragStart(e, 'resizeBottom'); } : undefined}
       />
     </div>
   );

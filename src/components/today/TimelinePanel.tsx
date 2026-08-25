@@ -38,8 +38,10 @@ export interface TimelinePanelProps {
   onPlannedDragWithoutType: () => void;
   onActualChipSelected: (type: import('../../types').BlockType) => void;
   onActualDragWithoutType: () => void;
-  /** false = 予定未確定のため実績入力を無効化 */
+  /** false = 予定未確定のため実績入力を無効化（新規作成ゲート） */
   isActualEnabled: boolean;
+  /** true = 提出前なので既存実績ブロックのD&D編集を許可 (F1) */
+  canDragActual: boolean;
 }
 
 // ─── TimeGrid (shared hour lines) ─────────────────────────────────────────────
@@ -94,6 +96,7 @@ export function TimelinePanel({
   onPlannedChipSelected, onPlannedDragWithoutType,
   onActualChipSelected, onActualDragWithoutType,
   isActualEnabled,
+  canDragActual,
 }: TimelinePanelProps) {
   // DOM ref は TodayPage から渡されたものを使う（useDragAndChip が同じ ref を参照）
   const timelineRef  = plannedRef as React.MutableRefObject<HTMLDivElement | null>;
@@ -133,8 +136,10 @@ export function TimelinePanel({
     const label     = isPlanned ? '📋 予定（計画）' : '✅ 実績（結果）';
     const testId    = isPlanned ? 'add-planned'    : 'add-actual';
 
-    // 実績列の入力可否
+    // 実績列の入力可否（新規作成ゲート）
     const actualDisabled = !isPlanned && !isActualEnabled;
+    // F1: 既存実績ブロックD&D可否（提出前は可能）
+    const actualDragDisabled = !isPlanned && !canDragActual;
 
     return (
       <div className="flex-1 min-w-0 flex flex-col">
@@ -152,14 +157,14 @@ export function TimelinePanel({
           </button>
         </div>
 
-        {/* 実績入力未解禁バナー */}
+        {/* 実績入力未解禁バナー（新規作成が無効の時のみ表示） */}
         {actualDisabled && (
           <div className="px-3 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
             予定を確定すると実績を入力できます
           </div>
         )}
 
-        {/* タイムライン本体 */}
+        {/* タイムライン本体: 新規作成用DnCは actualDisabled で指定。既存ブロックD&Dは actualDragDisabled で個別制御 */}
         <div
           ref={ref}
           className={`relative select-none ${bgClass}${actualDisabled ? ' pointer-events-none opacity-60' : ''}`}
@@ -177,6 +182,8 @@ export function TimelinePanel({
             const endMin   = isDragging ? blockDragState!.endMin   : timeToMinutes(block.endTime);
             const origStart = timeToMinutes(block.startTime);
             const origEnd   = timeToMinutes(block.endTime);
+            // F1: 実績ブロックD&Dは提出前なら有効、提出済みなら無効
+            const blockDragDisabled = !isPlanned && actualDragDisabled;
             return (
               <BlockCard
                 key={block.id}
@@ -188,7 +195,7 @@ export function TimelinePanel({
                 origEnd={origEnd}
                 col={col}
                 showActualizeBtn={isPlanned && !block.isActual}
-                onDragStart={(e, mode) => startDrag(e, block.id, mode, origStart, origEnd, col)}
+                onDragStart={blockDragDisabled ? undefined : (e, mode) => startDrag(e, block.id, mode, origStart, origEnd, col)}
                 onClick={e => { if (isDragging) { e.stopPropagation(); return; } onOpenBlock(block, col); }}
                 onActualize={() => onActualize(block)}
               />
