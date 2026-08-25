@@ -165,12 +165,15 @@ export function TimelinePanel({
         )}
 
         {/* タイムライン本体: 新規作成用DnCは actualDisabled で指定。既存ブロックD&Dは actualDragDisabled で個別制御 */}
+        {/* F1: 既存ブロックのD&Dを提出前まで有効にするため、コンテナに pointer-events-none は付けない。
+            新規作成(空き領域からのドラッグ/クリック)のみ actualDisabled でゲートし、
+            既存ブロックの可否は blockDragDisabled で個別制御する。 */}
         <div
           ref={ref}
-          className={`relative select-none ${bgClass}${actualDisabled ? ' pointer-events-none opacity-60' : ''}`}
+          className={`relative select-none ${bgClass}${actualDisabled ? ' opacity-60' : ''}`}
           style={{
             height: `${totalHeight}px`,
-            cursor: actualDisabled ? 'not-allowed' : (dnC.dragState?.active ? 'ns-resize' : 'crosshair'),
+            cursor: actualDisabled ? 'default' : (dnC.dragState?.active ? 'ns-resize' : 'crosshair'),
           }}
           onMouseDown={actualDisabled ? undefined : dnC.onTimelineMouseDown}
           onTouchStart={actualDisabled ? undefined : dnC.onTimelineTouchStart}
