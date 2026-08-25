@@ -49,13 +49,7 @@ const LOST_REASON_LABELS: Record<string, string> = {
 };
 
 type Tab =
-  | "overview"
-  | "products"
-  | "tasks"
-  | "proposals"
-  | "activities"
-  | "todos"
-  | "issued_policies";
+  "overview" | "products" | "tasks" | "proposals" | "todos" | "issued_policies";
 
 // ── TaskRow コンポーネント (ADR-TASK-MASTER) ───────────────────────────────────
 const PRIORITY_LABEL: Record<Task["priority"], string> = {
@@ -463,16 +457,14 @@ export function OpportunityDetailPage() {
       : []),
     { key: "tasks", label: `☑️ タスク (${doneTaskCount}/${oppTasks.length})` },
     ...(proposals.length > 0
-      ? [{ key: "proposals" as Tab, label: `\u{1f4dd} 提案履歴 (${proposals.length})` }]
-      : []),
-    ...(relatedBlocks.length > 0
       ? [
           {
-            key: "activities" as Tab,
-            label: `\u{1f4c5} 活動履歴 (${relatedBlocks.length})`,
+            key: "proposals" as Tab,
+            label: `\u{1f4dd} 提案履歴 (${proposals.length})`,
           },
         ]
       : []),
+    // 活動履歴は右サイドタイムラインへ移設そのたメタブから削除
     ...(relatedTodos.length > 0
       ? [{ key: "todos" as Tab, label: `✅ TODO (${relatedTodos.length})` }]
       : []),
@@ -490,877 +482,981 @@ export function OpportunityDetailPage() {
   const activeTab: Tab = TABS.some((t) => t.key === tab) ? tab : "overview";
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      {/* Back */}
-      <button
-        onClick={() => navigate("/opportunities")}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        商談一覧
-      </button>
-
-      {/* Header card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{opp.title}</h1>
-            <div className="mt-1 flex items-center gap-2 flex-wrap text-sm text-gray-500">
-              <Link
-                to={`/households/${opp.householdId}`}
-                className="text-blue-600 hover:underline font-medium"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {household?.name ?? opp.householdId}
-              </Link>
-              <span>・</span>
-              <span>担当: {owner?.name ?? opp.ownerId}</span>
-              {opp.totalMonthlyPremium && (
-                <>
-                  <span>・</span>
-                  <span className="font-medium text-gray-700">
-                    ¥{opp.totalMonthlyPremium.toLocaleString()}/月
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDelete}
-              className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Stage row */}
-        <div className="mt-4 flex items-center gap-3 flex-wrap">
-          <StageBadge stage={opp.stage} size="lg" />
+    <div className="flex h-full min-h-0">
+      {/* ─── 左カラム: メイン本文 ─── */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="p-4 max-w-4xl mx-auto">
+          {/* Back */}
           <button
-            onClick={() => setEditingStage((v) => !v)}
-            className="text-sm text-blue-600 hover:underline"
+            onClick={() => navigate("/opportunities")}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
           >
-            {editingStage ? "キャンセル" : "ステージを変更"}
+            <ChevronLeft className="w-4 h-4" />
+            商談一覧
           </button>
-          {opp.stage !== "issued" &&
-            opp.stage !== "lost" &&
-            opp.proposalProducts.length > 0 && (
-              <button
-                onClick={() => setShowQuickIssue(true)}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                🎉 契約発行（受注）
-              </button>
-            )}
-          {opp.nextAction && (
-            <span className="text-sm text-gray-500">
-              次: {opp.nextAction}
-              {opp.nextActionDate && ` (${opp.nextActionDate})`}
-            </span>
-          )}
-        </div>
 
-        {editingStage && (
-          <div className="mt-3">
-            <StageSelector
-              opportunity={opp}
-              onClose={() => setEditingStage(false)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-4">
-        <div className="flex gap-0 overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
-                activeTab === t.key
-                  ? "border-blue-500 text-blue-600 font-medium"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tab content */}
-      {activeTab === "overview" && (
-        <div className="space-y-4">
-          {/* Info grid */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-800">基本情報</h2>
-              <button
-                onClick={editingFields ? handleSaveFields : startEditFields}
-                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                {editingFields ? "保存" : "編集"}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {/* Stage history checklist */}
+          {/* Header card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <div className="text-gray-500 mb-1">進捗チェックリスト</div>
-                <div className="space-y-1">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={opp.needsAnalysisDone}
-                      onChange={(e) =>
-                        updateOpportunity(id!, {
-                          needsAnalysisDone: e.target.checked,
-                        })
-                      }
-                      className="rounded"
-                    />
-                    <span>ニーズ分析完了</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={opp.illustrationProvided}
-                      onChange={(e) =>
-                        updateOpportunity(id!, {
-                          illustrationProvided: e.target.checked,
-                        })
-                      }
-                      className="rounded"
-                    />
-                    <span>設計書提示済み</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Dates */}
-              <div className="space-y-2">
-                <div>
-                  <span className="text-gray-500">クローズ予定日: </span>
-                  {editingFields ? (
-                    <input
-                      type="date"
-                      className="border border-gray-300 rounded px-2 py-0.5 text-sm"
-                      value={fieldDraft.expectedCloseDate}
-                      onChange={(e) =>
-                        setFieldDraft((d) => ({
-                          ...d,
-                          expectedCloseDate: e.target.value,
-                        }))
-                      }
-                    />
-                  ) : (
-                    <span>{opp.expectedCloseDate ?? "—"}</span>
+                <h1 className="text-xl font-bold text-gray-900">{opp.title}</h1>
+                <div className="mt-1 flex items-center gap-2 flex-wrap text-sm text-gray-500">
+                  <Link
+                    to={`/households/${opp.householdId}`}
+                    className="text-blue-600 hover:underline font-medium"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {household?.name ?? opp.householdId}
+                  </Link>
+                  <span>・</span>
+                  <span>担当: {owner?.name ?? opp.ownerId}</span>
+                  {opp.totalMonthlyPremium && (
+                    <>
+                      <span>・</span>
+                      <span className="font-medium text-gray-700">
+                        ¥{opp.totalMonthlyPremium.toLocaleString()}/月
+                      </span>
+                    </>
                   )}
                 </div>
-                {opp.actualCloseDate && (
-                  <div>
-                    <span className="text-gray-500">実際のクローズ日: </span>
-                    <span>{opp.actualCloseDate}</span>
-                  </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDelete}
+                  className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Stage row */}
+            <div className="mt-4 flex items-center gap-3 flex-wrap">
+              <StageBadge stage={opp.stage} size="lg" />
+              <button
+                onClick={() => setEditingStage((v) => !v)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                {editingStage ? "キャンセル" : "ステージを変更"}
+              </button>
+              {opp.stage !== "issued" &&
+                opp.stage !== "lost" &&
+                opp.proposalProducts.length > 0 && (
+                  <button
+                    onClick={() => setShowQuickIssue(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    🎉 契約発行（受注）
+                  </button>
                 )}
-                {opp.lostReason && (
+              {opp.nextAction && (
+                <span className="text-sm text-gray-500">
+                  次: {opp.nextAction}
+                  {opp.nextActionDate && ` (${opp.nextActionDate})`}
+                </span>
+              )}
+            </div>
+
+            {editingStage && (
+              <div className="mt-3">
+                <StageSelector
+                  opportunity={opp}
+                  onClose={() => setEditingStage(false)}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Tabs */}
+          <div className="border-b border-gray-200 mb-4">
+            <div className="flex gap-0 overflow-x-auto">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-4 py-2.5 text-sm whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === t.key
+                      ? "border-blue-500 text-blue-600 font-medium"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tab content */}
+          {activeTab === "overview" && (
+            <div className="space-y-4">
+              {/* Info grid */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold text-gray-800">基本情報</h2>
+                  <button
+                    onClick={editingFields ? handleSaveFields : startEditFields}
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    {editingFields ? "保存" : "編集"}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  {/* Stage history checklist */}
                   <div>
-                    <span className="text-gray-500">失注理由: </span>
-                    <span>
-                      {LOST_REASON_LABELS[opp.lostReason] ?? opp.lostReason}
-                    </span>
-                    {opp.lostReasonDetail && (
-                      <span className="text-gray-400 ml-1">
-                        ({opp.lostReasonDetail})
+                    <div className="text-gray-500 mb-1">進捗チェックリスト</div>
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={opp.needsAnalysisDone}
+                          onChange={(e) =>
+                            updateOpportunity(id!, {
+                              needsAnalysisDone: e.target.checked,
+                            })
+                          }
+                          className="rounded"
+                        />
+                        <span>ニーズ分析完了</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={opp.illustrationProvided}
+                          onChange={(e) =>
+                            updateOpportunity(id!, {
+                              illustrationProvided: e.target.checked,
+                            })
+                          }
+                          className="rounded"
+                        />
+                        <span>設計書提示済み</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-gray-500">クローズ予定日: </span>
+                      {editingFields ? (
+                        <input
+                          type="date"
+                          className="border border-gray-300 rounded px-2 py-0.5 text-sm"
+                          value={fieldDraft.expectedCloseDate}
+                          onChange={(e) =>
+                            setFieldDraft((d) => ({
+                              ...d,
+                              expectedCloseDate: e.target.value,
+                            }))
+                          }
+                        />
+                      ) : (
+                        <span>{opp.expectedCloseDate ?? "—"}</span>
+                      )}
+                    </div>
+                    {opp.actualCloseDate && (
+                      <div>
+                        <span className="text-gray-500">
+                          実際のクローズ日:{" "}
+                        </span>
+                        <span>{opp.actualCloseDate}</span>
+                      </div>
+                    )}
+                    {opp.lostReason && (
+                      <div>
+                        <span className="text-gray-500">失注理由: </span>
+                        <span>
+                          {LOST_REASON_LABELS[opp.lostReason] ?? opp.lostReason}
+                        </span>
+                        {opp.lostReasonDetail && (
+                          <span className="text-gray-400 ml-1">
+                            ({opp.lostReasonDetail})
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Next action */}
+                  <div>
+                    <div className="text-gray-500 mb-1">次アクション</div>
+                    {editingFields ? (
+                      <div className="space-y-1">
+                        <input
+                          type="text"
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                          placeholder="次アクション内容"
+                          value={fieldDraft.nextAction}
+                          onChange={(e) =>
+                            setFieldDraft((d) => ({
+                              ...d,
+                              nextAction: e.target.value,
+                            }))
+                          }
+                        />
+                        <input
+                          type="date"
+                          className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                          value={fieldDraft.nextActionDate}
+                          onChange={(e) =>
+                            setFieldDraft((d) => ({
+                              ...d,
+                              nextActionDate: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <span>
+                        {opp.nextAction ?? "—"}
+                        {opp.nextActionDate ? ` (${opp.nextActionDate})` : ""}
                       </span>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* Next action */}
-              <div>
-                <div className="text-gray-500 mb-1">次アクション</div>
-                {editingFields ? (
-                  <div className="space-y-1">
-                    <input
-                      type="text"
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      placeholder="次アクション内容"
-                      value={fieldDraft.nextAction}
-                      onChange={(e) =>
-                        setFieldDraft((d) => ({
-                          ...d,
-                          nextAction: e.target.value,
-                        }))
-                      }
-                    />
-                    <input
-                      type="date"
-                      className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
-                      value={fieldDraft.nextActionDate}
-                      onChange={(e) =>
-                        setFieldDraft((d) => ({
-                          ...d,
-                          nextActionDate: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                ) : (
-                  <span>
-                    {opp.nextAction ?? "—"}
-                    {opp.nextActionDate ? ` (${opp.nextActionDate})` : ""}
-                  </span>
-                )}
-              </div>
-
-              {/* Memo */}
-              <div>
-                <div className="text-gray-500 mb-1">メモ</div>
-                {editingFields ? (
-                  <textarea
-                    className="w-full border border-gray-300 rounded px-2 py-1 text-sm resize-none"
-                    rows={3}
-                    value={fieldDraft.memo}
-                    onChange={(e) =>
-                      setFieldDraft((d) => ({ ...d, memo: e.target.value }))
-                    }
-                  />
-                ) : (
-                  <span className="whitespace-pre-wrap">{opp.memo || "—"}</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Stage history timeline */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-800 mb-3">
-              ステージ変更履歴
-            </h2>
-            <div className="space-y-2">
-              {[...opp.stageHistory].reverse().map((h, i) => {
-                const meta = STAGE_META[h.stage];
-                const changer = users.find((u) => u.id === h.changedByUserId);
-                return (
-                  <div key={i} className="flex items-start gap-3 text-sm">
-                    <span className="text-lg leading-none mt-0.5">
-                      {meta.emoji}
-                    </span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-gray-800">
-                          {meta.label}
-                        </span>
-                        <span className="text-gray-400">
-                          {h.changedAt.slice(0, 10)}
-                        </span>
-                        {changer && (
-                          <span className="text-gray-400">{changer.name}</span>
-                        )}
-                      </div>
-                      {h.note && (
-                        <div className="text-gray-500 mt-0.5">{h.note}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "products" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-800">提案商品一覧</h2>
-            <button
-              onClick={() => setEditProduct(null)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              <Plus className="w-4 h-4" />
-              追加
-            </button>
-          </div>
-
-          {opp.proposalProducts.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">
-              提案商品が登録されていません
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {opp.proposalProducts.map((pp) => {
-                const person = persons.find((p) => p.id === pp.insuredPersonId);
-                return (
-                  <div
-                    key={pp.id}
-                    className="border border-gray-200 rounded-lg p-4"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                            {PRODUCT_CATEGORY_LABELS[pp.productCategory] ??
-                              pp.productCategory}
-                          </span>
-                          <span className="font-medium text-gray-800">
-                            {pp.productName}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-sm text-gray-500">
-                          {pp.insurer}
-                          {person && ` / 被保険者: ${person.name}`}
-                        </div>
-                        <div className="mt-1 text-sm font-medium text-gray-700">
-                          月払: ¥{pp.monthlyPremium.toLocaleString()}
-                          {pp.faceAmount &&
-                            ` / 保険金額: ¥${pp.faceAmount.toLocaleString()}`}
-                        </div>
-                        {pp.memo && (
-                          <div className="mt-1 text-xs text-gray-400">
-                            {pp.memo}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex gap-1 ml-2">
-                        <button
-                          onClick={() => setEditProduct(pp)}
-                          className="p-1.5 text-gray-400 hover:text-blue-500 rounded"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(pp.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Total */}
-              {opp.totalMonthlyPremium && (
-                <div className="border-t pt-3 text-sm font-medium text-gray-700 text-right">
-                  合計月払: ¥{opp.totalMonthlyPremium.toLocaleString()} / 月
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── ADR-TASK-MASTER: タスクタブ ─────────────────────────────── */}
-      {activeTab === "tasks" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-800">タスク管理</h2>
-            <button
-              onClick={() => {
-                setAddingTask(true);
-                setEditingTaskId(null);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              <Plus className="w-4 h-4" />
-              タスク追加
-            </button>
-          </div>
-
-          {/* タスク追加フォーム */}
-          {addingTask && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 space-y-2">
-              <input
-                type="text"
-                placeholder="タスク名"
-                value={taskDraft.title}
-                onChange={(e) =>
-                  setTaskDraft((d) => ({ ...d, title: e.target.value }))
-                }
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 outline-none"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={taskDraft.dueDate}
-                  onChange={(e) =>
-                    setTaskDraft((d) => ({ ...d, dueDate: e.target.value }))
-                  }
-                  className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                />
-                <select
-                  value={taskDraft.priority}
-                  onChange={(e) =>
-                    setTaskDraft((d) => ({
-                      ...d,
-                      priority: e.target.value as Task["priority"],
-                    }))
-                  }
-                  className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-                >
-                  <option value="high">高</option>
-                  <option value="medium">中</option>
-                  <option value="low">低</option>
-                </select>
-              </div>
-              <input
-                type="text"
-                placeholder="メモ（任意）"
-                value={taskDraft.memo}
-                onChange={(e) =>
-                  setTaskDraft((d) => ({ ...d, memo: e.target.value }))
-                }
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-              />
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => setAddingTask(false)}
-                  className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleAddTask}
-                  className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  追加
-                </button>
-              </div>
-            </div>
-          )}
-
-          {oppTasks.length === 0 && !addingTask ? (
-            <p className="text-sm text-gray-400 text-center py-4">
-              タスクがありません。「タスク追加」から自由に追加できます。
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {oppTasks.filter((t) => t.scope === "opportunity").length > 0 && (
-                <>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2 pb-1 border-b border-gray-100">
-                    案件共通タスク
-                  </div>
-                  {oppTasks
-                    .filter((t) => t.scope === "opportunity")
-                    .map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        editingTaskId={editingTaskId}
-                        taskEditDraft={taskEditDraft}
-                        onToggle={handleTaskToggle}
-                        onStartEdit={(t) => {
-                          setEditingTaskId(t.id);
-                          setTaskEditDraft({
-                            title: t.title,
-                            dueDate: t.dueDate,
-                            priority: t.priority,
-                            memo: t.memo,
-                          });
-                        }}
-                        onSaveEdit={handleSaveTaskEdit}
-                        onCancelEdit={() => {
-                          setEditingTaskId(null);
-                          setTaskEditDraft({});
-                        }}
-                        onEditDraftChange={setTaskEditDraft}
-                        onRemove={handleRemoveTask}
+                  {/* Memo */}
+                  <div>
+                    <div className="text-gray-500 mb-1">メモ</div>
+                    {editingFields ? (
+                      <textarea
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm resize-none"
+                        rows={3}
+                        value={fieldDraft.memo}
+                        onChange={(e) =>
+                          setFieldDraft((d) => ({ ...d, memo: e.target.value }))
+                        }
                       />
-                    ))}
-                </>
-              )}
-              {oppTasks.filter((t) => t.scope === "product").length > 0 && (
-                <>
-                  <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-4 pb-1 border-b border-gray-100">
-                    商品付帯タスク
+                    ) : (
+                      <span className="whitespace-pre-wrap">
+                        {opp.memo || "—"}
+                      </span>
+                    )}
                   </div>
-                  {oppTasks
-                    .filter((t) => t.scope === "product")
-                    .map((task) => {
-                      const product = opp.proposalProducts.find(
-                        (p) => p.id === task.productId,
-                      );
-                      return (
-                        <TaskRow
-                          key={task.id}
-                          task={task}
-                          productName={product?.productName}
-                          editingTaskId={editingTaskId}
-                          taskEditDraft={taskEditDraft}
-                          onToggle={handleTaskToggle}
-                          onStartEdit={(t) => {
-                            setEditingTaskId(t.id);
-                            setTaskEditDraft({
-                              title: t.title,
-                              dueDate: t.dueDate,
-                              priority: t.priority,
-                              memo: t.memo,
-                            });
-                          }}
-                          onSaveEdit={handleSaveTaskEdit}
-                          onCancelEdit={() => {
-                            setEditingTaskId(null);
-                            setTaskEditDraft({});
-                          }}
-                          onEditDraftChange={setTaskEditDraft}
-                          onRemove={handleRemoveTask}
-                        />
-                      );
-                    })}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── req8: 提案履歴タブ ───────────────────────────────── */}
-      {activeTab === "proposals" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-800">提案履歴</h2>
-            <button
-              onClick={openNewRound}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-            >
-              <Plus className="w-4 h-4" />
-              ラウンド追加
-            </button>
-          </div>
-
-          {/* ラウンド編集フォーム */}
-          {editingRound !== undefined && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-              <h3 className="font-medium text-gray-800 mb-3">
-                {editingRound === null
-                  ? `第${proposals.length + 1}回 提案ラウンドを追加`
-                  : `第${editingRound.roundNo}回 提案を編集`}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">
-                    提案日 <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                    value={roundDraft.proposalDate}
-                    onChange={(e) =>
-                      setRoundDraft((d) => ({
-                        ...d,
-                        proposalDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">
-                    修正日（ステージ不変）
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                    value={roundDraft.revisedDate}
-                    onChange={(e) =>
-                      setRoundDraft((d) => ({
-                        ...d,
-                        revisedDate: e.target.value,
-                      }))
-                    }
-                  />
                 </div>
               </div>
-              <div className="mb-3">
-                <label className="block text-xs text-gray-600 mb-1">メモ</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-                  placeholder="提案内容のメモ"
-                  value={roundDraft.memo}
-                  onChange={(e) =>
-                    setRoundDraft((d) => ({ ...d, memo: e.target.value }))
-                  }
-                />
-              </div>
-              {/* 商品セット選択 */}
-              {opp.proposalProducts.length > 0 && (
-                <div className="mb-3">
-                  <label className="block text-xs text-gray-600 mb-1">
-                    提案商品セット
-                  </label>
-                  <div className="space-y-1">
-                    {opp.proposalProducts.map((pp) => (
-                      <label
-                        key={pp.id}
-                        className="flex items-center gap-2 text-sm cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          className="w-3.5 h-3.5 accent-blue-500"
-                          checked={roundDraft.productIds.includes(pp.id)}
-                          onChange={(e) => {
-                            setRoundDraft((d) => ({
-                              ...d,
-                              productIds: e.target.checked
-                                ? [...d.productIds, pp.id]
-                                : d.productIds.filter((pid) => pid !== pp.id),
-                            }));
-                          }}
-                        />
-                        <span className="text-gray-700">{pp.productName}</span>
-                        <span className="text-xs text-gray-400">
-                          {pp.insurer}
+
+              {/* Stage history timeline */}
+              <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <h2 className="font-semibold text-gray-800 mb-3">
+                  ステージ変更履歴
+                </h2>
+                <div className="space-y-2">
+                  {[...opp.stageHistory].reverse().map((h, i) => {
+                    const meta = STAGE_META[h.stage];
+                    const changer = users.find(
+                      (u) => u.id === h.changedByUserId,
+                    );
+                    return (
+                      <div key={i} className="flex items-start gap-3 text-sm">
+                        <span className="text-lg leading-none mt-0.5">
+                          {meta.emoji}
                         </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={() => setEditingRound(undefined)}
-                  className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  <X className="w-3.5 h-3.5" />
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleSaveRound}
-                  disabled={!roundDraft.proposalDate}
-                  className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                  保存
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 提案ラウンド一覧 */}
-          {proposals.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p className="text-3xl mb-2">📝</p>
-              <p className="text-sm">提案ラウンドが登録されていません</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {[...proposals]
-                .sort((a, b) => b.proposalDate.localeCompare(a.proposalDate))
-                .map((round) => {
-                  const roundProducts = opp.proposalProducts.filter((pp) =>
-                    round.productIds.includes(pp.id),
-                  );
-                  return (
-                    <div
-                      key={round.id}
-                      className="bg-white rounded-xl border border-gray-200 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                              第{round.roundNo}回
+                            <span className="font-medium text-gray-800">
+                              {meta.label}
                             </span>
-                            <span className="text-sm font-medium text-gray-800">
-                              提案日: {round.proposalDate}
+                            <span className="text-gray-400">
+                              {h.changedAt.slice(0, 10)}
                             </span>
-                            {round.revisedDate && (
-                              <span className="text-xs text-gray-500">
-                                修正日: {round.revisedDate}
+                            {changer && (
+                              <span className="text-gray-400">
+                                {changer.name}
                               </span>
                             )}
                           </div>
-                          {round.memo && (
-                            <p className="mt-1 text-sm text-gray-600">
-                              {round.memo}
-                            </p>
+                          {h.note && (
+                            <div className="text-gray-500 mt-0.5">{h.note}</div>
                           )}
-                          {roundProducts.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              {roundProducts.map((pp) => (
-                                <span
-                                  key={pp.id}
-                                  className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded"
-                                >
-                                  {pp.productName}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => openEditRound(round)}
-                            className="p-1.5 text-gray-400 hover:text-blue-500 rounded hover:bg-blue-50"
-                            title="編集"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRound(round.id)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-red-50"
-                            title="削除"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "activities" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">活動履歴</h2>
-          {relatedBlocks.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">
-              この案件に紐付く活動記録がありません
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {relatedBlocks.map((block) => (
-                <div
-                  key={block.id}
-                  className="border border-gray-100 rounded-lg p-3 text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500">
-                      {block.startTime}–{block.endTime}
-                    </span>
-                    <span className="font-medium text-gray-800">
-                      {block.title}
-                    </span>
-                  </div>
-                  {block.memo && (
-                    <div className="mt-1 text-gray-500">{block.memo}</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "todos" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">TODO</h2>
-          {relatedTodos.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">
-              この案件に紐付く TODO がありません
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {relatedTodos.map((todo) => (
-                <div key={todo.id} className="flex items-start gap-2 text-sm">
-                  {todo.completed ? (
-                    <CheckSquare className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                  ) : (
-                    <Square className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                  )}
-                  <span
-                    className={
-                      todo.completed
-                        ? "line-through text-gray-400"
-                        : "text-gray-700"
-                    }
-                  >
-                    {todo.text}
-                  </span>
-                  <span className="text-gray-400 ml-auto shrink-0">
-                    {todo.date}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 契約発行タブ */}
-      {activeTab === "issued_policies" && (
-        <div className="space-y-3">
-          {issuedPolicies.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p className="text-3xl mb-2">📜</p>
-              <p className="text-sm">この案件から発行された契約はありません</p>
-              {opp.stage !== "issued" && opp.proposalProducts.length > 0 && (
-                <button
-                  onClick={() => setShowQuickIssue(true)}
-                  className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-xl hover:bg-green-700"
-                >
-                  🎉 契約を発行する
-                </button>
-              )}
-            </div>
-          ) : (
-            issuedPolicies.map((policy) => (
-              <div
-                key={policy.id}
-                className="bg-white rounded-xl border border-gray-200 p-4"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <PolicyStatusBadge status={policy.status} size="sm" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {policy.productName}
-                    </p>
-                    <p className="text-xs text-gray-500">{policy.insurer}</p>
-                    {policy.policyNumber && (
-                      <p className="text-xs text-gray-400 font-mono">
-                        {policy.policyNumber}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      ￥{policy.monthlyPremium.toLocaleString()}/月
-                    </p>
-                    <a
-                      href={`/policies/${policy.id}`}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      詳細を見る →
-                    </a>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
-            ))
+            </div>
+          )}
+
+          {activeTab === "products" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-gray-800">提案商品一覧</h2>
+                <button
+                  onClick={() => setEditProduct(null)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  <Plus className="w-4 h-4" />
+                  追加
+                </button>
+              </div>
+
+              {opp.proposalProducts.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  提案商品が登録されていません
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {opp.proposalProducts.map((pp) => {
+                    const person = persons.find(
+                      (p) => p.id === pp.insuredPersonId,
+                    );
+                    return (
+                      <div
+                        key={pp.id}
+                        className="border border-gray-200 rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                {PRODUCT_CATEGORY_LABELS[pp.productCategory] ??
+                                  pp.productCategory}
+                              </span>
+                              <span className="font-medium text-gray-800">
+                                {pp.productName}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-sm text-gray-500">
+                              {pp.insurer}
+                              {person && ` / 被保険者: ${person.name}`}
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-gray-700">
+                              月払: ¥{pp.monthlyPremium.toLocaleString()}
+                              {pp.faceAmount &&
+                                ` / 保険金額: ¥${pp.faceAmount.toLocaleString()}`}
+                            </div>
+                            {pp.memo && (
+                              <div className="mt-1 text-xs text-gray-400">
+                                {pp.memo}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <button
+                              onClick={() => setEditProduct(pp)}
+                              className="p-1.5 text-gray-400 hover:text-blue-500 rounded"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProduct(pp.id)}
+                              className="p-1.5 text-gray-400 hover:text-red-500 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Total */}
+                  {opp.totalMonthlyPremium && (
+                    <div className="border-t pt-3 text-sm font-medium text-gray-700 text-right">
+                      合計月払: ¥{opp.totalMonthlyPremium.toLocaleString()} / 月
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── ADR-TASK-MASTER: タスクタブ ─────────────────────────────── */}
+          {activeTab === "tasks" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold text-gray-800">タスク管理</h2>
+                <button
+                  onClick={() => {
+                    setAddingTask(true);
+                    setEditingTaskId(null);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  <Plus className="w-4 h-4" />
+                  タスク追加
+                </button>
+              </div>
+
+              {/* タスク追加フォーム */}
+              {addingTask && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 space-y-2">
+                  <input
+                    type="text"
+                    placeholder="タスク名"
+                    value={taskDraft.title}
+                    onChange={(e) =>
+                      setTaskDraft((d) => ({ ...d, title: e.target.value }))
+                    }
+                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 outline-none"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={taskDraft.dueDate}
+                      onChange={(e) =>
+                        setTaskDraft((d) => ({ ...d, dueDate: e.target.value }))
+                      }
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                    />
+                    <select
+                      value={taskDraft.priority}
+                      onChange={(e) =>
+                        setTaskDraft((d) => ({
+                          ...d,
+                          priority: e.target.value as Task["priority"],
+                        }))
+                      }
+                      className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      <option value="high">高</option>
+                      <option value="medium">中</option>
+                      <option value="low">低</option>
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="メモ（任意）"
+                    value={taskDraft.memo}
+                    onChange={(e) =>
+                      setTaskDraft((d) => ({ ...d, memo: e.target.value }))
+                    }
+                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => setAddingTask(false)}
+                      className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={handleAddTask}
+                      className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    >
+                      追加
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {oppTasks.length === 0 && !addingTask ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  タスクがありません。「タスク追加」から自由に追加できます。
+                </p>
+              ) : (
+                <div className="space-y-1">
+                  {oppTasks.filter((t) => t.scope === "opportunity").length >
+                    0 && (
+                    <>
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2 pb-1 border-b border-gray-100">
+                        案件共通タスク
+                      </div>
+                      {oppTasks
+                        .filter((t) => t.scope === "opportunity")
+                        .map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            editingTaskId={editingTaskId}
+                            taskEditDraft={taskEditDraft}
+                            onToggle={handleTaskToggle}
+                            onStartEdit={(t) => {
+                              setEditingTaskId(t.id);
+                              setTaskEditDraft({
+                                title: t.title,
+                                dueDate: t.dueDate,
+                                priority: t.priority,
+                                memo: t.memo,
+                              });
+                            }}
+                            onSaveEdit={handleSaveTaskEdit}
+                            onCancelEdit={() => {
+                              setEditingTaskId(null);
+                              setTaskEditDraft({});
+                            }}
+                            onEditDraftChange={setTaskEditDraft}
+                            onRemove={handleRemoveTask}
+                          />
+                        ))}
+                    </>
+                  )}
+                  {oppTasks.filter((t) => t.scope === "product").length > 0 && (
+                    <>
+                      <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-4 pb-1 border-b border-gray-100">
+                        商品付帯タスク
+                      </div>
+                      {oppTasks
+                        .filter((t) => t.scope === "product")
+                        .map((task) => {
+                          const product = opp.proposalProducts.find(
+                            (p) => p.id === task.productId,
+                          );
+                          return (
+                            <TaskRow
+                              key={task.id}
+                              task={task}
+                              productName={product?.productName}
+                              editingTaskId={editingTaskId}
+                              taskEditDraft={taskEditDraft}
+                              onToggle={handleTaskToggle}
+                              onStartEdit={(t) => {
+                                setEditingTaskId(t.id);
+                                setTaskEditDraft({
+                                  title: t.title,
+                                  dueDate: t.dueDate,
+                                  priority: t.priority,
+                                  memo: t.memo,
+                                });
+                              }}
+                              onSaveEdit={handleSaveTaskEdit}
+                              onCancelEdit={() => {
+                                setEditingTaskId(null);
+                                setTaskEditDraft({});
+                              }}
+                              onEditDraftChange={setTaskEditDraft}
+                              onRemove={handleRemoveTask}
+                            />
+                          );
+                        })}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── req8: 提案履歴タブ ───────────────────────────────── */}
+          {activeTab === "proposals" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-gray-800">提案履歴</h2>
+                <button
+                  onClick={openNewRound}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  <Plus className="w-4 h-4" />
+                  ラウンド追加
+                </button>
+              </div>
+
+              {/* ラウンド編集フォーム */}
+              {editingRound !== undefined && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <h3 className="font-medium text-gray-800 mb-3">
+                    {editingRound === null
+                      ? `第${proposals.length + 1}回 提案ラウンドを追加`
+                      : `第${editingRound.roundNo}回 提案を編集`}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        提案日 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                        value={roundDraft.proposalDate}
+                        onChange={(e) =>
+                          setRoundDraft((d) => ({
+                            ...d,
+                            proposalDate: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        修正日（ステージ不変）
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                        value={roundDraft.revisedDate}
+                        onChange={(e) =>
+                          setRoundDraft((d) => ({
+                            ...d,
+                            revisedDate: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-xs text-gray-600 mb-1">
+                      メモ
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                      placeholder="提案内容のメモ"
+                      value={roundDraft.memo}
+                      onChange={(e) =>
+                        setRoundDraft((d) => ({ ...d, memo: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {/* 商品セット選択 */}
+                  {opp.proposalProducts.length > 0 && (
+                    <div className="mb-3">
+                      <label className="block text-xs text-gray-600 mb-1">
+                        提案商品セット
+                      </label>
+                      <div className="space-y-1">
+                        {opp.proposalProducts.map((pp) => (
+                          <label
+                            key={pp.id}
+                            className="flex items-center gap-2 text-sm cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              className="w-3.5 h-3.5 accent-blue-500"
+                              checked={roundDraft.productIds.includes(pp.id)}
+                              onChange={(e) => {
+                                setRoundDraft((d) => ({
+                                  ...d,
+                                  productIds: e.target.checked
+                                    ? [...d.productIds, pp.id]
+                                    : d.productIds.filter(
+                                        (pid) => pid !== pp.id,
+                                      ),
+                                }));
+                              }}
+                            />
+                            <span className="text-gray-700">
+                              {pp.productName}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {pp.insurer}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setEditingRound(undefined)}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      キャンセル
+                    </button>
+                    <button
+                      onClick={handleSaveRound}
+                      disabled={!roundDraft.proposalDate}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      保存
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 提案ラウンド一覧 */}
+              {proposals.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-3xl mb-2">📝</p>
+                  <p className="text-sm">提案ラウンドが登録されていません</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {[...proposals]
+                    .sort((a, b) =>
+                      b.proposalDate.localeCompare(a.proposalDate),
+                    )
+                    .map((round) => {
+                      const roundProducts = opp.proposalProducts.filter((pp) =>
+                        round.productIds.includes(pp.id),
+                      );
+                      return (
+                        <div
+                          key={round.id}
+                          className="bg-white rounded-xl border border-gray-200 p-4"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                  第{round.roundNo}回
+                                </span>
+                                <span className="text-sm font-medium text-gray-800">
+                                  提案日: {round.proposalDate}
+                                </span>
+                                {round.revisedDate && (
+                                  <span className="text-xs text-gray-500">
+                                    修正日: {round.revisedDate}
+                                  </span>
+                                )}
+                              </div>
+                              {round.memo && (
+                                <p className="mt-1 text-sm text-gray-600">
+                                  {round.memo}
+                                </p>
+                              )}
+                              {roundProducts.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                  {roundProducts.map((pp) => (
+                                    <span
+                                      key={pp.id}
+                                      className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded"
+                                    >
+                                      {pp.productName}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => openEditRound(round)}
+                                className="p-1.5 text-gray-400 hover:text-blue-500 rounded hover:bg-blue-50"
+                                title="編集"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRound(round.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 rounded hover:bg-red-50"
+                                title="削除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "todos" && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <h2 className="font-semibold text-gray-800 mb-4">TODO</h2>
+              {relatedTodos.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  この案件に紐付く TODO がありません
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {relatedTodos.map((todo) => (
+                    <div
+                      key={todo.id}
+                      className="flex items-start gap-2 text-sm"
+                    >
+                      {todo.completed ? (
+                        <CheckSquare className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                      ) : (
+                        <Square className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                      )}
+                      <span
+                        className={
+                          todo.completed
+                            ? "line-through text-gray-400"
+                            : "text-gray-700"
+                        }
+                      >
+                        {todo.text}
+                      </span>
+                      <span className="text-gray-400 ml-auto shrink-0">
+                        {todo.date}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 契約発行タブ */}
+          {activeTab === "issued_policies" && (
+            <div className="space-y-3">
+              {issuedPolicies.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-3xl mb-2">📜</p>
+                  <p className="text-sm">
+                    この案件から発行された契約はありません
+                  </p>
+                  {opp.stage !== "issued" &&
+                    opp.proposalProducts.length > 0 && (
+                      <button
+                        onClick={() => setShowQuickIssue(true)}
+                        className="mt-3 px-4 py-2 text-sm bg-green-600 text-white rounded-xl hover:bg-green-700"
+                      >
+                        🎉 契約を発行する
+                      </button>
+                    )}
+                </div>
+              ) : (
+                issuedPolicies.map((policy) => (
+                  <div
+                    key={policy.id}
+                    className="bg-white rounded-xl border border-gray-200 p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <PolicyStatusBadge status={policy.status} size="sm" />
+                        </div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {policy.productName}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {policy.insurer}
+                        </p>
+                        {policy.policyNumber && (
+                          <p className="text-xs text-gray-400 font-mono">
+                            {policy.policyNumber}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          ￥{policy.monthlyPremium.toLocaleString()}/月
+                        </p>
+                        <a
+                          href={`/policies/${policy.id}`}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          詳細を見る →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Product edit modal */}
+          {editProduct !== undefined && (
+            <ProposalProductEditModal
+              product={editProduct ?? undefined}
+              opportunityId={id!}
+              householdId={opp.householdId}
+              onClose={() => setEditProduct(undefined)}
+              onSave={handleSaveProduct}
+            />
+          )}
+
+          {/* Quick Policy Issue Modal */}
+          {showQuickIssue && (
+            <QuickPolicyIssueModal
+              opportunity={opp}
+              onClose={() => setShowQuickIssue(false)}
+            />
+          )}
+          {/* モバイル: 活動履歴をここに縦積み (lg未満) */}
+          {relatedBlocks.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-4 mt-4 lg:hidden">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                📅 活動履歴 ({relatedBlocks.length}件)
+              </h2>
+              <div className="relative pl-6">
+                <div
+                  className="absolute left-2 top-2 bottom-2 w-px bg-gradient-to-b from-blue-200 via-blue-100 to-transparent"
+                  aria-hidden="true"
+                />
+                <ul className="space-y-3">
+                  {relatedBlocks.map((block) => (
+                    <li key={block.id} className="relative">
+                      <span
+                        className="absolute -left-[18px] top-3 w-3 h-3 rounded-full bg-white border-2 border-blue-400 shadow-sm"
+                        aria-hidden="true"
+                      />
+                      <div className="border border-gray-200 border-l-4 border-l-blue-400 rounded-lg p-3 bg-blue-50/20">
+                        <p className="text-xs text-gray-500 tabular-nums mb-1">
+                          {block.startTime}–{block.endTime}
+                        </p>
+                        {block.title && (
+                          <p className="text-sm font-medium text-gray-900 mb-1">
+                            {block.title}
+                          </p>
+                        )}
+                        {block.memo && (
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+                            {block.memo}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           )}
         </div>
-      )}
+        {/* /.max-w-4xl */}
+      </div>
+      {/* /.左カラム */}
 
-      {/* Product edit modal */}
-      {editProduct !== undefined && (
-        <ProposalProductEditModal
-          product={editProduct ?? undefined}
-          opportunityId={id!}
-          householdId={opp.householdId}
-          onClose={() => setEditProduct(undefined)}
-          onSave={handleSaveProduct}
-        />
-      )}
-
-      {/* Quick Policy Issue Modal */}
-      {showQuickIssue && (
-        <QuickPolicyIssueModal
-          opportunity={opp}
-          onClose={() => setShowQuickIssue(false)}
-        />
-      )}
+      {/* ─── 右カラム: 活動履歴タイムライン (lg以上のみ) ─── */}
+      <aside className="hidden lg:flex lg:flex-col w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0">
+        {/* sticky ヘッダ */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">
+            📅 活動履歴 ({relatedBlocks.length}件)
+          </h2>
+          {relatedBlocks.length > 0 && (
+            <span className="text-xs text-gray-400">新しい順</span>
+          )}
+        </div>
+        <div className="flex-1 px-4 py-3">
+          {relatedBlocks.length === 0 ? (
+            <p className="text-sm text-gray-400 py-6 text-center">
+              活動履歴がありません
+            </p>
+          ) : (
+            <div className="relative pl-6">
+              <div
+                className="absolute left-2 top-2 bottom-2 w-px bg-gradient-to-b from-blue-200 via-blue-100 to-transparent"
+                aria-hidden="true"
+              />
+              <ul className="space-y-3">
+                {relatedBlocks.map((block) => (
+                  <li key={block.id} className="relative">
+                    <span
+                      className="absolute -left-[18px] top-3 w-3 h-3 rounded-full bg-white border-2 border-blue-400 shadow-sm"
+                      aria-hidden="true"
+                    />
+                    <div className="border border-gray-200 border-l-4 border-l-blue-400 rounded-lg p-3 bg-blue-50/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                          {block.startTime}–{block.endTime}
+                        </span>
+                      </div>
+                      {block.title && (
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          {block.title}
+                        </p>
+                      )}
+                      {block.memo && (
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+                          {block.memo}
+                        </p>
+                      )}
+                      {block.result && (
+                        <div className="mt-2 text-xs bg-white rounded px-2 py-1 border border-gray-100">
+                          <span className="text-gray-500">結果: </span>
+                          <span className="text-gray-800">{block.result}</span>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {/* モバイル: lg未満では下に縦積み */}
+        </div>
+      </aside>
     </div>
   );
 }
+
+// モバイル用: 活動履歴コンテンツ (lg未満では本文の下に表示) — OpportunityDetailPage内で直接展開するので独立隢数なし
