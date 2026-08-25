@@ -10,23 +10,6 @@ import type { DailyReport, ReportStatus } from '../types';
 import { REPORTS, USERS } from '../data/seed';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-function mkReport(
-  overrides: Partial<DailyReport> & { status: DailyReport['status'] },
-): DailyReport {
-  return {
-    id: `r_${overrides.status}`,
-    userId: 'u1',
-    date: '2026-08-25',
-    status: overrides.status,
-    blocks: [],
-    todos: [],
-    memo: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
 // ─── D1: ReadOnlyTimeline — ブロック詳細表示 ─────────────────────────────────
 
 describe('D1: ReadOnlyTimeline ブロック詳細モーダル', () => {
@@ -50,7 +33,7 @@ describe('D1: ReadOnlyTimeline ブロック詳細モーダル', () => {
       attachments: [],
     };
     // ブロックがクリック可能かどうかは種別・ステータスに依存しないことを検証
-    const canClickBlock = (_block: typeof block) => true; // D1: 常にtrue（過去も同様）
+    const canClickBlock = () => true; // D1: 常にtrue（過去も同様）
     expect(canClickBlock(block)).toBe(true);
   });
 

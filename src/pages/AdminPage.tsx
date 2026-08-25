@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Edit2, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { useAppStore } from "../store";
 import { ForbiddenState } from "../components/ui/EmptyState";
@@ -559,9 +560,18 @@ function TaskTemplatesTab({ canEdit }: { canEdit: boolean }) {
 // =============================
 export function AdminPage() {
   const { currentRole } = useAppStore();
+  const [searchParams] = useSearchParams();
+  // 設定画面等から ?tab=task_templates で直接「タスク初期値」タブを開けるようにする（導線改善）。
+  const _initialTab = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<
     "users" | "teams" | "audit" | "task_templates"
-  >("users");
+  >(
+    _initialTab === "task_templates" ||
+      _initialTab === "teams" ||
+      _initialTab === "audit"
+      ? _initialTab
+      : "users",
+  );
 
   // admin: 読み書き / executive: 読取専用 / それ以外: Forbidden
   if (!["admin", "executive"].includes(currentRole)) {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import type { BlockType } from '../types';
 
@@ -11,7 +12,10 @@ const BLOCK_EMOJIS: Record<BlockType, string> = {
 };
 
 export function SettingsPage() {
-  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, changePassword } = useAppStore();
+  const { currentUserId, currentRole, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, changePassword } = useAppStore();
+  const navigate = useNavigate();
+  // タスク初期値マスタの編集は管理者/役員のみ（ADR-TASK-MASTER）
+  const canManageTaskTemplates = ['admin', 'executive'].includes(currentRole);
   const user = users.find(u => u.id === currentUserId);
   const myChips = quickChips.filter(c => c.userId === currentUserId || !c.userId);
   // Use store selector to ensure real-time updates
@@ -65,7 +69,7 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 flex-wrap">
-        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定']].map(([id, label]) => (
+        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定'], ...(canManageTaskTemplates ? [['task_master', '☑️ タスク初期値マスタ']] : [])].map(([id, label]) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={`px-3 py-2 text-xs rounded-lg transition-colors ${activeTab === id ? 'bg-white shadow font-medium text-gray-900' : 'text-gray-500'}`}>
             {label}
@@ -319,6 +323,25 @@ export function SettingsPage() {
             </div>
             <button onClick={() => addToast({ type: 'success', message: '保存しました' })}
               className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">保存</button>
+          </div>
+        )}
+
+        {/* タスク初期値マスタ（管理者/役員のみ）— 商談発生時・商品追加時に自動生成するタスクの設定 */}
+        {activeTab === 'task_master' && canManageTaskTemplates && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-700 mb-1">タスク初期値マスタ</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              商談発生時・商品追加時（ほか世帯作成時・ステージ到達時）に<strong>自動生成するタスク</strong>を設定できます。トリガーごとに既定タスクを追加・編集・削除でき、条件に合致した際にタスクが自動で作成されます。
+            </p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              例）「商談発生時 → 現状ヒアリング・意向確認」「商品追加時 → 設計書作成・見積提示」など。
+            </div>
+            <button
+              onClick={() => navigate('/admin?tab=task_templates')}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+            >
+              ☑️ タスク初期値マスタを開く
+            </button>
           </div>
         )}
       </div>
