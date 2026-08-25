@@ -8,6 +8,7 @@
 > - 実在しない機能・画面は記載しない。
 > - 各シナリオの「検証観点」は UI層とstore層（二層防御）の両方を対象とする。
 > - 「関連UC」列は `docs/USE_CASE_LIST.md` のユースケースIDを参照する。
+> **更新**: 2026-08-25（日堃3点BPT-14/15/16 ・タスク初期値マスタBPT を反映）
 
 ---
 
@@ -28,6 +29,11 @@
 | BPT-11 | 商談活動報告 → 日報連携 | general | UC-G-17 |
 | BPT-12 | 付帯タスク管理（案件・被保険者単位） + 提案ラウンド | general | UC-G-11 |
 | BPT-13 | 商談ステータスの分岐（partial_won / on_hold） | general / manager | — |
+| BPT-14 | **過去日報ブロック詳細**(日堃3点D1・2026-08-25) | general | UC-G-24 |
+| BPT-15 | **日付ナビ統一** 配沙(日堃3点D2・2026-08-25) | general | UC-G-25 |
+| BPT-16 | **日報一覧検索・提出状冶**(日堃3点D3・2026-08-25) | general / manager / executive / admin | UC-G-23, UC-M-12 |
+| BPT-17 | **タスク初期値マスタ管理**(タスク初期値マスタ・2026-08-25) | admin | ADR-TASK-MASTER |
+| BPT-18 | **ダッシュボード全幅化**(営業実績タブ統合・2026-08-25) | general / manager / executive | IA-1, IA-5 |
 
 ---
 

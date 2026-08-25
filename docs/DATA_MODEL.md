@@ -5,6 +5,8 @@
 305-hrl-nippou-app は LocalStorage ベースの Zustand Store でデータを管理します。
 外部 API 通信は一切ありません。
 
+**更新**: 2026-08-25（日堃3点D1-D3・日報一覧タブ・タスク初期値マスタナビゲーション・ダッシュボード全幅化を反映）
+
 ---
 
 ## 認証・セッション
@@ -1342,6 +1344,41 @@ setRole: (role) => {
 `DailyReport.customerVisits` は旧設計の名残です。
 現在は `TimeBlock` 上の訪問結果フィールドで代替されています。
 将来的に `customerVisits` は削除予定です。
+
+---
+
+## 2026-08-25 更新（日堃3点D1-D3・タスク初期値マスタ・ダッシュボード全幅化）
+
+### 日堃3点変更D1-D3
+
+**D1: 過去ブロック詳細住所の閑扣沙**: 日報上の過去実績ブロックをクリックして詳細関闘模ード(詳鞠read-only・署名不可).
+- `NippouPage.tsx` の `ReadOnlyTimeline.tsx` コンポーネントに `handleBlockClick` エベントハンドラ追加・詳細モードUI履歴(日付/詳細署名不可)を実装。
+
+**D2: 日付ナビ統一**: 日報上の日付前後ナビゲーション(←⇒)を更新(「前の日報/次の日報」ボタン削除・日報有り日のみをスキップ)。
+- `NippouPage` \u26 `ReportDetailPage` 上部ヘッダーに日付ナビ `← 2026-08-24 →` を配置(月初一日不可。赨稰)。
+
+**D3: 日報一覧タブ・ページ**: 過去日報検索・一覧詳細(読取円)。ロール別可視(general=自分、manager=全師一覧、executive=全師一覧、admin=全師一覧)。
+- `NippouListPage` 新規実装(日付範囲、検索キーワードを取そって提出済み日報一覧を詳細関闘)。
+- `nippou.reports.v1` 上で住例動作(日付範囲指定で約棲後の日報を絞り込み)。
+
+### タスク分金統也
+
+**ADR-TASK-MASTER 出機・設計確定・ナビゲーション**: `docs/ADR-TASK-MASTER.md` 参照・決裁穈开示一覚。
+- `Task` 型（世帯/案件/商品 3 スコープ・自由CRUD・預倒眞発行元追種）新斧。
+- `TaskTemplate` 種入(世帯既定\u26 全社共通案件既定\u26 物䲌別セット沙缠対象)》トリガー編知何饢」。
+- Store に `addTaskTemplate` / `updateTaskTemplate` / `removeTaskTemplate` 釸。
+- AdminPage に "タスク初期値マスタ" タブ追加（admin のみ絨認）。
+- deep-link: `/admin?tab=task_templates`
+- `nippou.taskTemplates.v1` localStorage 锻饗化追加。
+
+### IA 再編(メニュー 9 → 5 項目)
+
+詳細は `docs/UI_SPEC.md` ・ `docs/USER_GUIDE.md` ほかを参照。
+- IA-1: 営業実績ダッシュボード統合
+- IA-2: カレンダータブ統合。
+- IA-3: 顧客一覧統合(世帯・契約)。
+- IA-4: 検索のヘッダ移動。
+- IA-5: ダッシュボード全幅化（`max-w-4xl` 除去)。
 
 ---
 
