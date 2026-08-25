@@ -53,6 +53,7 @@ import {
   POLICY_STATUS_HISTORY,
   SALES_TARGETS,
   TASK_TEMPLATES,
+  OPP_ACTIVITY_REPORTS,
 } from "../data/seed";
 import { format } from "date-fns";
 
@@ -552,7 +553,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         /* ignore */
       }
     }
-    return [];
+    return OPP_ACTIVITY_REPORTS;
   })(),
   taskTemplates: (() => {
     if (typeof window !== "undefined" && window.localStorage) {

@@ -1,9 +1,15 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Filter, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Filter,
+  ChevronUp,
+  ChevronDown,
+  CheckSquare,
+} from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "../store";
-import type { ProductCategory } from "../types";
+import type { ProductCategory, Task } from "../types";
 import { StageBadge } from "../components/opportunity/StageBadge";
 import { HouseholdAccordion } from "../components/ui/HouseholdAccordion";
 import { groupByHousehold } from "../utils/groupByHousehold";
@@ -39,6 +45,9 @@ const STAGE_TABS: StageTab[] = [
   { key: "lost", label: "失注" },
 ];
 
+// ─── ビュー切替 ──────────────────────────────────────────────────────────────
+type ViewMode = "household" | "product";
+
 // ─── SortIcon コンポーネント（レンダー内定義を回避するためコンポーネント外部に定義） ──
 // 要件1 (ADR-B4 v2): ステージ列削除に伴い 'stage' キーを除去
 type SortKey =
@@ -61,8 +70,146 @@ function SortIcon({
   );
 }
 
+// ─── タスク進捗バッジ（項目3） ─────────────────────────────────────────────────
+// コンパクトなバッジ＋細い進捗バー + 展開式タスクリスト
+interface TaskProgressProps {
+  tasks: Task[];
+  expanded: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+}
+
+function TaskProgressBadge({ tasks, expanded, onToggle }: TaskProgressProps) {
+  const done = tasks.filter((t) => t.done).length;
+  const total = tasks.length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-[100px]">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors select-none"
+        title="タスクを展開"
+      >
+        <CheckSquare className="w-3.5 h-3.5" />
+        <span className="font-medium">
+          {done}/{total}
+        </span>
+        {total > 0 && (
+          <ChevronDown
+            className={`w-3 h-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+          />
+        )}
+      </button>
+      {total > 0 && (
+        <div className="flex-1 min-w-[40px] h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-blue-500"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── タスクリスト展開パネル（항目3） ──────────────────────────────────────────
+interface TaskListPreviewProps {
+  tasks: Task[];
+  onNavigate: () => void;
+}
+
+const PRIORITY_LABEL: Record<Task["priority"], string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
+};
+
+function TaskListPreview({ tasks, onNavigate }: TaskListPreviewProps) {
+  const [showDone, setShowDone] = useState(false);
+  const pending = tasks.filter((t) => !t.done);
+  const done = tasks.filter((t) => t.done);
+  const previewPending = pending.slice(0, 5);
+
+  if (tasks.length === 0) {
+    return (
+      <div className="px-4 py-2 bg-gray-50 text-xs text-gray-400 border-t border-gray-100">
+        タスクなし
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-gray-50 border-t border-gray-100"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* 未完了タスク（最大5件） */}
+      {previewPending.map((t) => (
+        <div
+          key={t.id}
+          className="flex items-center gap-2 px-8 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+        >
+          <span className="w-3.5 h-3.5 rounded border border-gray-300 flex-shrink-0" />
+          <span className="flex-1 text-gray-700 truncate">{t.title}</span>
+          {t.dueDate && (
+            <span className="text-gray-400 whitespace-nowrap">{t.dueDate}</span>
+          )}
+          <span className="text-gray-400 text-[10px]">
+            {PRIORITY_LABEL[t.priority]}
+          </span>
+        </div>
+      ))}
+      {pending.length > 5 && (
+        <div className="px-8 py-1 text-xs text-gray-400">
+          他 {pending.length - 5} 件の未完了タスク
+        </div>
+      )}
+      {/* 完了タスク（折りたたみ） */}
+      {done.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            className="flex items-center gap-1 px-8 py-1.5 text-xs text-gray-500 hover:text-gray-700 w-full text-left border-t border-gray-100"
+          >
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${showDone ? "rotate-180" : ""}`}
+            />
+            完了 {done.length} 件
+          </button>
+          {showDone &&
+            done.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-2 px-8 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+              >
+                <span className="w-3.5 h-3.5 rounded border border-blue-400 bg-blue-400 flex-shrink-0 flex items-center justify-center text-white text-[8px]">
+                  ✓
+                </span>
+                <span className="flex-1 text-gray-400 line-through truncate">
+                  {t.title}
+                </span>
+              </div>
+            ))}
+        </>
+      )}
+      {/* 詳細リンク */}
+      <div className="px-8 py-1.5 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="text-xs text-blue-600 hover:text-blue-700"
+        >
+          案件詳細でタスク管理 →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // =====================================================
-// OpportunitiesPage — 商談案件一覧（世帯1段グループ化）
+// OpportunitiesPage — 商談案件一覧（世帯別/商品別ビュー切替）
 // =====================================================
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
@@ -77,6 +224,13 @@ const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   liability: "賠償責任保険",
   other: "その他",
 };
+
+// 商品カテゴリ別グループ（項目5）
+interface ProductGroup {
+  category: ProductCategory;
+  label: string;
+  items: Opportunity[];
+}
 
 export function OpportunitiesPage() {
   const navigate = useNavigate();
@@ -102,6 +256,12 @@ export function OpportunitiesPage() {
   const [sortAsc, setSortAsc] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  // 項目5: ビュー切替
+  const [viewMode, setViewMode] = useState<ViewMode>("household");
+  // 項目3: 展開中タスクリスト（opp.id → bool）
+  const [expandedTasks, setExpandedTasks] = useState<Record<string, boolean>>(
+    {},
+  );
 
   // Role-based filtering
   const visibleOpportunities = useMemo(() => {
@@ -208,6 +368,37 @@ export function OpportunitiesPage() {
     );
   }, [filtered, getHouseholdName]);
 
+  // 項目5: 商品別グループ化（1案件が複数カテゴリを持つ場合は全カテゴリに出現）
+  // "代表カテゴリ" 方式ではなく "カテゴリごとに出現" 方式を採用
+  // （1案件が生保+医療の場合、生命保険グループ・医療保険グループ両方に表示）
+  // → 件数は案件数でなくカテゴリ出現数になる。実装上わかりやすいので明記。
+  const productGroups = useMemo((): ProductGroup[] => {
+    const catMap = new Map<ProductCategory, Opportunity[]>();
+    for (const opp of filtered) {
+      const cats =
+        opp.productCategories.length > 0
+          ? opp.productCategories
+          : (["other"] as ProductCategory[]);
+      for (const cat of cats) {
+        if (catFilter !== "all" && cat !== catFilter) continue;
+        if (!catMap.has(cat)) catMap.set(cat, []);
+        catMap.get(cat)!.push(opp);
+      }
+    }
+    // PRODUCT_CATEGORY_LABELS のキー順に並べる（定義順 = 重要度順）
+    const groups: ProductGroup[] = [];
+    for (const [cat, label] of Object.entries(PRODUCT_CATEGORY_LABELS) as [
+      ProductCategory,
+      string,
+    ][]) {
+      const items = catMap.get(cat);
+      if (items && items.length > 0) {
+        groups.push({ category: cat, label, items });
+      }
+    }
+    return groups;
+  }, [filtered, catFilter]);
+
   // 世帯ヘッダー行: 代表アクティブ案件メタ（ADR-B3 §B3-5-1）
   // visibleOpportunities 全体から計算（タブフィルタ後の filtered ではなく全案件が対象）
   const renderHouseholdMeta = useMemo(() => {
@@ -270,6 +461,12 @@ export function OpportunitiesPage() {
     }
   };
 
+  // 項目3: タスク展開トグル
+  const toggleTaskExpand = (oppId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedTasks((prev) => ({ ...prev, [oppId]: !prev[oppId] }));
+  };
+
   const renderTableHeader = () => (
     <tr>
       <th className="px-4 py-3 text-left font-medium text-gray-600 whitespace-nowrap">
@@ -293,6 +490,9 @@ export function OpportunitiesPage() {
         </span>
       </th>
       <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">
+        タスク
+      </th>
+      <th className="px-4 py-3 text-left font-medium text-gray-600 hidden lg:table-cell">
         次アクション
       </th>
       <th
@@ -307,44 +507,154 @@ export function OpportunitiesPage() {
     </tr>
   );
 
-  const renderItem = (opp: Opportunity) => (
-    <tr
-      key={opp.id}
-      className="hover:bg-gray-50 cursor-pointer"
-      onClick={() => navigate(`/opportunities/${opp.id}`)}
-    >
-      <td className="px-4 py-3 text-gray-700 whitespace-nowrap pl-8">
-        {getContractorName(opp.contractorPersonId) || (
-          <span className="text-gray-300">契約者未設定</span>
+  const renderItem = (opp: Opportunity) => {
+    const tasks = opp.tasks ?? [];
+    const isExpanded = !!expandedTasks[opp.id];
+    return (
+      <>
+        <tr
+          key={opp.id}
+          className="hover:bg-gray-50 cursor-pointer"
+          onClick={() => navigate(`/opportunities/${opp.id}`)}
+        >
+          <td className="px-4 py-3 text-gray-700 whitespace-nowrap pl-8">
+            {getContractorName(opp.contractorPersonId) || (
+              <span className="text-gray-300">契約者未設定</span>
+            )}
+          </td>
+          <td className="px-4 py-3">
+            <span className="font-medium text-gray-800">{opp.title}</span>
+          </td>
+          <td className="px-4 py-3 hidden md:table-cell">
+            <div className="flex flex-wrap gap-1">
+              {opp.productCategories.map((cat) => (
+                <span
+                  key={cat}
+                  className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded"
+                >
+                  {PRODUCT_CATEGORY_LABELS[cat]}
+                </span>
+              ))}
+            </div>
+          </td>
+          <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap hidden md:table-cell">
+            {opp.totalMonthlyPremium
+              ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
+              : "—"}
+          </td>
+          {/* 項目3: タスク進捗バッジ */}
+          <td className="px-4 py-3 hidden lg:table-cell">
+            <TaskProgressBadge
+              tasks={tasks}
+              expanded={isExpanded}
+              onToggle={(e) => toggleTaskExpand(opp.id, e)}
+            />
+          </td>
+          <td className="px-4 py-3 text-gray-600 hidden lg:table-cell max-w-[180px] truncate">
+            {opp.nextAction ?? "—"}
+          </td>
+          <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden lg:table-cell">
+            {effectiveExpectedCloseDate(opp) ?? "—"}
+          </td>
+        </tr>
+        {/* 項目3: タスクリスト展開パネル */}
+        {isExpanded && (
+          <tr key={`${opp.id}-tasks`}>
+            <td colSpan={7} className="p-0">
+              <TaskListPreview
+                tasks={tasks}
+                onNavigate={() => navigate(`/opportunities/${opp.id}`)}
+              />
+            </td>
+          </tr>
         )}
-      </td>
-      <td className="px-4 py-3">
-        <span className="font-medium text-gray-800">{opp.title}</span>
-      </td>
-      <td className="px-4 py-3 hidden md:table-cell">
-        <div className="flex flex-wrap gap-1">
-          {opp.productCategories.map((cat) => (
-            <span
-              key={cat}
-              className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded"
-            >
-              {PRODUCT_CATEGORY_LABELS[cat]}
-            </span>
-          ))}
+      </>
+    );
+  };
+
+  // 商品別ビュー用のレンダラ（項目5）
+  const renderProductView = () => (
+    <div className="space-y-4">
+      {productGroups.length === 0 && (
+        <div className="text-center py-10 text-gray-400 text-sm">
+          該当する案件がありません
         </div>
-      </td>
-      <td className="px-4 py-3 text-right text-gray-700 whitespace-nowrap hidden md:table-cell">
-        {opp.totalMonthlyPremium
-          ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
-          : "—"}
-      </td>
-      <td className="px-4 py-3 text-gray-600 hidden lg:table-cell max-w-[180px] truncate">
-        {opp.nextAction ?? "—"}
-      </td>
-      <td className="px-4 py-3 text-gray-600 whitespace-nowrap hidden lg:table-cell">
-        {effectiveExpectedCloseDate(opp) ?? "—"}
-      </td>
-    </tr>
+      )}
+      {productGroups.map((group) => (
+        <div
+          key={group.category}
+          className="bg-white border border-gray-200 rounded-xl overflow-hidden"
+        >
+          {/* グループヘッダー */}
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              {group.label}
+            </span>
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-600">
+              {group.items.length}
+            </span>
+          </div>
+          {/* 案件リスト */}
+          <div className="divide-y divide-gray-100">
+            {group.items.map((opp) => {
+              const tasks = opp.tasks ?? [];
+              const isExpanded = !!expandedTasks[opp.id];
+              return (
+                <div key={opp.id}>
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/opportunities/${opp.id}`)}
+                  >
+                    {/* 契約者 */}
+                    <div className="w-24 text-xs text-gray-600 whitespace-nowrap flex-shrink-0">
+                      {getContractorName(opp.contractorPersonId) || (
+                        <span className="text-gray-300">未設定</span>
+                      )}
+                    </div>
+                    {/* 案件名 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm text-gray-800 truncate">
+                        {opp.title}
+                      </div>
+                      {opp.nextAction && (
+                        <div className="text-xs text-gray-400 truncate mt-0.5">
+                          {opp.nextAction}
+                        </div>
+                      )}
+                    </div>
+                    {/* タスク進捗（項目3 + 5の組み合わせ） */}
+                    <div className="flex-shrink-0">
+                      <TaskProgressBadge
+                        tasks={tasks}
+                        expanded={isExpanded}
+                        onToggle={(e) => toggleTaskExpand(opp.id, e)}
+                      />
+                    </div>
+                    {/* 期日 */}
+                    <div className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 hidden md:block">
+                      {effectiveExpectedCloseDate(opp) ?? "—"}
+                    </div>
+                    {/* 月払 */}
+                    <div className="text-xs text-gray-600 whitespace-nowrap flex-shrink-0 hidden lg:block">
+                      {opp.totalMonthlyPremium
+                        ? `¥${opp.totalMonthlyPremium.toLocaleString()}`
+                        : "—"}
+                    </div>
+                  </div>
+                  {/* タスク展開 */}
+                  {isExpanded && (
+                    <TaskListPreview
+                      tasks={tasks}
+                      onNavigate={() => navigate(`/opportunities/${opp.id}`)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 
   return (
@@ -360,13 +670,20 @@ export function OpportunitiesPage() {
               : openOnly
                 ? "（進行中のみ）"
                 : "（全件）"}{" "}
-            / {householdGroups.length} 世帯
+            /{" "}
+            {viewMode === "household"
+              ? `${householdGroups.length} 世帯`
+              : `${productGroups.length} カテゴリ`}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowFilters((v) => !v)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg ${showFilters ? "bg-blue-50 border-blue-300 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg ${
+              showFilters
+                ? "bg-blue-50 border-blue-300 text-blue-700"
+                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+            }`}
           >
             <Filter className="w-4 h-4" />
             フィルタ
@@ -381,7 +698,7 @@ export function OpportunitiesPage() {
         </div>
       </div>
 
-      {/* ── タブ（カンバン風 6タブ） ───────────────────────────────────────── */}
+      {/* ── タブ（カンバン風 7タブ） ───────────────────────────────────────── */}
       <div className="mb-1">
         <div className="flex overflow-x-auto scrollbar-none border-b border-gray-200 gap-0">
           {STAGE_TABS.map((tab) => {
@@ -415,6 +732,34 @@ export function OpportunitiesPage() {
         </div>
       </div>
 
+      {/* 項目5: ビュー切替トグル */}
+      <div className="flex items-center justify-between mb-3 mt-2">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("household")}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              viewMode === "household"
+                ? "bg-white text-gray-800 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            🏠 世帯別
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("product")}
+            className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              viewMode === "product"
+                ? "bg-white text-gray-800 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            📦 商品別
+          </button>
+        </div>
+      </div>
+
       {/* Filter panel */}
       {showFilters && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -427,7 +772,9 @@ export function OpportunitiesPage() {
               disabled={isLostTab}
             />
             <span
-              className={`text-sm ${isLostTab ? "text-gray-400" : "text-gray-700"}`}
+              className={`text-sm ${
+                isLostTab ? "text-gray-400" : "text-gray-700"
+              }`}
             >
               進行中のみ{isLostTab ? "（失注タブは無効）" : ""}
             </span>
@@ -457,18 +804,22 @@ export function OpportunitiesPage() {
         </div>
       )}
 
-      {/* 世帯1段グループ化アコーディオン */}
-      <HouseholdAccordion
-        groups={householdGroups}
-        allOpenDefault={true}
-        renderItem={renderItem}
-        renderTableHeader={renderTableHeader}
-        colSpan={6}
-        itemLabel="商談"
-        emptyMessage="該当する案件がありません"
-        renderHouseholdMeta={renderHouseholdMeta}
-        renderHouseholdActions={renderHouseholdActions}
-      />
+      {/* メインコンテンツ: 世帯別 or 商品別 */}
+      {viewMode === "household" ? (
+        <HouseholdAccordion
+          groups={householdGroups}
+          allOpenDefault={true}
+          renderItem={renderItem}
+          renderTableHeader={renderTableHeader}
+          colSpan={7}
+          itemLabel="商談"
+          emptyMessage="該当する案件がありません"
+          renderHouseholdMeta={renderHouseholdMeta}
+          renderHouseholdActions={renderHouseholdActions}
+        />
+      ) : (
+        renderProductView()
+      )}
 
       {/* Quick add modal */}
       {showQuickAdd && (

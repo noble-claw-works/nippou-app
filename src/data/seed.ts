@@ -17,12 +17,14 @@ import type {
   Opportunity,
   OpportunityStage,
   OpportunityStatus,
+  OpportunityActivityReport,
   Policy,
   PolicyStatusHistory,
   Coverage,
   SalesTarget,
   ContractMilestones,
   DeficiencyItem,
+  Task,
   TaskTemplate,
   TaskPriority,
 } from "../types";
@@ -33,6 +35,17 @@ import { format, subDays, addDays } from "date-fns";
 const today = format(new Date(), "yyyy-MM-dd");
 const d = (n: number) => format(subDays(new Date(), n), "yyyy-MM-dd");
 const f = (n: number) => format(addDays(new Date(), n), "yyyy-MM-dd");
+// 直近の平日（土日をスキップ）—項目6 デモ用日付として使用
+const _lastWeekday = (() => {
+  let i = 1;
+  while (i <= 7) {
+    const candidate = subDays(new Date(), i);
+    const dow = candidate.getDay();
+    if (dow !== 0 && dow !== 6) return format(candidate, "yyyy-MM-dd");
+    i++;
+  }
+  return d(1); // fallback
+})();
 
 // =====================================================
 // ユーザー
@@ -782,6 +795,25 @@ const buildReports = (): DailyReport[] => {
           ]
         : [];
 
+    // 項目6デモ: _lastWeekdayの日報に商談報告由来ブロックを挿入
+    const extraBlocks: TimeBlock[] =
+      date === _lastWeekday
+        ? [
+            makeBlock(`b_${rid}_opp_report`, rid, {
+              type: "visit",
+              startTime: "14:00",
+              endTime: "15:00",
+              title: "GILSON家 生命保険見直し: 設計書説明・質問対応",
+              customerId: "c1",
+              opportunityId: "opp1",
+              memo: "設計書の詳細を説明。主宿より「配偶者分も检討したい」と式の御希望。次回面談で配偶者用設計書を提出予定。",
+              isPlanned: false,
+              isActual: true,
+              sourceReportId: "oar_demo_opp1",
+            }),
+          ]
+        : [];
+
     reports.push(
       makeReport(
         rid,
@@ -814,6 +846,7 @@ const buildReports = (): DailyReport[] => {
             endTime: "17:00",
             title: "事務作業",
           }),
+          ...extraBlocks,
         ],
         [
           // DEAD-1: 検証を確実にするため、全ての過去日報に dueDate 付き TODO を最低 1 件仕込む
@@ -1299,6 +1332,49 @@ export const OPPORTUNITIES: Opportunity[] = [
       lifePlanDate: d(18),
       proposalDate: d(5),
     } as ContractMilestones,
+    // ★ Batch-B デモ用タスク（項目3）
+    tasks: [
+      {
+        id: "task_opp1_01",
+        title: "設計書の内容を確認・説明",
+        done: true,
+        doneDate: d(4),
+        priority: "high" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(5) + "T09:00:00",
+      },
+      {
+        id: "task_opp1_02",
+        title: "意向確認書の署名取得",
+        done: true,
+        doneDate: d(3),
+        priority: "high" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(5) + "T09:00:00",
+      },
+      {
+        id: "task_opp1_03",
+        title: "配偶者分の追加設計書作成",
+        done: false,
+        dueDate: f(2),
+        priority: "medium" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(3) + "T10:00:00",
+      },
+      {
+        id: "task_opp1_04",
+        title: "申込書類一式の準備",
+        done: false,
+        dueDate: f(7),
+        priority: "medium" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(3) + "T10:00:00",
+      },
+    ] as Task[],
   }),
 
   // c2: 齋藤 和久 — 医療保険 (negotiation ステージ)
@@ -2684,5 +2760,28 @@ export const TASK_TEMPLATES: TaskTemplate[] = [
     isActive: true,
     createdAt: _tmplNow,
     updatedAt: _tmplNow,
+  },
+];
+
+// =====================================================
+// 商談活動報告 シードデータ（項目6: 報告→日報反映デモ）
+// id="oar_demo_opp1" を d(2)の日報 TimeBlock.sourceReportId と導線する
+// ※ ストアの oppActivityReports 初期値として使用
+// =====================================================
+export const OPP_ACTIVITY_REPORTS: OpportunityActivityReport[] = [
+  {
+    id: "oar_demo_opp1",
+    opportunityId: "opp1",
+    userId: "u1",
+    reportDate: _lastWeekday,
+    activityType: "visit",
+    summary:
+      "設計書の詳細を説明。主宿より「配偶者分も检討したい」と式の御希望。次回面談で配偶者用設計書を提出予定。",
+    nextAction: "配偶者分の追加設計書作成・提出",
+    nextActionDate: f(2),
+    reachedMilestones: {},
+    confidence: "A",
+    createdAt: _lastWeekday + "T15:00:00",
+    updatedAt: _lastWeekday + "T15:00:00",
   },
 ];
