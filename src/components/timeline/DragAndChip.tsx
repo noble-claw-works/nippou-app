@@ -33,16 +33,6 @@ export function yToMinute(y: number, containerTop: number): number {
   return Math.round(raw / SNAP) * SNAP;
 }
 
-/** 時間帯で「おすすめ」種別を返す */
-function getRecommendedTypes(nowMin: number): BlockType[] {
-  if (nowMin >= 8 * 60 + 30 && nowMin < 10 * 60)  return ['meeting'];
-  if (nowMin >= 10 * 60       && nowMin < 12 * 60)  return ['visit'];
-  if (nowMin >= 12 * 60       && nowMin < 13 * 60)  return ['lunch'];
-  if (nowMin >= 13 * 60       && nowMin < 17 * 60)  return ['visit', 'office'];
-  if (nowMin >= 17 * 60)                             return ['office'];
-  return [];
-}
-
 function getLastChip(): BlockType | null {
   try { return localStorage.getItem(STORAGE_KEY) as BlockType | null; } catch { return null; }
 }
@@ -88,8 +78,6 @@ export function ChipPopover({
   const popRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  const recommended = getRecommendedTypes(nowMin);
   const lastChip    = getLastChip();
 
   // 種別の並び順: 直近選択を先頭に
@@ -97,8 +85,8 @@ export function ChipPopover({
     ? [lastChip, ...BLOCK_TYPES.filter(t => t !== lastChip)]
     : BLOCK_TYPES;
 
-  // Enter → おすすめの先頭 or 直近
-  const defaultType: BlockType | null = recommended[0] ?? lastChip ?? null;
+  // Enter → 直近 or 先頭
+  const defaultType: BlockType | null = lastChip ?? BLOCK_TYPES[0];
 
   // fade-in on mount
   useEffect(() => {
@@ -191,25 +179,20 @@ export function ChipPopover({
         {/* chips */}
         <div className="py-1">
           {orderedTypes.map((type, idx) => {
-            const isRecommended = recommended.includes(type);
-            const isLast        = type === lastChip && idx === 0;
-            const hotkey        = Object.entries(HOTKEYS).find(([, v]) => v === type)?.[0];
+            const isLast = type === lastChip && idx === 0;
+            const hotkey = Object.entries(HOTKEYS).find(([, v]) => v === type)?.[0];
             return (
               <button
                 key={type}
                 onClick={() => { saveLastChip(type); onSelectChip(type); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50 transition-colors text-left
-                  ${isRecommended ? 'border-l-2 border-blue-500 bg-blue-50/50' : ''}`}
-                aria-label={`${BLOCK_LABELS[type]}${hotkey ? `。キー${hotkey}` : ''}${isRecommended ? '。おすすめ' : ''}`}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50 transition-colors text-left"
+                aria-label={`${BLOCK_LABELS[type]}${hotkey ? `。キー${hotkey}` : ''}`}
               >
                 <span className="text-base">{BLOCK_EMOJIS[type]}</span>
-                <span className={`flex-1 font-medium ${isRecommended ? 'text-blue-700' : 'text-gray-700'}`}>
+                <span className="flex-1 font-medium text-gray-700">
                   {BLOCK_LABELS[type]}
                 </span>
-                {isRecommended && (
-                  <span className="text-[9px] text-blue-600 font-bold bg-blue-100 px-1 rounded">おすすめ</span>
-                )}
-                {isLast && !isRecommended && (
+                {isLast && (
                   <span className="text-[9px] text-gray-400">直近</span>
                 )}
                 {hotkey && (
@@ -260,24 +243,18 @@ export function ChipPopover({
         </button>
       </div>
       <div className="flex gap-2 px-4 py-2 overflow-x-auto">
-        {orderedTypes.map(type => {
-          const isRecommended = recommended.includes(type);
-          return (
+        {orderedTypes.map(type => (
             <button
               key={type}
               onClick={() => { saveLastChip(type); onSelectChip(type); }}
               style={{ minWidth: 56, minHeight: 56 }}
-              className={`flex-shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-xl border text-xs font-medium transition-colors p-2
-                ${isRecommended
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-gray-50 text-gray-700 active:bg-gray-100'}`}
-              aria-label={`${BLOCK_LABELS[type]}${isRecommended ? '。おすすめ' : ''}`}
+              className="flex-shrink-0 flex flex-col items-center justify-center gap-0.5 rounded-xl border text-xs font-medium transition-colors p-2 border-gray-200 bg-gray-50 text-gray-700 active:bg-gray-100"
+              aria-label={BLOCK_LABELS[type]}
             >
               <span className="text-xl">{BLOCK_EMOJIS[type]}</span>
               <span>{BLOCK_LABELS[type]}</span>
             </button>
-          );
-        })}
+          ))}
       </div>
       <div className="px-4 pb-4 pt-1">
         <button

@@ -140,3 +140,40 @@ describe('ブロック操作ガード（addBlock）', () => {
     expect(useAppStore.getState().reports[0].mainTheme).toBe('変更テスト');
   });
 });
+
+// ── 実績入力 gating (項目2 対応) ──────────────────────────────────
+describe('実績入力 gating: canEditActual', () => {
+  it('planning: canEditActual = false', () => {
+    const r = createReport();
+    expect(r.status).toBe('planning');
+    const canEditActual = (s: string) => s === 'in_progress';
+    expect(canEditActual(r.status)).toBe(false);
+  });
+
+  it('in_progress: canEditActual = true（予定確定後）', () => {
+    const r = createReport();
+    useAppStore.getState().confirmPlanning(r.id);
+    const updated = useAppStore.getState().reports[0];
+    const canEditActual = (s: string) => s === 'in_progress';
+    expect(canEditActual(updated.status)).toBe(true);
+  });
+
+  it('submitted: canEditActual = false', () => {
+    const r = createReport();
+    useAppStore.getState().confirmPlanning(r.id);
+    useAppStore.getState().submitReport(r.id);
+    const updated = useAppStore.getState().reports[0];
+    const canEditActual = (s: string) => s === 'in_progress';
+    expect(canEditActual(updated.status)).toBe(false);
+  });
+
+  it('confirmed: canEditActual = false', () => {
+    const r = createReport();
+    useAppStore.getState().confirmPlanning(r.id);
+    useAppStore.getState().submitReport(r.id);
+    useAppStore.getState().confirmReport(r.id);
+    const updated = useAppStore.getState().reports[0];
+    const canEditActual = (s: string) => s === 'in_progress';
+    expect(canEditActual(updated.status)).toBe(false);
+  });
+});

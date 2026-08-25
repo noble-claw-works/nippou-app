@@ -38,6 +38,8 @@ export interface TimelinePanelProps {
   onPlannedDragWithoutType: () => void;
   onActualChipSelected: (type: import('../../types').BlockType) => void;
   onActualDragWithoutType: () => void;
+  /** false = 予定未確定のため実績入力を無効化 */
+  isActualEnabled: boolean;
 }
 
 // ─── TimeGrid (shared hour lines) ─────────────────────────────────────────────
@@ -91,6 +93,7 @@ export function TimelinePanel({
   onOpenBlock, onActualize,
   onPlannedChipSelected, onPlannedDragWithoutType,
   onActualChipSelected, onActualDragWithoutType,
+  isActualEnabled,
 }: TimelinePanelProps) {
   // DOM ref は TodayPage から渡されたものを使う（useDragAndChip が同じ ref を参照）
   const timelineRef  = plannedRef as React.MutableRefObject<HTMLDivElement | null>;
@@ -130,6 +133,9 @@ export function TimelinePanel({
     const label     = isPlanned ? '📋 予定（計画）' : '✅ 実績（結果）';
     const testId    = isPlanned ? 'add-planned'    : 'add-actual';
 
+    // 実績列の入力可否
+    const actualDisabled = !isPlanned && !isActualEnabled;
+
     return (
       <div className="flex-1 min-w-0 flex flex-col">
         {/* 列ヘッダー */}
@@ -138,23 +144,31 @@ export function TimelinePanel({
           <button
             onClick={() => onOpenBlock(undefined, col)}
             data-testid={testId}
-            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg min-h-[36px] sm:min-h-[28px] ${btnCol}`}
+            disabled={actualDisabled}
+            className={`flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg min-h-[36px] sm:min-h-[28px] ${actualDisabled ? 'opacity-40 cursor-not-allowed' : btnCol}`}
             aria-label={isPlanned ? '予定を追加' : '実績を追加'}
           >
             <Plus className="w-3.5 h-3.5" /> 追加
           </button>
         </div>
 
+        {/* 実績入力未解禁バナー */}
+        {actualDisabled && (
+          <div className="px-3 py-2 bg-amber-50 border-b border-amber-100 text-xs text-amber-700">
+            予定を確定すると実績を入力できます
+          </div>
+        )}
+
         {/* タイムライン本体 */}
         <div
           ref={ref}
-          className={`relative select-none ${bgClass}`}
+          className={`relative select-none ${bgClass}${actualDisabled ? ' pointer-events-none opacity-60' : ''}`}
           style={{
             height: `${totalHeight}px`,
-            cursor: dnC.dragState?.active ? 'ns-resize' : 'crosshair',
+            cursor: actualDisabled ? 'not-allowed' : (dnC.dragState?.active ? 'ns-resize' : 'crosshair'),
           }}
-          onMouseDown={dnC.onTimelineMouseDown}
-          onTouchStart={dnC.onTimelineTouchStart}
+          onMouseDown={actualDisabled ? undefined : dnC.onTimelineMouseDown}
+          onTouchStart={actualDisabled ? undefined : dnC.onTimelineTouchStart}
         >
           <TimeGrid />
           {blocks.map(block => {

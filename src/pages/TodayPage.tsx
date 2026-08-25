@@ -597,6 +597,7 @@ export function TodayPage() {
                   onPlannedDragWithoutType={handleDragWithoutType}
                   onActualChipSelected={handleActualChipSelected}
                   onActualDragWithoutType={handleActualWithoutType}
+                  isActualEnabled={canEditActual(report)}
                 />
               </div>
               {/* サイドパネル: モバイルではタイムラインの後 */}

@@ -164,7 +164,7 @@ export function HouseholdsPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-lg font-bold text-gray-900">世帯マスタ</h1>
+        <h1 className="text-lg font-bold text-gray-900">世帯一覧</h1>
         {canAdd && (
           <button onClick={() => setShowNew(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
