@@ -1933,6 +1933,38 @@ export const OPPORTUNITIES: Opportunity[] = [
   // c4: 水野 幸重 — 自動車保険 (application ステージ)
   mkOpp("opp3", "c4", "u1", "水野家 自動車保険 更新", "application", "open", {
     targetPersonIds: ["p_c4_head"],
+    tasks: [
+      {
+        id: "task_opp3_01",
+        title: "申込書の記入内容を確認",
+        done: true,
+        doneDate: d(2),
+        priority: "high" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(3) + "T09:00:00",
+      },
+      {
+        id: "task_opp3_02",
+        title: "本人確認書類の回収",
+        done: false,
+        priority: "medium" as TaskPriority,
+        dueDate: f(2),
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(3) + "T09:00:00",
+      },
+      {
+        id: "task_opp3_03",
+        title: "初回保険料の口座振替手続き案内",
+        done: false,
+        priority: "medium" as TaskPriority,
+        dueDate: f(5),
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(3) + "T09:00:00",
+      },
+    ],
     productCategories: ["auto"],
     proposalProducts: [
       {
@@ -2127,6 +2159,38 @@ export const OPPORTUNITIES: Opportunity[] = [
   mkOpp("opp6", "c10", "u3", "伊藤家 医療保険 検討", "needs_analysis", "open", {
     targetPersonIds: ["p_c10_head"],
     contractorPersonId: "p_c10_head",
+    tasks: [
+      {
+        id: "task_opp6_01",
+        title: "現在の医療保障の加入状況をヒアリング",
+        done: true,
+        doneDate: d(4),
+        priority: "medium" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(6) + "T09:00:00",
+      },
+      {
+        id: "task_opp6_02",
+        title: "入院・手術給付の希望条件を整理",
+        done: false,
+        priority: "medium" as TaskPriority,
+        dueDate: f(4),
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(6) + "T09:00:00",
+      },
+      {
+        id: "task_opp6_03",
+        title: "がん保険とのセット提案資料を作成",
+        done: false,
+        priority: "low" as TaskPriority,
+        dueDate: f(8),
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(6) + "T09:00:00",
+      },
+    ],
     productCategories: ["medical", "cancer"],
     proposalProducts: [
       {
@@ -2190,6 +2254,38 @@ export const OPPORTUNITIES: Opportunity[] = [
   mkOpp("opp7", "c1", "u1", "GILSON家 自動車保険 受注", "issued", "won", {
     targetPersonIds: ["p_c1_head"],
     contractorPersonId: "p_c1_head",
+    tasks: [
+      {
+        id: "task_opp7_01",
+        title: "申込手続きの完了確認",
+        done: true,
+        doneDate: d(10),
+        priority: "high" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(12) + "T09:00:00",
+      },
+      {
+        id: "task_opp7_02",
+        title: "証券のお届けと内容説明",
+        done: true,
+        doneDate: d(3),
+        priority: "medium" as TaskPriority,
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(12) + "T09:00:00",
+      },
+      {
+        id: "task_opp7_03",
+        title: "次回更新時期のフォロー予定を登録",
+        done: false,
+        priority: "low" as TaskPriority,
+        dueDate: f(20),
+        rolledOver: false,
+        scope: "opportunity" as const,
+        createdAt: d(12) + "T09:00:00",
+      },
+    ],
     productCategories: ["auto"],
     proposalProducts: [
       {
