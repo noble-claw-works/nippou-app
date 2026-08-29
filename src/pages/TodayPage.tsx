@@ -1,143 +1,430 @@
-import { useState, useEffect, useRef } from 'react';
-import { format } from 'date-fns';
-import { Plus, Clock, Send, Eye, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
-import { useAppStore } from '../store';
-import { StatusBadge } from '../components/ui/StatusBadge';
-import { Modal } from '../components/ui/Modal';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS, timeToMinutes, formatDate } from '../utils';
-import type { BlockType, MoodType, ManagerSignal, TimeBlock } from '../types';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { format } from "date-fns";
+import { Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { useAppStore } from "../store";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { Modal } from "../components/ui/Modal";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import {
+  BLOCK_EMOJIS,
+  BLOCK_LABELS,
+  minutesToTime,
+  formatDate,
+  timeToMinutes,
+} from "../utils";
+import type { BlockType, TimeBlock } from "../types";
+import {
+  DAY_END,
+  SNAP,
+  BLOCK_TYPES,
+  useDragAndChip,
+} from "../components/timeline/DragAndChip";
+import { useBlockDrag } from "../components/timeline/useBlockDrag";
+import { TimelinePanel } from "../components/today/TimelinePanel";
+import {
+  BlockModal,
+  type BlockModalState,
+} from "../components/today/BlockModal";
+import { SidePanelCards } from "../components/today/SidePanelCards";
+import { ManagerCommentSection } from "../components/today/ManagerCommentSection";
+import { TrackingBanner } from "../components/today/TrackingBanner";
+import {
+  StatusBar,
+  StatusStepper,
+  SubmitModalContent,
+} from "../components/today/StatusBar";
+import { CustomerCombobox } from "../components/ui/CustomerCombobox";
 
-const DAY_START = 6 * 60; // 6:00
-const DAY_END = 22 * 60 + 30; // 22:30
-const HOUR_PX = 64;
-const SNAP = 15;
-
-function minuteToY(min: number): number {
-  return ((min - DAY_START) / 60) * HOUR_PX;
-}
-
-const BLOCK_TYPES: BlockType[] = ['visit', 'office', 'phone', 'travel', 'break', 'meeting', 'lunch'];
-
-interface BlockModalState {
-  open: boolean;
-  block: Partial<TimeBlock>;
-  isNew: boolean;
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setMobile(window.innerWidth < 768);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return mobile;
 }
 
 export function TodayPage() {
-  const today = format(new Date(), 'yyyy-MM-dd');
-  const todayDisplay = formatDate(today);
+  const navigate = useNavigate();
+  const today = format(new Date(), "yyyy-MM-dd");
   const {
-    getTodayReport, createReport, updateReport, updateBlock, deleteBlock, addBlock,
-    addTodo, toggleTodo, deleteTodo, submitReport, withdrawReport,
-    customers, currentUserId, addToast, trackingSession, startTracking, stopTracking, discardTracking
+    getTodayReport,
+    createReport,
+    updateReport,
+    updateBlock,
+    deleteBlock,
+    addBlock,
+    addTodo,
+    toggleTodo,
+    deleteTodo,
+    confirmPlanning,
+    submitReport,
+    withdrawReport,
+    customers,
+    currentUserId,
+    currentRole,
+    addToast,
+    trackingSession,
+    startTracking,
+    stopTracking,
+    discardTracking,
+    reports,
   } = useAppStore();
 
-  const [report, setReport] = useState(() => getTodayReport());
-  const [showStartModal, setShowStartModal] = useState(false);
+  // MGR-1 + MGR-5: 上長ビューは原則 /report-admin へだが、`?self=1` 付きなら自身の日報作成を許可
+  const [searchParams] = useSearchParams();
+  const selfMode = searchParams.get("self") === "1";
+  useEffect(() => {
+    if (
+      (currentRole === "manager" || currentRole === "executive") &&
+      !selfMode
+    ) {
+      navigate("/report-admin", { replace: true });
+    }
+  }, [currentRole, navigate, selfMode]);
+
+  // D2: 日報が存在する日付のソート済一覧（該当ユーザーの分のみ）
+  const myReportDates = [
+    ...new Set(
+      reports
+        .filter((r) => r.userId === currentUserId)
+        .map((r) => r.date)
+        .sort(),
+    ),
+  ];
+  const todayIdx = myReportDates.indexOf(today);
+  const prevReportDate = todayIdx > 0 ? myReportDates[todayIdx - 1] : null;
+  const nextReportDate =
+    todayIdx >= 0 && todayIdx < myReportDates.length - 1
+      ? myReportDates[todayIdx + 1]
+      : null;
+
+  const isMobile = useIsMobile();
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const actualColRef = useRef<HTMLDivElement>(null);
+
+  // store から直接購読（ポーリング廃止）
+  const report = useAppStore(
+    (s) =>
+      s.reports.find((r) => r.date === today && r.userId === s.currentUserId) ??
+      null,
+  );
+
+  // ADR-B4 v2 要件9: 今日の報告が未入力のアクティブ商談
+  const unreportedOpps = useAppStore(
+    useShallow((s) => {
+      const todayReported = new Set(
+        s.oppActivityReports
+          .filter((r) => r.reportDate === today && r.userId === s.currentUserId)
+          .map((r) => r.opportunityId),
+      );
+      return s.opportunities
+        .filter(
+          (o) =>
+            o.ownerId === s.currentUserId &&
+            o.status === "open" &&
+            !todayReported.has(o.id),
+        )
+        .slice(0, 3);
+    }),
+  );
+  const [showStartModal, setShowStartModal] = useState(() => !getTodayReport());
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showTrackModal, setShowTrackModal] = useState(false);
-  const [blockModal, setBlockModal] = useState<BlockModalState>({ open: false, block: {}, isNew: true });
-  const [trackType, setTrackType] = useState<BlockType>('visit');
-  const [trackCustomer, setTrackCustomer] = useState('');
+  const [showLongBlock, setShowLongBlock] = useState(false);
+  const [pendingLong, setPendingLong] = useState<{
+    startMin: number;
+    endMin: number;
+    type?: BlockType;
+    col?: "planned" | "actual";
+  } | null>(null);
+  const [blockModal, setBlockModal] = useState<BlockModalState>({
+    open: false,
+    block: {},
+    isNew: true,
+    col: "actual",
+    focusCustomer: false,
+  });
+  const [continueInput, setContinueInput] = useState(false);
+  const [trackType, setTrackType] = useState<BlockType>("visit");
+  const [trackCustomer, setTrackCustomer] = useState("");
   const [elapsedSecs, setElapsedSecs] = useState(0);
   const timerRef = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
-    const r = getTodayReport();
-    if (!r) setShowStartModal(true);
-    setReport(r);
-  }, []);
+  // ステータスガード
+  const canEditPlanned = (r: typeof report) =>
+    !!r && (r.status === "planning" || r.status === "in_progress");
+  const canEditActual = (r: typeof report) => !!r && r.status === "in_progress";
+  // F1: 提出前であれば既存実績ブロックのD&D編集を許可
+  const canDragActual = (r: typeof report) =>
+    !!r && r.status !== "submitted" && r.status !== "confirmed";
+  const isReadOnly = (r: typeof report) =>
+    !!r && (r.status === "submitted" || r.status === "confirmed");
 
-  useEffect(() => {
-    const interval = setInterval(() => setReport(getTodayReport()), 500);
-    return () => clearInterval(interval);
-  }, []);
+  // D&C hooks
+  const onReportRequired = useCallback((): boolean => {
+    if (!getTodayReport()) {
+      addToast({ type: "warning", message: "先に日報を作成してください" });
+      setShowStartModal(true);
+      return false;
+    }
+    return true;
+  }, [getTodayReport, addToast]);
 
-  // Tracking timer
+  const plannedDnC = useDragAndChip(timelineRef, onReportRequired);
+  const actualDnC = useDragAndChip(actualColRef, onReportRequired);
+
+  const { blockDragState, startDrag } = useBlockDrag({
+    containerRef: timelineRef,
+    actualRef: actualColRef,
+    onCommit: (blockId, startMin, endMin) => {
+      if (!report) return;
+      updateBlock(report.id, blockId, {
+        startTime: minutesToTime(startMin),
+        endTime: minutesToTime(endMin),
+      });
+    },
+  });
+
+  // setElapsedSecs(0) はトラッキングセッション終了時のリセット。同期呈示必須の終了処理であり、cascading renderの実害なし。
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (trackingSession) {
-      timerRef.current = setInterval(() => {
-        setElapsedSecs(Math.floor((Date.now() - new Date(trackingSession.startedAt).getTime()) / 1000));
-      }, 1000) as unknown as number;
+      timerRef.current = setInterval(
+        () =>
+          setElapsedSecs(
+            Math.floor(
+              (Date.now() - new Date(trackingSession.startedAt).getTime()) /
+                1000,
+            ),
+          ),
+        1000,
+      ) as unknown as number;
     } else {
       clearInterval(timerRef.current);
       setElapsedSecs(0);
     }
     return () => clearInterval(timerRef.current);
   }, [trackingSession]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const formatElapsed = (s: number) => {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  // Dialog helpers
+  const openFromDrag = (
+    startMin: number,
+    endMin: number,
+    type?: BlockType,
+    col: "planned" | "actual" = "actual",
+  ) => {
+    const pa =
+      col === "planned"
+        ? { isPlanned: true, isActual: false }
+        : { isPlanned: false, isActual: true };
+    const block: Partial<TimeBlock> = {
+      type,
+      startTime: minutesToTime(startMin),
+      endTime: minutesToTime(Math.min(endMin, DAY_END)),
+      title: type ? BLOCK_LABELS[type] : "",
+      memo: "",
+      ...pa,
+      attachments: [],
+    };
+    setBlockModal({
+      open: true,
+      col,
+      block,
+      isNew: true,
+      focusCustomer: !!type,
+    });
+  };
+  const withLongCheck = (
+    startMin: number,
+    endMin: number,
+    type: BlockType | undefined,
+    col: "planned" | "actual",
+  ) => {
+    if (endMin - startMin >= 8 * 60) {
+      setPendingLong({ startMin, endMin, type, col });
+      setShowLongBlock(true);
+    } else openFromDrag(startMin, endMin, type, col);
   };
 
-  const handleStartReport = (mode: 'copy_prev' | 'template' | 'blank') => {
-    const r = createReport(currentUserId, today);
-    setShowStartModal(false);
-    addToast({ type: 'success', message: '日報を作成しました' });
-    if (mode === 'copy_prev') {
-      addToast({ type: 'info', message: '前日の予定を引き継ぎました（モック）' });
+  const handleChipSelected = (t: BlockType) => {
+    const { startMin, endMin } = plannedDnC.confirmChip(t);
+    withLongCheck(startMin, endMin, t, "planned");
+  };
+  const handleDragWithoutType = () => {
+    const { startMin, endMin } = plannedDnC.confirmWithoutType();
+    withLongCheck(startMin, endMin, undefined, "planned");
+  };
+  const handleActualChipSelected = (t: BlockType) => {
+    const { startMin, endMin } = actualDnC.confirmChip(t);
+    withLongCheck(startMin, endMin, t, "actual");
+  };
+  const handleActualWithoutType = () => {
+    const { startMin, endMin } = actualDnC.confirmWithoutType();
+    withLongCheck(startMin, endMin, undefined, "actual");
+  };
+
+  const handleOpenBlock = (
+    block?: TimeBlock,
+    col: "planned" | "actual" = "actual",
+  ) => {
+    if (!report) return;
+    // 入力制限ガード
+    if (isReadOnly(report)) {
+      addToast({ type: "warning", message: "提出済みの日報は変更できません" });
+      return;
     }
-    setReport(r);
-  };
-
-  const handleOpenBlock = (block?: TimeBlock) => {
+    if (col === "actual" && !canEditActual(report)) {
+      addToast({
+        type: "warning",
+        message: "実績の入力は「予定を確定する」後に行えます",
+      });
+      return;
+    }
     if (block) {
-      setBlockModal({ open: true, block: { ...block }, isNew: false });
-    } else {
-      const nowH = new Date().getHours();
-      const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
       setBlockModal({
         open: true,
+        col: block.isPlanned ? "planned" : "actual",
+        block: { ...block },
+        isNew: false,
+        focusCustomer: false,
+      });
+    } else {
+      const nowH = new Date().getHours(),
+        nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
+      const s = nowH * 60 + nowM,
+        e = Math.min(s + 60, DAY_END);
+      const pa =
+        col === "planned"
+          ? { isPlanned: true, isActual: false }
+          : { isPlanned: false, isActual: true };
+      setBlockModal({
+        open: true,
+        col,
         block: {
-          type: 'visit',
-          startTime: `${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-          endTime: `${String(nowH + 1).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-          title: '', memo: '', isPlanned: true, isActual: true, attachments: [],
+          startTime: minutesToTime(s),
+          endTime: minutesToTime(e),
+          title: "",
+          memo: "",
+          ...pa,
+          attachments: [],
         },
         isNew: true,
+        focusCustomer: true,
       });
     }
   };
 
   const handleSaveBlock = () => {
     if (!report) return;
+    // ステータス別入力制限
+    if (blockModal.col === "actual" && !canEditActual(report)) {
+      addToast({
+        type: "warning",
+        message: "実績の入力は「実績入力中」のみ可能です",
+      });
+      return;
+    }
+    if (blockModal.col === "planned" && !canEditPlanned(report)) {
+      addToast({ type: "warning", message: "提出済みの日報は変更できません" });
+      return;
+    }
     const b = blockModal.block;
-    if (!b.startTime || !b.endTime || !b.type) return;
+    if (!b.startTime || !b.endTime || !b.type) {
+      addToast({
+        type: "error",
+        message: "アクティビティ種別と時間は必須です",
+      });
+      return;
+    }
     if (blockModal.isNew) {
-      addBlock(report.id, b as Omit<TimeBlock, 'id'>);
-      addToast({ type: 'success', message: '時間ブロックを追加しました' });
+      addBlock(report.id, b as Omit<TimeBlock, "id">);
+      addToast({ type: "success", message: "時間ブロックを追加しました" });
     } else {
       updateBlock(report.id, b.id!, b);
-      addToast({ type: 'success', message: '時間ブロックを更新しました' });
+      addToast({ type: "success", message: "時間ブロックを更新しました" });
     }
-    setBlockModal({ open: false, block: {}, isNew: true });
+    if (continueInput) {
+      const endMin = timeToMinutes(b.endTime!);
+      setBlockModal({
+        open: true,
+        block: {
+          type: b.type,
+          startTime: b.endTime!,
+          endTime: minutesToTime(Math.min(endMin + 60, DAY_END)),
+          title: b.type ? BLOCK_LABELS[b.type] : "",
+          memo: "",
+          isPlanned: blockModal.col === "planned",
+          isActual: blockModal.col === "actual",
+          attachments: [],
+        },
+        isNew: true,
+        col: blockModal.col,
+        focusCustomer: false,
+      });
+    } else {
+      setBlockModal({
+        open: false,
+        block: {},
+        isNew: true,
+        col: "actual",
+        focusCustomer: false,
+      });
+    }
   };
 
   const handleDeleteBlock = (blockId: string) => {
     if (!report) return;
+    if (isReadOnly(report)) {
+      addToast({ type: "warning", message: "提出済みの日報は変更できません" });
+      return;
+    }
     deleteBlock(report.id, blockId);
-    addToast({ type: 'info', message: '削除しました', undoFn: () => addToast({ type: 'info', message: '（元に戻す機能はモックです）' }) });
-    setBlockModal({ open: false, block: {}, isNew: true });
+    addToast({
+      type: "info",
+      message: "削除しました",
+      undoFn: () =>
+        addToast({ type: "info", message: "（元に戻す機能はモックです）" }),
+    });
+    setBlockModal({
+      open: false,
+      block: {},
+      isNew: true,
+      col: "actual",
+      focusCustomer: false,
+    });
   };
 
-  const handleChipClick = (type: BlockType) => {
-    if (!report) { addToast({ type: 'warning', message: '先に日報を作成してください' }); return; }
-    const nowH = new Date().getHours();
-    const nowM = Math.floor(new Date().getMinutes() / SNAP) * SNAP;
-    setBlockModal({
-      open: true,
-      block: {
-        type,
-        startTime: `${String(nowH).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-        endTime: `${String(Math.min(nowH + 1, 22)).padStart(2,'0')}:${String(nowM).padStart(2,'0')}`,
-        title: BLOCK_LABELS[type], memo: '', isPlanned: true, isActual: true, attachments: [],
-      },
-      isNew: true,
+  const handleActualize = (block: TimeBlock) => {
+    if (!report) return;
+    if (!canEditActual(report)) {
+      addToast({
+        type: "warning",
+        message:
+          "実績化は「実績入力中」のみ可能です。「予定を確定する」を押してください",
+      });
+      return;
+    }
+    addBlock(report.id, {
+      reportId: block.reportId,
+      type: block.type,
+      startTime: block.startTime,
+      endTime: block.endTime,
+      title: block.title,
+      memo: block.memo,
+      customerId: block.customerId,
+      isPlanned: false,
+      isActual: true,
+      plannedBlockId: block.id,
+      attachments: block.attachments.map((a) => ({ ...a })),
+    });
+    addToast({
+      type: "success",
+      message: "✅ 実績ブロックを生成しました。ドラッグで時間を調整できます。",
     });
   };
 
@@ -145,432 +432,411 @@ export function TodayPage() {
     const block = stopTracking();
     if (block && report) {
       addBlock(report.id, { ...block, reportId: report.id });
-      addToast({ type: 'success', message: 'タイムトラッキングを終了し、ブロックを追加しました' });
+      addToast({
+        type: "success",
+        message: "タイムトラッキングを終了し、ブロックを追加しました",
+      });
     }
   };
 
-  const handleSubmit = () => {
-    if (!report) return;
-    submitReport(report.id);
-    setShowSubmitModal(false);
-    addToast({ type: 'success', message: '日報を提出しました ✓' });
+  const handleStartReport = (mode: "copy_prev" | "template" | "blank") => {
+    createReport(currentUserId, today);
+    setShowStartModal(false);
+    addToast({ type: "success", message: "日報を作成しました" });
+    if (mode === "copy_prev")
+      addToast({
+        type: "info",
+        message: "前日の予定を引き継ぎました（モック）",
+      });
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Tracking Banner */}
       {trackingSession && (
-        <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-sm font-medium text-red-700">
-            🔴 トラッキング中: {BLOCK_EMOJIS[trackingSession.blockType]} {BLOCK_LABELS[trackingSession.blockType]}
-            {trackingSession.customerId && ` - ${customers.find(c => c.id === trackingSession.customerId)?.name}`}
-          </span>
-          <span className="text-sm font-mono text-red-600">⏱ {formatElapsed(elapsedSecs)}</span>
-          <div className="flex-1" />
-          <button onClick={handleStopTracking}
-            className="px-3 py-1 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700">⏹ 終了</button>
-          <button onClick={discardTracking}
-            className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">破棄</button>
-        </div>
+        <TrackingBanner
+          session={trackingSession}
+          customers={customers}
+          elapsed={elapsedSecs}
+          onStop={handleStopTracking}
+          onDiscard={discardTracking}
+        />
       )}
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-gray-900">{todayDisplay}</h1>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-4">
+          {/* M-1: ヘッダーを圧縮しタイムラインをファーストビューに */}
+          <div className="flex items-center justify-between mb-1.5 gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+              {/* D2: 前の日報ナビ（日報存在日のみに移動） */}
+              <button
+                type="button"
+                onClick={() =>
+                  prevReportDate && navigate(`/reports/${prevReportDate}`)
+                }
+                disabled={!prevReportDate}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="前の日報"
+                title={prevReportDate ? `前の日報 (${prevReportDate})` : '前の日報なし'}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+              <h1 className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                {formatDate(today)}
+              </h1>
+              {/* D2: 次の日報ナビ（日報存在日のみに移動） */}
+              <button
+                type="button"
+                onClick={() =>
+                  nextReportDate && navigate(`/reports/${nextReportDate}`)
+                }
+                disabled={!nextReportDate}
+                className="flex items-center px-1.5 py-1 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                aria-label="次の日報"
+                title={nextReportDate ? `次の日報 (${nextReportDate})` : '次の日報なし'}
+              >
+                <ArrowRight className="w-4 h-4" />
+              </button>
               {report && <StatusBadge status={report.status} />}
             </div>
-            <button onClick={() => setShowTrackModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-              <Clock className="w-3.5 h-3.5" /> トラッキング開始
+            <button
+              onClick={() => setShowTrackModal(true)}
+              className="flex-shrink-0 flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 min-h-[44px] sm:min-h-[32px]"
+            >
+              <Clock className="w-3.5 h-3.5" />{" "}
+              <span className="hidden sm:inline">トラッキング</span>
             </button>
           </div>
+
+          {/* P1-3: ステッパーをヘッダー直下に配置 */}
+          {report && <StatusStepper report={report} />}
+
+          {/* P0-1: in_progress 時に上部に「日報を提出する」ボタン表示 */}
+          {report && report.status === "in_progress" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">
+                    実績入力が完了しました
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    確認して上長に提出します
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSubmitModal(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm whitespace-nowrap"
+                >
+                  📤 日報を提出する
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 提出済み時のバッジ表示 */}
+          {report && report.status === "submitted" && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">✅</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">
+                      提出済み
+                    </p>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      上長からのフィードバックをお待ちしています
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    withdrawReport(report.id);
+                    addToast({ type: "info", message: "日報を取り下げました" });
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-amber-700 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 whitespace-nowrap"
+                >
+                  ← 取り下げ
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ADR-B4 v2 要件9: 報告未入力商談リマインダー */}
+          {unreportedOpps.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+              <p className="text-xs font-semibold text-amber-800 mb-1.5">
+                📝 商談報告まだですか？
+              </p>
+              <div className="space-y-1">
+                {unreportedOpps.map((o) => (
+                  <button
+                    key={o.id}
+                    onClick={() => navigate(`/opportunities/${o.id}/report`)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-white border border-amber-200 rounded-lg hover:border-amber-400 hover:bg-amber-50 text-left transition-colors"
+                  >
+                    <span className="text-sm text-gray-700 truncate">
+                      {o.title}
+                    </span>
+                    <span className="text-xs text-amber-700 whitespace-nowrap ml-2">
+                      報告する →
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {!report ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
               <div className="text-4xl mb-3">📝</div>
               <p className="text-gray-600 mb-4">今日の日報を始めましょう</p>
-              <button onClick={() => setShowStartModal(true)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+              <button
+                onClick={() => setShowStartModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              >
                 日報を作成する
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Timeline */}
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-gray-700">📅 タイムライン</span>
-                    <button onClick={() => handleOpenBlock()}
-                      className="flex items-center gap-1 px-2.5 py-1 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100">
-                      <Plus className="w-3.5 h-3.5" /> 追加
-                    </button>
-                  </div>
-                  {/* Quick Chips */}
-                  <div className="px-4 py-2 border-b border-gray-100 flex gap-2 overflow-x-auto">
-                    {BLOCK_TYPES.map(type => (
-                      <button key={type} onClick={() => handleChipClick(type)}
-                        className="flex-shrink-0 flex items-center gap-1 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs hover:bg-gray-100 transition-colors">
-                        {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Timeline grid */}
-                  <div className="relative px-4 py-2" style={{ height: `${((DAY_END - DAY_START) / 60) * HOUR_PX + 32}px` }}>
-                    {/* Hour lines */}
-                    {Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }).map((_, i) => {
-                      const min = DAY_START + i * 60;
-                      const h = Math.floor(min / 60);
-                      const m = min % 60;
-                      return (
-                        <div key={i} style={{ top: `${minuteToY(min)}px` }}
-                          className="absolute left-0 right-0 flex items-center gap-2 pointer-events-none">
-                          <span className="w-10 text-right text-xs text-gray-400 flex-shrink-0">
-                            {h}:{String(m).padStart(2,'0')}
-                          </span>
-                          <div className="flex-1 border-t border-gray-100" />
-                        </div>
-                      );
-                    })}
-                    {/* Blocks */}
-                    {report.blocks.map(block => {
-                      const startMin = timeToMinutes(block.startTime);
-                      const endMin = timeToMinutes(block.endTime);
-                      const top = minuteToY(startMin) + 4;
-                      const height = Math.max(((endMin - startMin) / 60) * HOUR_PX - 4, 24);
-                      const colorClass = BLOCK_COLORS[block.type];
-                      return (
-                        <div key={block.id}
-                          onClick={() => handleOpenBlock(block)}
-                          style={{ top: `${top}px`, height: `${height}px`, left: '52px', right: '8px' }}
-                          className={`absolute border rounded-lg px-2 py-1 cursor-pointer hover:shadow-md transition-all ${colorClass}`}>
-                          <div className="flex items-center gap-1 text-xs font-medium truncate">
-                            <span>{BLOCK_EMOJIS[block.type]}</span>
-                            <span className="truncate">{block.title || BLOCK_LABELS[block.type]}</span>
-                          </div>
-                          <div className="text-[10px] text-current opacity-70">{block.startTime}–{block.endTime}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+            <div className="flex flex-col md:grid md:grid-cols-3 gap-4">
+              {/* タイムライン: モバイルでは先に表示 */}
+              <div className="md:col-span-2 order-1">
+                <TimelinePanel
+                  report={report}
+                  blockDragState={blockDragState}
+                  startDrag={startDrag}
+                  plannedDnC={plannedDnC}
+                  actualDnC={actualDnC}
+                  isMobile={isMobile}
+                  plannedRef={timelineRef}
+                  actualRef={actualColRef}
+                  onOpenBlock={handleOpenBlock}
+                  onActualize={handleActualize}
+                  onPlannedChipSelected={handleChipSelected}
+                  onPlannedDragWithoutType={handleDragWithoutType}
+                  onActualChipSelected={handleActualChipSelected}
+                  onActualDragWithoutType={handleActualWithoutType}
+                  isActualEnabled={canEditActual(report)}
+                  canDragActual={canDragActual(report)}
+                />
               </div>
-
-              {/* Side Cards */}
-              <div className="space-y-4">
-                {/* TODO Card */}
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-gray-700">✅ TODO</span>
-                    <button onClick={() => {
-                      const text = prompt('TODO を入力');
-                      if (text) addTodo(report.id, text);
-                    }} className="p-1 rounded hover:bg-gray-100">
-                      <Plus className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                  <div className="space-y-1.5">
-                    {report.todos.length === 0 && <p className="text-xs text-gray-400">TODOがありません</p>}
-                    {report.todos.map(todo => (
-                      <div key={todo.id} className="flex items-center gap-2 group">
-                        <button onClick={() => toggleTodo(report.id, todo.id)}
-                          className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                          {todo.completed && <Check className="w-3 h-3 text-white" />}
-                        </button>
-                        <span className={`flex-1 text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                          {todo.text}
-                        </span>
-                        <button onClick={() => deleteTodo(report.id, todo.id)}
-                          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-100 rounded">
-                          <X className="w-3 h-3 text-gray-400" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Customer Visits */}
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <span className="text-sm font-semibold text-gray-700 block mb-3">👥 顧客対応</span>
-                  {report.blocks.filter(b => b.customerId).length === 0 ? (
-                    <p className="text-xs text-gray-400">ブロックに顧客を設定してください</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {report.blocks.filter(b => b.customerId).map(block => (
-                        <div key={block.id} className="flex items-center gap-2 text-sm">
-                          <span>{BLOCK_EMOJIS[block.type]}</span>
-                          <span className="text-gray-700 truncate">
-                            {customers.find(c => c.id === block.customerId)?.name ?? block.customerId}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Mood */}
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <span className="text-sm font-semibold text-gray-700 block mb-3">🌤 振り返り</span>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">朝の気分</p>
-                      <div className="flex gap-2">
-                        {(['sunny','partly_cloudy','cloudy','rainy'] as MoodType[]).map(m => (
-                          <button key={m} onClick={() => updateReport(report.id, { morningMood: m })}
-                            className={`text-lg p-1 rounded-lg ${report.morningMood === m ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                            {MOOD_EMOJIS[m]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">終わりの気分</p>
-                      <div className="flex gap-2">
-                        {(['sunny','partly_cloudy','cloudy','rainy'] as MoodType[]).map(m => (
-                          <button key={m} onClick={() => updateReport(report.id, { eveningMood: m })}
-                            className={`text-lg p-1 rounded-lg ${report.eveningMood === m ? 'bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'}`}>
-                            {MOOD_EMOJIS[m]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">上長への合図</p>
-                      <div className="flex gap-2">
-                        {([['consult','💬 相談したい'],['listen','👂 聞いて'],['ok','👍 今は大丈夫']] as [ManagerSignal, string][]).map(([v, label]) => (
-                          <button key={v!} onClick={() => updateReport(report.id, { managerSignal: v })}
-                            className={`px-2 py-1 text-xs rounded-lg border ${report.managerSignal === v ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* サイドパネル: モバイルではタイムラインの後 */}
+              <div className="order-2">
+                <SidePanelCards
+                  report={report}
+                  customers={customers}
+                  onUpdateReport={(u) => updateReport(report.id, u)}
+                  onAddTodo={(t, p) => addTodo(report.id, t, p)}
+                  onToggleTodo={(id) => toggleTodo(report.id, id)}
+                  onDeleteTodo={(id) => deleteTodo(report.id, id)}
+                  canEditActual={canEditActual(report)}
+                />
+                {/* P0-1: 上長コメント */}
+                <ManagerCommentSection
+                  dayKey={report.date}
+                  submitted={
+                    report.status === "submitted" ||
+                    report.status === "confirmed"
+                  }
+                />
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Status Bar */}
       {report && (
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-4">
-          <span className="text-xs text-gray-400">💾 自動保存</span>
-          <div className="flex items-center gap-2">
-            {['draft', 'submitted', 'confirmed'].map((s, i) => (
-              <div key={s} className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full ${
-                  (s === 'draft' && ['draft','submitted','confirmed'].includes(report.status)) ||
-                  (s === 'submitted' && ['submitted','confirmed'].includes(report.status)) ||
-                  (s === 'confirmed' && report.status === 'confirmed')
-                    ? 'bg-blue-500' : 'bg-gray-200'
-                }`} />
-                <span className="text-xs text-gray-500">{['下書き','提出済','確認済'][i]}</span>
-                {i < 2 && <div className="w-6 h-0.5 bg-gray-200" />}
-              </div>
-            ))}
-          </div>
-          <div className="flex-1" />
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-            <Eye className="w-3.5 h-3.5" /> プレビュー
-          </button>
-          {report.status === 'draft' && (
-            <button onClick={() => setShowSubmitModal(true)}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Send className="w-3.5 h-3.5" /> 提出する
-            </button>
-          )}
-          {report.status === 'submitted' && (
-            <button onClick={() => { withdrawReport(report.id); addToast({ type: 'info', message: '日報を取り下げました' }); }}
-              className="px-4 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-              取り下げ
-            </button>
-          )}
-        </div>
+        <StatusBar
+          report={report}
+          onConfirmPlanning={() => {
+            confirmPlanning(report.id);
+            addToast({
+              type: "success",
+              message: "予定を確定しました。実績の入力を始めてください ✨",
+            });
+          }}
+          onShowSubmit={() => setShowSubmitModal(true)}
+          onWithdraw={() => {
+            withdrawReport(report.id);
+            addToast({ type: "info", message: "日報を取り下げました" });
+          }}
+        />
       )}
 
-      {/* Start Modal */}
-      <Modal open={showStartModal} onClose={() => setShowStartModal(false)}
-        title="今日の日報をどう始めますか？" size="sm"
-        closeOnBackdrop={false}>
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
+      <ConfirmDialog
+        open={showLongBlock}
+        title="長い時間ブロック"
+        message="8時間以上のブロックを作成しますか？誤操作の可能性があります。"
+        confirmLabel="作成する"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setShowLongBlock(false);
+          if (pendingLong) {
+            openFromDrag(
+              pendingLong.startMin,
+              pendingLong.endMin,
+              pendingLong.type,
+              pendingLong.col ?? "actual",
+            );
+            setPendingLong(null);
+          }
+        }}
+        onClose={() => {
+          setShowLongBlock(false);
+          setPendingLong(null);
+          plannedDnC.cancelDrag();
+        }}
+      />
+
+      <Modal
+        open={showStartModal}
+        onClose={() => setShowStartModal(false)}
+        title="今日の日報をどう始めますか？"
+        size="sm"
+        closeOnBackdrop={false}
+      >
         <div className="space-y-2">
-          {[
-            { id: 'copy_prev', emoji: '📋', title: '前日の予定をコピー', sub: 'おすすめ' },
-            { id: 'template', emoji: '🧩', title: 'テンプレートから始める', sub: '' },
-            { id: 'blank', emoji: '✨', title: '白紙から始める', sub: '' },
-          ].map(opt => (
-            <button key={opt.id} onClick={() => handleStartReport(opt.id as any)}
-              className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 text-left transition-colors">
+          {(
+            [
+              {
+                id: "copy_prev",
+                emoji: "📋",
+                title: "前日の予定をコピー",
+                sub: "おすすめ",
+              },
+              {
+                id: "template",
+                emoji: "🧩",
+                title: "テンプレートから始める",
+                sub: "",
+              },
+              { id: "blank", emoji: "✨", title: "白紙から始める", sub: "" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => handleStartReport(opt.id)}
+              className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 text-left transition-colors"
+            >
               <span className="text-2xl">{opt.emoji}</span>
               <div>
-                <span className="text-sm font-medium text-gray-800">{opt.title}</span>
-                {opt.sub && <span className="ml-2 text-xs text-blue-600 font-medium">[{opt.sub}]</span>}
+                <span className="text-sm font-medium text-gray-800">
+                  {opt.title}
+                </span>
+                {opt.sub && (
+                  <span className="ml-2 text-xs text-blue-600 font-medium">
+                    [{opt.sub}]
+                  </span>
+                )}
               </div>
             </button>
           ))}
         </div>
       </Modal>
 
-      {/* Submit Modal */}
       {report && (
-        <Modal open={showSubmitModal} onClose={() => setShowSubmitModal(false)}
-          title="提出前の確認" size="sm" closeOnBackdrop={false}
+        <Modal
+          open={showSubmitModal}
+          onClose={() => setShowSubmitModal(false)}
+          title="提出前の確認"
+          size="sm"
+          closeOnBackdrop={false}
           footer={
             <>
-              <button onClick={() => setShowSubmitModal(false)}
-                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+              <button
+                onClick={() => setShowSubmitModal(false)}
+                className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
                 ← 戻る
               </button>
-              <button onClick={handleSubmit}
-                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+              <button
+                onClick={() => {
+                  submitReport(report.id);
+                  setShowSubmitModal(false);
+                  addToast({
+                    type: "success",
+                    message: "日報を提出しました ✓",
+                  });
+                }}
+                className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+              >
                 ✓ 提出する
               </button>
             </>
-          }>
-          <div className="space-y-3">
-            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">📊 時間ブロック</span>
-                <span className="font-medium">{report.blocks.length} 件</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">✅ TODO</span>
-                <span className="font-medium">完了 {report.todos.filter(t => t.completed).length} / {report.todos.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">🌤 気分</span>
-                <span className="font-medium">
-                  {report.morningMood ? MOOD_EMOJIS[report.morningMood] : '未設定'} →
-                  {report.eveningMood ? MOOD_EMOJIS[report.eveningMood] : '未設定'}
-                </span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">上長（佐藤 健一）に提出します。</p>
-          </div>
+          }
+        >
+          <SubmitModalContent report={report} />
         </Modal>
       )}
 
-      {/* Block Modal */}
-      <Modal open={blockModal.open} onClose={() => setBlockModal(s => ({ ...s, open: false }))}
-        title={blockModal.isNew ? '時間ブロックを追加' : '時間ブロックを編集'} size="sm"
-        footer={
-          <>
-            {!blockModal.isNew && (
-              <button onClick={() => handleDeleteBlock(blockModal.block.id!)}
-                className="mr-auto px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg">
-                🗑 削除
-              </button>
-            )}
-            <button onClick={() => setBlockModal(s => ({ ...s, open: false }))}
-              className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
-              キャンセル
-            </button>
-            <button onClick={handleSaveBlock}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
-              ✓ 保存
-            </button>
-          </>
-        }>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">開始時刻</label>
-              <input type="time" value={blockModal.block.startTime ?? ''} step={900}
-                onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, startTime: e.target.value } }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">終了時刻</label>
-              <input type="time" value={blockModal.block.endTime ?? ''} step={900}
-                onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, endTime: e.target.value } }))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">種別</label>
-            <div className="flex flex-wrap gap-2">
-              {BLOCK_TYPES.map(type => (
-                <button key={type} onClick={() => setBlockModal(s => ({ ...s, block: { ...s.block, type } }))}
-                  className={`px-2.5 py-1.5 text-xs rounded-lg border transition-colors ${blockModal.block.type === type ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                  {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">顧客（任意）</label>
-            <select value={blockModal.block.customerId ?? ''}
-              onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, customerId: e.target.value || undefined } }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              <option value="">選択しない</option>
-              {customers.filter(c => c.status === 'active').map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">内容</label>
-            <input type="text" value={blockModal.block.title ?? ''}
-              onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, title: e.target.value } }))}
-              placeholder="活動内容を入力"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">メモ</label>
-            <textarea value={blockModal.block.memo ?? ''}
-              onChange={e => setBlockModal(s => ({ ...s, block: { ...s.block, memo: e.target.value } }))}
-              rows={2}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none" />
-          </div>
-        </div>
-      </Modal>
+      <BlockModal
+        state={blockModal}
+        customers={customers}
+        continueInput={continueInput}
+        setContinueInput={setContinueInput}
+        onSave={handleSaveBlock}
+        onDelete={handleDeleteBlock}
+        onClose={() => setBlockModal((s) => ({ ...s, open: false }))}
+        onChange={setBlockModal}
+      />
 
-      {/* Tracking Modal */}
-      <Modal open={showTrackModal} onClose={() => setShowTrackModal(false)}
-        title="何を始めますか？" size="sm"
+      <Modal
+        open={showTrackModal}
+        onClose={() => setShowTrackModal(false)}
+        title="何を始めますか？"
+        size="sm"
         footer={
           <>
-            <button onClick={() => setShowTrackModal(false)}
-              className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg">
+            <button
+              onClick={() => setShowTrackModal(false)}
+              className="px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg"
+            >
               キャンセル
             </button>
-            <button onClick={() => {
-              startTracking(trackType, trackCustomer || undefined);
-              setShowTrackModal(false);
-              addToast({ type: 'success', message: 'トラッキングを開始しました' });
-            }}
-              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+            <button
+              onClick={() => {
+                startTracking(trackType, trackCustomer || undefined);
+                setShowTrackModal(false);
+                addToast({
+                  type: "success",
+                  message: "トラッキングを開始しました",
+                });
+              }}
+              className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            >
               ▶ 開始する
             </button>
           </>
-        }>
+        }
+      >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">種別を選択</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+              種別を選択
+            </label>
             <div className="flex flex-wrap gap-2">
-              {BLOCK_TYPES.map(type => (
-                <button key={type} onClick={() => setTrackType(type)}
-                  className={`px-3 py-2 text-xs rounded-xl border transition-colors ${trackType === type ? 'bg-blue-50 border-blue-400 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              {BLOCK_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setTrackType(type)}
+                  className={`px-3 py-2 text-xs rounded-xl border transition-colors ${trackType === type ? "bg-blue-50 border-blue-400 text-blue-700" : "border-gray-200 text-gray-600 hover:bg-gray-50"}`}
+                >
                   {BLOCK_EMOJIS[type]} {BLOCK_LABELS[type]}
                 </button>
               ))}
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">顧客（任意）</label>
-            <select value={trackCustomer}
-              onChange={e => setTrackCustomer(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-              <option value="">選択しない</option>
-              {customers.filter(c => c.status === 'active').map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              顧客（任意）
+            </label>
+            <CustomerCombobox
+              value={trackCustomer || undefined}
+              onChange={(id) => setTrackCustomer(id ?? "")}
+              customers={customers.filter((c) => c.status === "active")}
+              placeholder="顧客を検索..."
+              allowClear={true}
+            />
           </div>
         </div>
       </Modal>

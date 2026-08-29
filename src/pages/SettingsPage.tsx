@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import type { BlockType } from '../types';
 
@@ -11,15 +12,56 @@ const BLOCK_EMOJIS: Record<BlockType, string> = {
 };
 
 export function SettingsPage() {
-  const { currentUserId, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser } = useAppStore();
+  const { currentUserId, currentRole, users, quickChips, addQuickChip, deleteQuickChip, addToast, updateUser, requestEmailChange, changePassword } = useAppStore();
+  const navigate = useNavigate();
+  // タスク初期値マスタの編集は管理者/役員のみ（ADR-TASK-MASTER）
+  const canManageTaskTemplates = ['admin', 'executive'].includes(currentRole);
   const user = users.find(u => u.id === currentUserId);
   const myChips = quickChips.filter(c => c.userId === currentUserId || !c.userId);
+  // Use store selector to ensure real-time updates
+  const emailChangeReq = useAppStore(s => s.emailChangeRequests.find(r => r.userId === currentUserId && r.status === 'pending'));
 
   const [activeTab, setActiveTab] = useState('profile');
   const [displayName, setDisplayName] = useState(user?.name ?? '');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
   const [newChipLabel, setNewChipLabel] = useState('');
   const [newChipType, setNewChipType] = useState<BlockType>('visit');
   const [showAddChip, setShowAddChip] = useState(false);
+
+  // パスワード変更用 state
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNext, setPwNext] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+
+  // DEAD-1: 通知・表示設定を controlled 化（モック内で state を保持）
+  const [notifPrefs, setNotifPrefs] = useState<boolean[]>([true, true, true, false]);
+  const [displayPrefs, setDisplayPrefs] = useState<boolean[]>([true, true]);
+  const [snapUnit, setSnapUnit] = useState<'15' | '30' | '60'>('30');
+
+  const handleChangePassword = async () => {
+    setPwError('');
+    if (!pwCurrent || !pwNext || !pwConfirm) {
+      setPwError('すべての項目を入力してください');
+      return;
+    }
+    if (pwNext !== pwConfirm) {
+      setPwError('新しいパスワードと確認が一致しません');
+      return;
+    }
+    setPwSaving(true);
+    await new Promise(r => setTimeout(r, 300));
+    const result = changePassword(currentUserId, pwCurrent, pwNext);
+    setPwSaving(false);
+    if (!result.ok) {
+      setPwError(result.error);
+      return;
+    }
+    setPwCurrent(''); setPwNext(''); setPwConfirm('');
+    addToast({ type: 'success', message: 'パスワードを変更しました' });
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-4">
@@ -27,7 +69,7 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 flex-wrap">
-        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定']].map(([id, label]) => (
+        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定'], ...(canManageTaskTemplates ? [['task_master', '☑️ タスク初期値マスタ']] : [])].map(([id, label]) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={`px-3 py-2 text-xs rounded-lg transition-colors ${activeTab === id ? 'bg-white shadow font-medium text-gray-900' : 'text-gray-500'}`}>
             {label}
@@ -35,9 +77,9 @@ export function SettingsPage() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6" style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto' }}>
         {/* Profile */}
-        {activeTab === 'profile' && (
+        {activeTab === 'profile' && !showEmailModal && (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">プロフィール</h2>
             <div>
@@ -47,9 +89,20 @@ export function SettingsPage() {
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">メールアドレス</label>
-              <input value={user?.email ?? ''} readOnly
-                className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
-              <p className="text-xs text-gray-400 mt-1">変更には管理者の承認が必要です</p>
+              <div className="flex gap-2">
+                <input value={user?.email ?? ''} readOnly
+                  className="flex-1 border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
+                {!emailChangeReq && (
+                  <button onClick={() => { setShowEmailModal(true); setNewEmail(''); }}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                    変更申請
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-1">メールアドレスの変更は申請制です</p>
+              {emailChangeReq && (
+                <p className="text-xs text-blue-500 mt-1">📋 申請待機中: {emailChangeReq.newEmail}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">言語</label>
@@ -64,19 +117,95 @@ export function SettingsPage() {
           </div>
         )}
 
+        {/* Email Change Modal */}
+        {showEmailModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setShowEmailModal(false)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">メールアドレス変更申請</h3>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">現在のメールアドレス</label>
+                <input value={user?.email ?? ''} readOnly
+                  className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">新しいメールアドレス</label>
+                <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)}
+                  placeholder="new@example.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => setShowEmailModal(false)}
+                  className="flex-1 px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                  キャンセル
+                </button>
+                <button onClick={() => {
+                  if (!newEmail.trim()) { addToast({ type: 'error', message: 'メールアドレスを入力してください' }); return; }
+                  if (!newEmail.includes('@')) { addToast({ type: 'error', message: '有効なメールアドレスを入力してください' }); return; }
+                  requestEmailChange(currentUserId, newEmail);
+                  addToast({ type: 'success', message: '変更申請を送信しました。管理者の承認をお待ちください。' });
+                  setShowEmailModal(false);
+                  setNewEmail('');
+                }}
+                  className="flex-1 px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700">
+                  申請する
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Password */}
         {activeTab === 'password' && (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-label="パスワード変更フォーム">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">パスワード変更</h2>
-            {[['現在のパスワード'], ['新しいパスワード'], ['確認']].map(([label]) => (
-              <div key={label}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-                <input type="password"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-            ))}
-            <button onClick={() => addToast({ type: 'success', message: 'パスワードを変更しました（モック）' })}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">変更する</button>
+            <div>
+              <label htmlFor="pw-current" className="block text-xs font-medium text-gray-600 mb-1">現在のパスワード</label>
+              <input
+                id="pw-current"
+                type="password"
+                value={pwCurrent}
+                onChange={e => setPwCurrent(e.target.value)}
+                autoComplete="current-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="pw-next" className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード</label>
+              <input
+                id="pw-next"
+                type="password"
+                value={pwNext}
+                onChange={e => setPwNext(e.target.value)}
+                autoComplete="new-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">4 文字以上、現在のものと異なるものを設定してください</p>
+            </div>
+            <div>
+              <label htmlFor="pw-confirm" className="block text-xs font-medium text-gray-600 mb-1">新しいパスワード（確認）</label>
+              <input
+                id="pw-confirm"
+                type="password"
+                value={pwConfirm}
+                onChange={e => setPwConfirm(e.target.value)}
+                autoComplete="new-password"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            {pwError && (
+              <p role="alert" className="text-xs text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg">
+                {pwError}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={pwSaving}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 min-h-[44px]"
+            >
+              {pwSaving ? '保存中...' : '変更する'}
+            </button>
           </div>
         )}
 
@@ -148,7 +277,12 @@ export function SettingsPage() {
                 '確認済みになったらメール通知',
               ].map((label, i) => (
                 <label key={i} className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked={i < 3} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                  <input
+                    type="checkbox"
+                    checked={notifPrefs[i]}
+                    onChange={e => setNotifPrefs(p => p.map((v, j) => j === i ? e.target.checked : v))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
@@ -165,21 +299,49 @@ export function SettingsPage() {
             <div className="space-y-3">
               {['起動時にToday画面を開く', '「日報のはじめ方」モーダルを次回も表示'].map((label, i) => (
                 <label key={i} className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" defaultChecked className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+                  <input
+                    type="checkbox"
+                    checked={displayPrefs[i]}
+                    onChange={e => setDisplayPrefs(p => p.map((v, j) => j === i ? e.target.checked : v))}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600"
+                  />
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
               ))}
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">タイムラインのスナップ単位</label>
-                <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none">
-                  <option>15分</option>
-                  <option>30分</option>
-                  <option>1時間</option>
+                <select
+                  value={snapUnit}
+                  onChange={e => setSnapUnit(e.target.value as '15' | '30' | '60')}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="15">15分</option>
+                  <option value="30">30分</option>
+                  <option value="60">1時間</option>
                 </select>
               </div>
             </div>
             <button onClick={() => addToast({ type: 'success', message: '保存しました' })}
               className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">保存</button>
+          </div>
+        )}
+
+        {/* タスク初期値マスタ（管理者/役員のみ）— 商談発生時・商品追加時に自動生成するタスクの設定 */}
+        {activeTab === 'task_master' && canManageTaskTemplates && (
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-gray-700 mb-1">タスク初期値マスタ</h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              商談発生時・商品追加時（ほか世帯作成時・ステージ到達時）に<strong>自動生成するタスク</strong>を設定できます。トリガーごとに既定タスクを追加・編集・削除でき、条件に合致した際にタスクが自動で作成されます。
+            </p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              例）「商談発生時 → 現状ヒアリング・意向確認」「商品追加時 → 設計書作成・見積提示」など。
+            </div>
+            <button
+              onClick={() => navigate('/admin?tab=task_templates')}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+            >
+              ☑️ タスク初期値マスタを開く
+            </button>
           </div>
         )}
       </div>

@@ -1,41 +1,56 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Home, Calendar, Search, BarChart3, Users, FileText,
-  Settings, ShieldCheck, Bell, ChevronDown, RefreshCw,
-  Menu, X as XIcon
+  Home, Search, BarChart3, Users, FileText,
+  Settings, ShieldCheck, ChevronDown, RefreshCw,
+  Menu, X as XIcon, LogOut, Handshake,
+  ClipboardList
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ROLE_LABELS, ROLE_DEMO_USERS } from '../../utils';
 import type { Role } from '../../types';
 import { NotificationBell } from '../notifications/NotificationBell';
 
+// IA-5: メニュー順序 ①ダッシュボード ②商談一覧 ③顧客一覧 ④日報 ⑤設定
+// IA-1: 営業実績はダッシュボード配下タブへ統合（単独項目削除）
+// IA-2: カレンダーは日報配下タブへ統合（単独項目削除）
+// IA-3: 世帯・契約は顧客一覧配下タブへ統合（単独項目削除）
+// IA-4: 検索はヘッダへ移動（単独項目削除）
 const NAV_ITEMS = [
-  { to: '/today',     icon: Home,       label: 'Today',       roles: ['general','manager','executive','admin'] },
-  { to: '/calendar',  icon: Calendar,   label: 'カレンダー',  roles: ['general','manager','executive','admin'] },
-  { to: '/search',    icon: Search,     label: '検索',        roles: ['general','manager','executive','admin'] },
-  { to: '/dashboard', icon: BarChart3,  label: 'ダッシュボード', roles: ['manager','executive'] },
-  { to: '/customers', icon: Users,      label: '顧客',        roles: ['general','manager','executive','admin'] },
-  { to: '/templates', icon: FileText,   label: 'テンプレート', roles: ['admin'] },
-  { to: '/admin',     icon: ShieldCheck,label: '管理',        roles: ['admin'] },
-  { to: '/settings',  icon: Settings,   label: '設定',        roles: ['general','manager','executive','admin'] },
+  { to: '/dashboard',     icon: BarChart3,      label: 'ダッシュボード', roles: ['general','manager','executive','admin'] },
+  { to: '/opportunities', icon: Handshake,      label: '商談一覧',       roles: ['general','manager','executive','admin'] },
+  { to: '/customers',     icon: Users,          label: '顧客一覧',       roles: ['general','manager','executive','admin'] },
+  { to: '/nippou',        icon: Home,           label: '日報',           roles: ['general','manager','executive','admin'] },
+  { to: '/settings',      icon: Settings,       label: '設定',           roles: ['general','manager','executive','admin'] },
+  // ロール限定項目（当面残す）
+  { to: '/report-admin',  icon: ClipboardList,  label: '日報管理',       roles: ['manager','executive'] },
+  { to: '/templates',     icon: FileText,       label: 'テンプレート',   roles: ['admin'] },
+  { to: '/admin',         icon: ShieldCheck,    label: '管理',           roles: ['admin','executive'] },
 ];
 
 const ROLES: Role[] = ['general', 'manager', 'executive', 'admin'];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { currentRole, currentUserId, setRole, addToast, resetAll, notifications } = useAppStore();
+  const { currentRole, setRole, addToast, resetAll, logout } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState('');
+  const headerInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const user = useAppStore(s => s.users.find(u => u.id === s.currentUserId));
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  const handleLogout = () => {
+    logout();
+    addToast({ type: 'info', message: 'ログアウトしました' });
+    setMenuOpen(false);
+    navigate('/login', { replace: true });
+  };
 
   const handleRoleChange = (role: Role) => {
     setRole(role);
     addToast({ type: 'info', message: `ロールを切り替えました: ${ROLE_LABELS[role]} (${ROLE_DEMO_USERS[role]})` });
     setMenuOpen(false);
-    navigate('/today');
+    navigate('/dashboard');
   };
 
   const visibleNav = NAV_ITEMS.filter(n => (n.roles as Role[]).includes(currentRole));
@@ -45,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Sidebar (PC) */}
       <aside className="hidden lg:flex lg:flex-col w-56 bg-white border-r border-gray-200 flex-shrink-0">
         <div className="px-4 py-4 border-b border-gray-100">
-          <span className="text-base font-bold text-gray-900">📋 日報管理</span>
+          <span className="text-base font-bold text-gray-900">📋 305-hrl-nippou-app</span>
         </div>
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
           {visibleNav.map(item => (
@@ -71,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-4 py-4 border-b">
-              <span className="font-bold">📋 日報管理</span>
+              <span className="font-bold">📋 305-hrl-nippou-app</span>
               <button onClick={() => setMobileNavOpen(false)}><XIcon className="w-5 h-5" /></button>
             </div>
             <nav className="flex-1 px-2 py-3 space-y-0.5">
@@ -100,7 +115,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button className="lg:hidden p-1.5 rounded-lg hover:bg-gray-100" onClick={() => setMobileNavOpen(true)}>
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
-          <div className="flex-1" />
+
+          {/* IA-4: ヘッダ検索窓 */}
+          <form
+            className="flex-1 mx-3 hidden sm:flex items-center max-w-sm"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const q = headerQuery.trim();
+              if (q) {
+                navigate(`/search?q=${encodeURIComponent(q)}`);
+              } else {
+                navigate('/search');
+              }
+              setHeaderQuery('');
+              headerInputRef.current?.blur();
+            }}
+          >
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+              <input
+                ref={headerInputRef}
+                type="search"
+                value={headerQuery}
+                onChange={(e) => setHeaderQuery(e.target.value)}
+                placeholder="検索..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 placeholder:text-gray-400"
+              />
+            </div>
+          </form>
 
           {/* Notification Bell */}
           <NotificationBell />
@@ -108,9 +150,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Role Switcher */}
           <div className="relative">
             <button onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm hover:bg-blue-100 transition-colors">
-              <span className="font-medium text-blue-700">{ROLE_LABELS[currentRole]}</span>
-              <span className="text-gray-500 text-xs">{user?.name}</span>
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm hover:bg-blue-100 transition-colors max-w-[200px] sm:max-w-none">
+              <span className="font-medium text-blue-700 truncate">{ROLE_LABELS[currentRole]}</span>
+              <span className="text-gray-500 text-xs truncate hidden sm:inline">{user?.name}</span>
               <ChevronDown className="w-3.5 h-3.5 text-blue-500" />
             </button>
             {menuOpen && (
@@ -122,9 +164,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </button>
                 ))}
                 <hr className="my-1 border-gray-100" />
-                <button onClick={() => { resetAll(); addToast({ type: 'info', message: 'デモをリセットしました' }); setMenuOpen(false); navigate('/today'); }}
+                {user && (
+                  <div className="px-4 py-2 text-xs text-gray-500">
+                    <span className="block">ログイン中:</span>
+                    <span className="block font-medium text-gray-800 truncate">{user.name}</span>
+                    <span className="block text-[10px] truncate">{user.email}</span>
+                  </div>
+                )}
+                <button onClick={() => { resetAll(); addToast({ type: 'info', message: 'デモをリセットしました' }); setMenuOpen(false); navigate('/login', { replace: true }); }}
                   className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-2">
                   <RefreshCw className="w-3.5 h-3.5" /> デモをリセット
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> ログアウト
                 </button>
               </div>
             )}
