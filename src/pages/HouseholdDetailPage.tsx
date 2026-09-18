@@ -1,6 +1,6 @@
 // HouseholdDetailPage.tsx — 世帯詳細 (Phase 1: 世帯員セクション追加 / Phase 2: 商談タブ追加)
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAppStore } from "../store";
@@ -10,17 +10,15 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { PersonEditModal } from "../components/household/PersonEditModal";
 import { QuickOpportunityModal } from "../components/opportunity/QuickOpportunityModal";
 import { PolicyEditModal } from "../components/policy/PolicyEditModal";
-import { RELATION_ORDER } from "./HouseholdDetailPage/helpers";
 import { CustomerEditForm } from "./HouseholdDetailPage/CustomerEditForm";
-import {
-  HouseholdTimelineBody,
-  type TimelineEntry,
-} from "./HouseholdDetailPage/HouseholdTimelineBody";
+import { HouseholdTimelineBody } from "./HouseholdDetailPage/HouseholdTimelineBody";
 import { HouseholdInfoCard } from "./HouseholdDetailPage/HouseholdInfoCard";
 import { PersonsSection } from "./HouseholdDetailPage/PersonsSection";
 import { OpportunitiesSection } from "./HouseholdDetailPage/OpportunitiesSection";
 import { PoliciesSection } from "./HouseholdDetailPage/PoliciesSection";
 import { HouseholdTaskSection } from "./HouseholdDetailPage/HouseholdTaskSection";
+import { InteractionAddForm } from "./HouseholdDetailPage/InteractionAddForm";
+import { useHouseholdDetail } from "./HouseholdDetailPage/useHouseholdDetail";
 
 export function HouseholdDetailPage() {
   const { customerId } = useParams<{ customerId: string }>();
@@ -42,6 +40,7 @@ export function HouseholdDetailPage() {
     opportunities,
     policies,
     currentRole,
+    customerInteractions,
     updateCustomer,
     deactivateCustomer,
     addToast,
@@ -53,6 +52,7 @@ export function HouseholdDetailPage() {
     updateHouseholdTask,
     removeHouseholdTask,
     toggleHouseholdTaskDone,
+    addCustomerInteraction,
   } = useAppStore();
 
   const [showEdit, setShowEdit] = useState(false);
@@ -62,63 +62,48 @@ export function HouseholdDetailPage() {
   const [deletePersonId, setDeletePersonId] = useState<string | null>(null);
   const [showQuickAddOpp, setShowQuickAddOpp] = useState(false);
   const [showAddPolicy, setShowAddPolicy] = useState(false);
+  const [showAddInteraction, setShowAddInteraction] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId);
 
-  const primaryUser = useMemo(
-    () => users.find((u) => u.id === customer?.primaryUserId),
-    [users, customer?.primaryUserId],
-  );
+  const primaryUser = users.find((u) => u.id === customer?.primaryUserId);
 
-  const householdPersons = useMemo(
-    () =>
-      customer
-        ? persons
-            .filter((p) => p.householdId === customerId)
-            .sort(
-              (a, b) =>
-                (RELATION_ORDER[a.relation] ?? 9) -
-                (RELATION_ORDER[b.relation] ?? 9),
-            )
-        : [],
-    [persons, customerId, customer],
-  );
+  const {
+    householdPersons,
+    historyEntries,
+    householdOpportunities,
+    householdPolicies,
+    householdInteractions,
+    activePolicies,
+    closedPolicies,
+    totalMonthlyPremium,
+  } = useHouseholdDetail({
+    customerId,
+    customer,
+    persons,
+    reports,
+    opportunities,
+    policies,
+    customerInteractions,
+    getPoliciesByHousehold,
+  });
 
-  const historyEntries = useMemo<TimelineEntry[]>(() => {
-    if (!customer) return [];
-    const entries: TimelineEntry[] = [];
-    for (const r of reports) {
-      for (const b of r.blocks) {
-        if (b.customerId === customerId) {
-          entries.push({
-            reportId: r.id,
-            reportDate: r.date,
-            reportUserId: r.userId,
-            block: b,
-          });
-        }
-      }
-    }
-    entries.sort((a, b) => {
-      if (a.reportDate !== b.reportDate)
-        return a.reportDate < b.reportDate ? 1 : -1;
-      return (a.block.startTime || "") < (b.block.startTime || "") ? 1 : -1;
-    });
-    return entries;
-  }, [reports, customerId, customer]);
-
-  const householdOpportunities = useMemo(
-    () =>
-      customer ? opportunities.filter((o) => o.householdId === customerId) : [],
-    [opportunities, customerId, customer],
+  const handleAddInteraction = useCallback(
+    (data: {
+      kind: import("../types").InteractionKind;
+      occurredAt: string;
+      personId?: string;
+      summary: string;
+      nextAppointment?: string;
+      householdId: string;
+      byUserId?: string;
+    }) => {
+      addCustomerInteraction(data);
+      setShowAddInteraction(false);
+      addToast({ type: "success", message: "対応記録を追加しました" });
+    },
+    [addCustomerInteraction, addToast],
   );
-
-  /* eslint-disable react-hooks/exhaustive-deps */
-  const householdPolicies = useMemo(
-    () => (customerId ? getPoliciesByHousehold(customerId) : []),
-    [policies, customerId],
-  );
-  /* eslint-enable react-hooks/exhaustive-deps */
 
   if (!customer)
     return (
@@ -132,16 +117,6 @@ export function HouseholdDetailPage() {
   const editingPerson = editPersonId
     ? householdPersons.find((p) => p.id === editPersonId)
     : null;
-
-  const activePolicies = householdPolicies.filter(
-    (p) => p.status === "inforce" || p.status === "pending",
-  );
-  const closedPolicies = householdPolicies.filter(
-    (p) => p.status !== "inforce" && p.status !== "pending",
-  );
-  const totalMonthlyPremium = activePolicies
-    .filter((p) => p.status === "inforce")
-    .reduce((s, p) => s + p.monthlyPremium, 0);
 
   return (
     <div className="flex h-full min-h-0">
@@ -202,16 +177,25 @@ export function HouseholdDetailPage() {
             id="history-mobile"
             className="bg-white rounded-xl border border-gray-200 p-4 lg:hidden"
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">
-                📅 対応履歴 ({historyEntries.length}件)
+                📅 対応履歴 (
+                {historyEntries.length + householdInteractions.length}件)
               </h2>
-              {historyEntries.length > 0 && (
+              {historyEntries.length + householdInteractions.length > 0 && (
                 <span className="text-xs text-gray-400">新しい順</span>
               )}
             </div>
+            <button
+              type="button"
+              onClick={() => setShowAddInteraction(true)}
+              className="w-full mb-3 flex items-center justify-center gap-1.5 text-xs text-blue-600 border border-blue-300 border-dashed rounded-lg py-2 hover:bg-blue-50 transition-colors"
+            >
+              <span className="text-base leading-none">＋</span> 対応記録を追加
+            </button>
             <HouseholdTimelineBody
               historyEntries={historyEntries}
+              interactions={householdInteractions}
               users={users}
               onNavigate={(date) => navigate(`/reports/${date}`)}
             />
@@ -224,17 +208,28 @@ export function HouseholdDetailPage() {
         id="history"
         className="hidden lg:flex lg:flex-col w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0"
       >
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">
-            📅 対応履歴 ({historyEntries.length}件)
-          </h2>
-          {historyEntries.length > 0 && (
-            <span className="text-xs text-gray-400">新しい順</span>
-          )}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-gray-700">
+              📅 対応履歴 (
+              {historyEntries.length + householdInteractions.length}件)
+            </h2>
+            {historyEntries.length + householdInteractions.length > 0 && (
+              <span className="text-xs text-gray-400">新しい順</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddInteraction(true)}
+            className="w-full flex items-center justify-center gap-1.5 text-xs text-blue-600 border border-blue-300 border-dashed rounded-lg py-1.5 hover:bg-blue-50 transition-colors"
+          >
+            <span className="text-base leading-none">＋</span> 対応記録を追加
+          </button>
         </div>
         <div className="flex-1 px-4 py-3">
           <HouseholdTimelineBody
             historyEntries={historyEntries}
+            interactions={householdInteractions}
             users={users}
             onNavigate={(date) => navigate(`/reports/${date}`)}
           />
@@ -242,6 +237,26 @@ export function HouseholdDetailPage() {
       </aside>
 
       {/* ── Modals / Dialogs ── */}
+      {/* 対応記録追加（ポップアップ）— 入力欄を広くとるためモーダル化 */}
+      <Modal
+        open={showAddInteraction}
+        onClose={() => setShowAddInteraction(false)}
+        title="対応記録を追加"
+        size="lg"
+      >
+        <InteractionAddForm
+          hideHeader
+          persons={householdPersons}
+          onSave={(data) =>
+            handleAddInteraction({
+              ...data,
+              householdId: customerId!,
+            })
+          }
+          onCancel={() => setShowAddInteraction(false)}
+        />
+      </Modal>
+
       <Modal
         open={showEdit}
         onClose={() => setShowEdit(false)}
