@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { SALES_CHANNELS } from "../../data/salesChannels";
+import { useAppStore } from "../../store";
 import {
   getParentChannels,
   getChildChannels,
@@ -19,14 +19,15 @@ export function ChannelSelect({
   hasError,
   className = "",
 }: ChannelSelectProps) {
-  const parentChannels = useMemo(() => getParentChannels(SALES_CHANNELS), []);
+  const salesChannels = useAppStore((s) => s.salesChannels.filter((c) => c.isActive));
+  const parentChannels = useMemo(() => getParentChannels(salesChannels), [salesChannels]);
   const parentId = useMemo(
-    () => getParentChannelId(channelId, SALES_CHANNELS),
-    [channelId],
+    () => getParentChannelId(channelId, salesChannels),
+    [channelId, salesChannels],
   );
   const childChannels = useMemo(
-    () => (parentId ? getChildChannels(parentId, SALES_CHANNELS) : []),
-    [parentId],
+    () => (parentId ? getChildChannels(parentId, salesChannels) : []),
+    [parentId, salesChannels],
   );
 
   return (
@@ -40,7 +41,7 @@ export function ChannelSelect({
             onChange("");
             return;
           }
-          const children = getChildChannels(newParent, SALES_CHANNELS);
+          const children = getChildChannels(newParent, salesChannels);
           if (children.length > 0) onChange(children[0].id);
         }}
         className="flex-1 min-w-0 border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { HouseholdType } from '../../types';
 import { useAppStore } from '../../store';
+import { PREFECTURES } from '../../data/prefectures';
+import { ChannelSelect } from '../../pages/HouseholdBatchEntryPage/ChannelSelect';
 
 // =====================================================
 // QuickHouseholdModal — 日報から呼べる世帯クイック作成モーダル
-// QuickOpportunityModal の流儀を踏襲
+// 工程C改修: 区分2値化 / エリア都道府県+市区町村 / 主担当初期値=currentUser / チャネル選択
 // =====================================================
 
 const TYPE_LABELS: Record<HouseholdType, string> = {
@@ -23,33 +25,55 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
 
   const [name, setName] = useState('');
   const [type, setType] = useState<HouseholdType>('individual');
-  const [area, setArea] = useState('');
+  const [prefecture, setPrefecture] = useState('');
+  const [city, setCity] = useState('');
   const [primaryUserId, setPrimaryUserId] = useState(currentUserId);
+  const [channelId, setChannelId] = useState<string | undefined>(undefined);
   const [repName, setRepName] = useState('');
   const [memo, setMemo] = useState('');
-  const [error, setError] = useState('');
+
+  // バリデーションエラー
+  const [nameError, setNameError] = useState('');
+  const [prefectureError, setPrefectureError] = useState('');
+  const [cityError, setCityError] = useState('');
 
   const activeUsers = users.filter(u => u.status === 'active');
 
-  const handleSubmit = (continueToOpportunity: boolean) => {
+  const validate = (): boolean => {
+    let ok = true;
     if (!name.trim()) {
-      setError('世帯名は必須です');
-      return;
+      setNameError('世帯名は必須です');
+      ok = false;
     }
+    if (!prefecture) {
+      setPrefectureError('都道府県を選択してください');
+      ok = false;
+    }
+    if (!city.trim()) {
+      setCityError('市区町村を入力してください');
+      ok = false;
+    }
+    return ok;
+  };
 
-    // 世帯を作成
+  const handleSubmit = (continueToOpportunity: boolean) => {
+    if (!validate()) return;
+
+    // area = 「都道府県 市区町村」スペース連結（後方互換）
+    const area = `${prefecture} ${city.trim()}`;
+
     const newCustomer = addCustomer({
       name: name.trim(),
       type,
-      area: area.trim(),
+      area,
       primaryUserId: primaryUserId || currentUserId,
       familyMemo: '',
       tags: [],
       memo: memo.trim(),
       status: 'active',
+      ...(channelId ? { channelId } : {}),
     });
 
-    // 代表者名が入力されていれば Person を同時登録して headPersonId を設定
     if (repName.trim()) {
       const head = addPerson(newCustomer.id, {
         name: repName.trim(),
@@ -64,9 +88,9 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+        <div className="flex items-center justify-between px-5 py-4 border-b sticky top-0 bg-white z-10">
           <h2 className="font-semibold text-gray-800">🏠 新規世帯を作成</h2>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
@@ -83,21 +107,21 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
             <input
               type="text"
               className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                error ? 'border-red-400' : 'border-gray-300'
+                nameError ? 'border-red-400' : 'border-gray-300'
               }`}
               placeholder="例: 田中家、ABC商事"
               value={name}
-              onChange={e => { setName(e.target.value); setError(''); }}
+              onChange={e => { setName(e.target.value); setNameError(''); }}
               autoFocus
             />
-            {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+            {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
           </div>
 
-          {/* 区分 */}
+          {/* 区分 — 個人/法人の2値 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">区分</label>
             <div className="flex gap-2">
-              {(['individual', 'corporate', 'prospect'] as HouseholdType[]).map(t => (
+              {(['individual', 'corporate'] as HouseholdType[]).map(t => (
                 <button
                   key={t}
                   type="button"
@@ -114,19 +138,45 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
             </div>
           </div>
 
-          {/* エリア */}
+          {/* エリア — 都道府県セレクト + 市区町村テキスト (両方必須) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">エリア</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="例: 渋谷区、新宿エリア"
-              value={area}
-              onChange={e => setArea(e.target.value)}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              エリア <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-2">
+              {/* 都道府県 */}
+              <div className="flex-none w-36">
+                <select
+                  value={prefecture}
+                  onChange={e => { setPrefecture(e.target.value); setPrefectureError(''); }}
+                  className={`w-full border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    prefectureError ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">都道府県</option>
+                  {PREFECTURES.map(p => (
+                    <option key={p.code} value={p.name}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              {/* 市区町村 */}
+              <div className="flex-1">
+                <input
+                  type="text"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    cityError ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="例: 渋谷区、豊島区"
+                  value={city}
+                  onChange={e => { setCity(e.target.value); setCityError(''); }}
+                />
+              </div>
+            </div>
+            {prefectureError && <p className="text-xs text-red-500 mt-1">{prefectureError}</p>}
+            {!prefectureError && cityError && <p className="text-xs text-red-500 mt-1">{cityError}</p>}
           </div>
 
-          {/* 主担当 */}
+          {/* 主担当 — 初期値=ログインユーザー */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">主担当</label>
             <select
@@ -138,6 +188,17 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
+          </div>
+
+          {/* チャネル — 任意 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              チャネル <span className="text-gray-400 text-xs">(任意)</span>
+            </label>
+            <ChannelSelect
+              channelId={channelId}
+              onChange={val => setChannelId(val || undefined)}
+            />
           </div>
 
           {/* 代表者名 — 任意 */}
@@ -170,7 +231,7 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
         </div>
 
         {/* Footer */}
-        <div className="flex gap-2 justify-end px-5 pb-4 flex-wrap">
+        <div className="flex gap-2 justify-end px-5 pb-4 flex-wrap sticky bottom-0 bg-white pt-2 border-t">
           <button
             type="button"
             onClick={onClose}
