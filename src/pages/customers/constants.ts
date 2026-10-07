@@ -3,7 +3,6 @@ import type { CustomerType } from "../../types";
 export const TYPE_LABELS: Record<CustomerType, string> = {
   individual: "個人",
   corporate: "法人",
-  prospect: "見込み",
 };
 
 export type SortKey =

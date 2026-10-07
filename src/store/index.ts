@@ -15,6 +15,10 @@ import {
   _initialPolicyStatusHistory,
   _initialOppActivityReports,
   _initialTaskTemplates,
+  _initialRenewalCases,
+  _initialCustomerInteractions,
+  _initialInsuranceCompanies,
+  _initialProductCategories,
 } from "./_internal/constants";
 import {
   USERS,
@@ -44,6 +48,11 @@ import { createOpportunitySlice } from "./_slices/opportunitySlice";
 import { createOppActivitySlice } from "./_slices/oppActivitySlice";
 import { createTaskTemplateSlice } from "./_slices/taskTemplateSlice";
 import { createNotificationTrackingSlice } from "./_slices/notificationTrackingSlice";
+import { createNotificationGenSlice } from "./_slices/notificationGen";
+import { createRenewalSlice } from "./_slices/renewalSlice";
+import { createCustomerInteractionSlice } from "./_slices/customerInteractionSlice";
+import { createInsuranceCompanySlice } from "./_slices/insuranceCompanySlice";
+import { createProductCategorySlice } from "./_slices/productCategorySlice";
 
 // =====================================================
 // 再エクスポート (既存の import パス互換用)
@@ -92,6 +101,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   policyStatusHistory: _initialPolicyStatusHistory,
   oppActivityReports: _initialOppActivityReports,
   taskTemplates: _initialTaskTemplates,
+  renewalCases: _initialRenewalCases,
+  customerInteractions: _initialCustomerInteractions,
+  insuranceCompanies: _initialInsuranceCompanies,
+  productCategories: _initialProductCategories,
   toasts: [],
 
   // -------------------------------------------------------
@@ -111,5 +124,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...createOpportunitySlice(set, get, undefined as never),
   ...createOppActivitySlice(set, get, undefined as never),
   ...createTaskTemplateSlice(set, get, undefined as never),
+  ...createNotificationGenSlice(set, get, undefined as never),
   ...createNotificationTrackingSlice(set, get, undefined as never),
+  ...createRenewalSlice(set, get, undefined as never),
+  ...createCustomerInteractionSlice(set, get, undefined as never),
+  ...createInsuranceCompanySlice(set, get, undefined as never),
+  ...createProductCategorySlice(set, get, undefined as never),
 }));

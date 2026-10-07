@@ -37,6 +37,14 @@ import type {
   TaskTemplate,
   Household,
   ProposalProduct,
+  RenewalCase,
+  RenewalSurvey,
+  RenewalStatus,
+  RenewalLogKind,
+  CustomerInteraction,
+  InteractionKind,
+  InsuranceCompany,
+  ProductCategoryMaster,
 } from "../../types";
 import type { AuthSession } from "../auth";
 
@@ -99,4 +107,12 @@ export type {
   Household,
   ProposalProduct,
   AuthSession,
+  RenewalCase,
+  RenewalSurvey,
+  RenewalStatus,
+  RenewalLogKind,
+  CustomerInteraction,
+  InteractionKind,
+  InsuranceCompany,
+  ProductCategoryMaster,
 };

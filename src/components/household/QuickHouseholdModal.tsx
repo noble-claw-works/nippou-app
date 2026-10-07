@@ -11,7 +11,6 @@ import { useAppStore } from '../../store';
 const TYPE_LABELS: Record<HouseholdType, string> = {
   individual: '個人',
   corporate: '法人',
-  prospect: '見込み',
 };
 
 export interface QuickHouseholdModalProps {

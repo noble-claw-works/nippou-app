@@ -55,6 +55,7 @@ export interface ProposalProduct {
   monthlyPremium: number; // 月払額
   faceAmount?: number; // 保険金額
   firstYearCommission?: number; // ★NEW 初年度手数料（円）salesPerf first_year_commission と整合 (§3-4)
+  firstConsultDate?: string; // 初回相談日 YYYY-MM-DD（商品行ごとに保持）
   memo: string;
 
   // ── NEW（ADR-B3 A案・例外の進捗ズレ用。すべて任意。未設定＝案件の値を継承）──

@@ -25,7 +25,7 @@ export interface Household {
   lastContactDate?: string;
   nextAppointment?: string;
   isFavorite?: boolean;
-  annualIncome?: number; // ★NEW 年収（円）契約者=世帯に従属 (§3-6)
+  annualIncome?: number; // ★NEW 年収（万円）契約者=世帯に従属 (§3-6)
   tasks?: Task[]; // ★NEW 世帯スコープの汎用タスク (ADR-TASK-MASTER)
 }
 

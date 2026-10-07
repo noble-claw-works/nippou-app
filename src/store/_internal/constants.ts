@@ -10,7 +10,11 @@ import {
   SALES_TARGETS,
   TASK_TEMPLATES,
   OPP_ACTIVITY_REPORTS,
+  RENEWAL_CASES,
+  CUSTOMER_INTERACTIONS,
 } from "../../data/seed";
+import { INITIAL_INSURANCE_COMPANIES } from "../../data/insuranceCompanies";
+import { INITIAL_PRODUCT_CATEGORIES } from "../../data/productCategories";
 import type {
   SalesTarget,
   Opportunity,
@@ -18,6 +22,10 @@ import type {
   PolicyStatusHistory,
   OpportunityActivityReport,
   TaskTemplate,
+  RenewalCase,
+  CustomerInteraction,
+  InsuranceCompany,
+  ProductCategoryMaster,
 } from "../../types";
 import { loadAuthSession, loadRoleSwitch } from "../auth";
 import { loadDeletedCustomerIds } from "../deletedCustomers";
@@ -31,7 +39,7 @@ export const uid = () => `id_${++idCounter}_${Date.now()}`;
 // ============================================================
 // seed バージンガード（モックデモの localStorage 陳腐防止）
 // ============================================================
-export const SEED_VERSION = "2026-08-25-fb3";
+export const SEED_VERSION = "2026-09-09-customer-interaction";
 export const SEED_VERSION_KEY = "nippou.seedVersion";
 export const SEED_DATA_KEYS = [
   "nippou.opportunities.v2",
@@ -42,6 +50,8 @@ export const SEED_DATA_KEYS = [
   "nippou.policyHistory.v1",
   "nippou.salesTargets.v1",
   "nippou.deletedCustomerIds.v1",
+  "nippou.renewalCases.v1",
+  "nippou.customerInteractions.v1",
 ];
 
 // IIFE: seed バージンチェック（モジュールロード時に実行）
@@ -159,4 +169,52 @@ export const _initialTaskTemplates = (() => {
     }
   }
   return TASK_TEMPLATES;
+})();
+
+export const _initialRenewalCases = (() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem("nippou.renewalCases.v1");
+      if (raw) return JSON.parse(raw) as RenewalCase[];
+    } catch {
+      /* ignore */
+    }
+  }
+  return RENEWAL_CASES;
+})();
+
+export const _initialCustomerInteractions = (() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem("nippou.customerInteractions.v1");
+      if (raw) return JSON.parse(raw) as CustomerInteraction[];
+    } catch {
+      /* ignore */
+    }
+  }
+  return CUSTOMER_INTERACTIONS;
+})();
+
+export const _initialInsuranceCompanies = (() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem("nippou.insuranceCompanies.v1");
+      if (raw) return JSON.parse(raw) as InsuranceCompany[];
+    } catch {
+      /* ignore */
+    }
+  }
+  return INITIAL_INSURANCE_COMPANIES;
+})();
+
+export const _initialProductCategories = (() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem("nippou.productCategories.v1");
+      if (raw) return JSON.parse(raw) as ProductCategoryMaster[];
+    } catch {
+      /* ignore */
+    }
+  }
+  return INITIAL_PRODUCT_CATEGORIES;
 })();

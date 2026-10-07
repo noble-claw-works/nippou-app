@@ -9,6 +9,7 @@ import type { AppStateCustomersSlice } from "./appstate/customers";
 import type { AppStateOpportunitiesSlice } from "./appstate/opportunities";
 import type { AppStatePoliciesSlice } from "./appstate/policies";
 import type { AppStateRenewalsSlice } from "./appstate/renewals";
+import type { AppStateMastersSlice } from "./appstate/masters";
 
 export interface AppState
   extends
@@ -17,7 +18,8 @@ export interface AppState
     AppStateCustomersSlice,
     AppStateOpportunitiesSlice,
     AppStatePoliciesSlice,
-    AppStateRenewalsSlice {
+    AppStateRenewalsSlice,
+    AppStateMastersSlice {
   // Reset (全スライスに属さないグローバルアクション)
   resetAll: () => void;
 }

@@ -11,7 +11,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState, FormField } from '../components/ui/EmptyState';
 import type { Customer, CustomerType } from '../types';
 
-const TYPE_LABELS: Record<CustomerType, string> = { individual: '個人', corporate: '法人', prospect: '見込み' };
+const TYPE_LABELS: Record<CustomerType, string> = { individual: '個人', corporate: '法人' };
 
 function HouseholdForm({ initial, onSave, onCancel }: {
   initial?: Partial<Customer>;

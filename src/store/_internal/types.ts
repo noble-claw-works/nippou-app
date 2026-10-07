@@ -40,4 +40,12 @@ export type {
   Household,
   ProposalProduct,
   AuthSession,
+  RenewalCase,
+  RenewalSurvey,
+  RenewalStatus,
+  RenewalLogKind,
+  CustomerInteraction,
+  InteractionKind,
+  InsuranceCompany,
+  ProductCategoryMaster,
 } from "./exportedTypes";

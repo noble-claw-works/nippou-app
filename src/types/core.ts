@@ -7,7 +7,9 @@ export type ReportStatus =
   "planning" | "in_progress" | "submitted" | "confirmed";
 export type BlockType =
   "visit" | "office" | "phone" | "travel" | "break" | "meeting" | "lunch";
-export type CustomerType = "individual" | "corporate" | "prospect";
+export type CustomerType = "individual" | "corporate";
+/** @deprecated prospect は CustomerType から除外。status="active" かつ未成約の状態は OpportunityStage で管理する */
+export type CustomerTypeWithLegacyProspect = CustomerType | "prospect";
 export type CustomerStatus = "active" | "inactive";
 
 // === Household (世帯) 型 — CustomerType/Status と互換 ===

@@ -106,13 +106,13 @@ export const CUSTOMERS: Customer[] = [
   {
     id: "c8",
     name: "高橋 誠",
-    type: "prospect",
+    type: "individual", // 区分: 個人（元 prospect を移行。「見込み」ステータスは OpportunityStage で管理）
     area: "磐田",
     primaryUserId: "u1",
     headPersonId: "p_c8_head",
     familyMemo: "",
-    tags: ["見込み", "自動車"],
-    memo: "紹介案件",
+    tags: ["自動車"], // "見込み" タグを除去（区分タグでなくなったため）
+    memo: "紹介案件（アプローチ中）",
     tasks: [],
     status: "active",
     lastContactDate: d(10),

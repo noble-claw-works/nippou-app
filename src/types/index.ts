@@ -90,5 +90,31 @@ export type {
   TrackingSession,
 } from "./salesTarget";
 
+// 更新案件
+export type {
+  RenewalStatus,
+  RenewalMethod,
+  RenewalProductType,
+  RenewalConcern,
+  RenewalConsultSurvey,
+  RenewalRoadmapSurvey,
+  RenewalRiderSurvey,
+  RenewalSurvey,
+  RenewalLogKind,
+  RenewalActivityLog,
+  RenewalNote,
+  RenewalCase,
+} from "./renewal";
+
 // システム
 export type { Notification, AuditLog } from "./system";
+
+// 世帯対応記録
+export type {
+  InteractionKind,
+  CustomerInteraction,
+} from "./customerInteraction";
+export { INTERACTION_KIND_LABEL } from "./customerInteraction";
+
+// 保険会社マスタ / 種目マスタ
+export type { InsuranceCompany, ProductCategoryMaster } from "./insurance";
