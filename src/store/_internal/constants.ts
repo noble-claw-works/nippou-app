@@ -15,6 +15,7 @@ import {
 } from "../../data/seed";
 import { INITIAL_INSURANCE_COMPANIES } from "../../data/insuranceCompanies";
 import { INITIAL_PRODUCT_CATEGORIES } from "../../data/productCategories";
+import { SALES_CHANNELS } from "../../data/salesChannels";
 import type {
   SalesTarget,
   Opportunity,
@@ -26,6 +27,7 @@ import type {
   CustomerInteraction,
   InsuranceCompany,
   ProductCategoryMaster,
+  SalesChannel,
 } from "../../types";
 import { loadAuthSession, loadRoleSwitch } from "../auth";
 import { loadDeletedCustomerIds } from "../deletedCustomers";
@@ -217,4 +219,16 @@ export const _initialProductCategories = (() => {
     }
   }
   return INITIAL_PRODUCT_CATEGORIES;
+})();
+
+export const _initialSalesChannels = (() => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem("nippou.salesChannels.v1");
+      if (raw) return JSON.parse(raw) as SalesChannel[];
+    } catch {
+      /* ignore */
+    }
+  }
+  return SALES_CHANNELS;
 })();

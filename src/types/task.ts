@@ -6,7 +6,17 @@ import type { ProductCategory } from "./opportunity";
 import type { OpportunityStage } from "./opportunity";
 
 /** タスク付与スコープ（主上決裁 2026-08-17 14:07） */
-export type TaskScope = "household" | "opportunity" | "product";
+export type TaskScope = "household" | "opportunity" | "product" | "renewal";
+
+/** タスクマスタ: 追加タイミング種別（工程B-2 2026-10-07） */
+export type TaskTimingType =
+  | "on_opportunity_created" // 商談追加時（即時）
+  | "offset_from_base_date"; // 基準日±N日
+
+/** タスクマスタ: 基準日種別（工程B-2 2026-10-07） */
+export type TaskBaseDateType =
+  | "first_consult_date" // 初回相談日
+  | "renewal_due_date"; // 更新予定日
 
 /** タスク優先度 */
 export type TaskPriority = "high" | "medium" | "low";
@@ -27,6 +37,7 @@ export interface Task {
   title: string; // タスク名（自由入力可）
   done: boolean; // 完了フラグ
   doneDate?: string; // 完了日 (YYYY-MM-DD)
+  doneBy?: string; // 完了者 User.id
   dueDate?: string; // 期限 (YYYY-MM-DD)
   ownerId?: string; // 担当 User.id
   memo?: string; // メモ
@@ -56,4 +67,8 @@ export interface TaskTemplate {
   isActive: boolean; // falseの定義は生成に使わない
   createdAt: string;
   updatedAt: string;
+  // ★ 工程B-2 追加フィールド（2026-10-07）
+  timingType?: TaskTimingType; // 追加タイミング種別（省略時は on_opportunity_created 相当）
+  baseDateType?: TaskBaseDateType; // 基準日種別（timingType='offset_from_base_date'のとき有効）
+  offsetDays?: number; // 基準日からのオフセット日数（正=後、負=前）
 }

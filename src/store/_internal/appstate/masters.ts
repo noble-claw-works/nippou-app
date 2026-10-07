@@ -1,12 +1,17 @@
 // =====================================================
-// appstate/masters.ts — 保険会社マスタ / 種目マスタ slice of AppState
+// appstate/masters.ts — 保険会社マスタ / 種目マスタ / チャネルマスタ slice of AppState
 // =====================================================
-import type { InsuranceCompany, ProductCategoryMaster } from "../../../types";
+import type {
+  InsuranceCompany,
+  ProductCategoryMaster,
+  SalesChannel,
+} from "../../../types";
 
 export interface AppStateMastersSlice {
   // Data
   insuranceCompanies: InsuranceCompany[];
   productCategories: ProductCategoryMaster[];
+  salesChannels: SalesChannel[];
 
   // Actions: InsuranceCompany
   addInsuranceCompany: (
@@ -27,4 +32,9 @@ export interface AppStateMastersSlice {
     patch: Partial<ProductCategoryMaster>,
   ) => void;
   removeProductCategory: (id: string) => void;
+
+  // Actions: SalesChannel (チャネルマスタ)
+  addSalesChannel: (partial: Omit<SalesChannel, "id">) => SalesChannel;
+  updateSalesChannel: (id: string, patch: Partial<SalesChannel>) => void;
+  removeSalesChannel: (id: string) => void;
 }

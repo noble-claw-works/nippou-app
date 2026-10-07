@@ -19,6 +19,7 @@ import {
   _initialCustomerInteractions,
   _initialInsuranceCompanies,
   _initialProductCategories,
+  _initialSalesChannels,
 } from "./_internal/constants";
 import {
   USERS,
@@ -53,6 +54,7 @@ import { createRenewalSlice } from "./_slices/renewalSlice";
 import { createCustomerInteractionSlice } from "./_slices/customerInteractionSlice";
 import { createInsuranceCompanySlice } from "./_slices/insuranceCompanySlice";
 import { createProductCategorySlice } from "./_slices/productCategorySlice";
+import { createSalesChannelSlice } from "./_slices/salesChannelSlice";
 
 // =====================================================
 // 再エクスポート (既存の import パス互換用)
@@ -105,6 +107,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   customerInteractions: _initialCustomerInteractions,
   insuranceCompanies: _initialInsuranceCompanies,
   productCategories: _initialProductCategories,
+  salesChannels: _initialSalesChannels,
   toasts: [],
 
   // -------------------------------------------------------
@@ -130,4 +133,5 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...createCustomerInteractionSlice(set, get, undefined as never),
   ...createInsuranceCompanySlice(set, get, undefined as never),
   ...createProductCategorySlice(set, get, undefined as never),
+  ...createSalesChannelSlice(set, get, undefined as never),
 }));

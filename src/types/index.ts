@@ -32,6 +32,8 @@ export type {
   TaskScope,
   TaskPriority,
   TaskTriggerType,
+  TaskTimingType,
+  TaskBaseDateType,
   Task,
   TaskTemplate,
 } from "./task";
