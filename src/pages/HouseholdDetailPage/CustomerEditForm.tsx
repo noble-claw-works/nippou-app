@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppStore } from "../../store";
 import type { Customer } from "../../types";
+import { ChannelSelect } from "../HouseholdBatchEntryPage/ChannelSelect";
 
 interface CustomerEditFormProps {
   initial: Customer;
@@ -57,6 +58,15 @@ export function CustomerEditForm({
               </option>
             ))}
         </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          チャネル
+        </label>
+        <ChannelSelect
+          channelId={form.channelId}
+          onChange={(id) => setForm((f) => ({ ...f, channelId: id || undefined }))}
+        />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">

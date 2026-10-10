@@ -3,6 +3,7 @@ import { useAppStore } from "../../store";
 import { FormField } from "../../components/ui/EmptyState";
 import type { Customer, CustomerType } from "../../types";
 import { TYPE_LABELS } from "./constants";
+import { ChannelSelect } from "../HouseholdBatchEntryPage/ChannelSelect";
 
 export function CustomerForm({
   initial,
@@ -19,6 +20,7 @@ export function CustomerForm({
     area: "",
     tags: [],
     memo: "",
+    channelId: undefined,
     ...initial,
   });
   const [tagInput, setTagInput] = useState("");
@@ -116,6 +118,12 @@ export function CustomerForm({
             追加
           </button>
         </div>
+      </FormField>
+      <FormField label="チャネル">
+        <ChannelSelect
+          channelId={form.channelId}
+          onChange={(id) => setForm((f) => ({ ...f, channelId: id || undefined }))}
+        />
       </FormField>
       <FormField label="メモ">
         <textarea
