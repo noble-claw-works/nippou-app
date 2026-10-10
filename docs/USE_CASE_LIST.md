@@ -5,6 +5,45 @@
 > **正本**: 実コード (`src/types/index.ts`, `src/App.tsx`, `src/store/index.ts`, `src/pages/`)  
 > **注意**: 本ドキュメントは実装済み機能のみ記載。モック環境（Zustand + localStorage）のためAPIバックエンドは存在しない。
 > **更新 2026-08-25**: タスク初期値マスタ／IA再編（メニュー5項目）／日報3点（過去ブロック閲覧・日付ナビ統一・日報一覧）を反映。
+> **更新 2026-10-10 工程E**: 商談追加時タスク自動生成 (timingType: on_opportunity_created/offset_from_base_date・dueDate自動算出) ／ タスク列進捗表示(N/M)／ 構成員年収合計・保険会社insurerId+insurer後方互換・種目productCategories・スマホタブ切替(PC 3列固定) を反映。
+> **更新 2026-10-10 工程F**: CustomerListPage 3タブ実装（世帯/商品/契約）・商品編集機能インライン化・名称逆引き後方互換を反映。
+
+---
+
+## 0. 主要な工程F実装
+
+### 画面構造の再編 (IA-3 更新)
+
+**【旧構造】**（工程E）
+- `/households` → HouseholdsPage（世帯一覧）
+- `/policies` → PoliciesPage（契約一覧）
+- `/products` → 存在しない（未実装）
+
+**【新構造】**（工程F）
+- `/customers?tab=households` (default) → HouseholdsPage（世帯一覧・復元）
+- `/customers?tab=products` → ProductsPage（商品タブ・3ペイン統合）
+- `/customers?tab=policies` → PoliciesPage（契約一覧）
+- **後方互換**: `/households`, `/policies`, `/products` は CustomerListPage へリダイレクト（初期タブ選択で吸収）
+- **コード**: `src/App.tsx` に後方互換リダイレクト、`src/pages/CustomerListPage.tsx` で 3タブ実装
+
+### 商品タブの 3ペイン構成（PC lg: 横3列固定、スマホ: タブ切替）
+
+| ペイン | 機能 | 制御 |
+|---|---|---|
+| **①世帯リストペイン** | 世帯一覧・検索・選択 | `HouseholdListPane`（PC常時表示、スマホ: tab=0） |
+| **②構成員ペイン** | 世帯員の追加・編集・削除・年収合計表示 | `PersonsPane`（PC常時表示、スマホ: tab=1・世帯選択後） |
+| **③保険商品ペイン** | 保険商品一覧・追加・編集（インライン） | `PoliciesPane`（PC常時表示、スマホ: tab=2・世帯選択後） |
+
+### 保険商品編集機能（インライン化）
+
+- **従来**: 商談ステージから提案商品を編集（`/opportunities/:id`）
+- **新規**: 商品タブの各カード右上「✏️」で**インライン編集フォーム**を展開
+- **編集フィールド**: 被保険者 / 保険会社 / 種目 / 月払 / 手数料 / 初回相談日
+- **保存ロジック**: `updateOpportunity(oppId, patch)` で当該 Opportunity の proposalProducts を置換
+- **名称逆引き後方互換**:
+  - `insurerId`: 商品に ID が設定されていない場合、`activeInsurers.name` 一致で逆引き
+  - `productCategory` → `categoryKey`: 商品の productCategory enum を、productCategories マスタの categoryKey で逆引き
+- **コード**: `src/pages/HouseholdsPage/PoliciesPane.tsx` (openEditForm 関数で逆引き実装)、`PolicyCardInlineEdit.tsx`、`ProductFormFields.tsx`
 
 ---
 
@@ -12,12 +51,12 @@
 
 | ロール | 主目的 | アクセス可能画面（ナビメニュー表示） |
 |---|---|---|
-| `general`（一般社員） | 自分の日報作成・顧客記録・商談管理・上長への報告 | /today, /dashboard(個人tab), /sales-perf, /calendar, /search, /households, /opportunities, /policies, /settings, /notifications |
+| `general`（一般社員） | 自分の日報作成・顧客記録・商談管理・上長への報告 | /today, /dashboard(個人tab), /sales-perf, /calendar, /search, /customers, /opportunities, /policies, /settings, /notifications |
 | `manager`（上長） | 部下日報レビュー・コメント・差し戻し・承認＋パイプライン管理 | 上記全て + /report-admin, /dashboard(チームtab) |
 | `executive`（経営者） | 全社俯瞰・経営判断・読取専用管理確認 | 上記全て（/report-admin） + /admin（読取専用） |
 | `admin`（管理者） | ユーザー・チーム・組織管理 | 上記全て + /admin（フル権限） + /templates |
 
-> **コード根拠**: `src/components/layout/AppShell.tsx` の NAV_ITEMS 定義。`/report-admin` は manager/executive/admin のみ表示、`/templates` は admin のみ表示、`/admin` は admin/executive のみ表示。
+> **コード根拠**: `src/components/layout/AppShell.tsx` の NAV_ITEMS 定義。`/customers` が主 URL、`/report-admin` は manager/executive/admin のみ表示、`/templates` は admin のみ表示、`/admin` は admin/executive のみ表示。旧 `/households`, `/policies`, `/products` は `/customers?tab=*` へ自動リダイレクト。
 
 ---
 
@@ -35,12 +74,12 @@
 | UC-G-06 | コメント投稿（上長宛） | 上長への質問・補足を送る | ① /today または /reports/:date のコメントセクションで「↑ 上長宛」バッジ付きコメントを投稿 | /today, /reports/:date | status=in_progressまたはsubmitted |
 | UC-G-07 | 日報の提出 | 夕方に当日日報を提出 | ① 夕の気分を入力 ② 「日報提出」ボタンをクリック → status: in_progress → submitted ③ 上長に通知が送られる | /today | status=in_progress |
 | UC-G-08 | 過去日報の検索・閲覧 | 過去日報を月単位で振り返る | ① /search で日付・キーワード等で絞り込み ② /calendar で月表示から日付を選択 ③ /reports/:date で詳細閲覧 | /search, /calendar, /reports/:date | 自分の日報のみ閲覧可能 |
-| UC-G-09 | 商談案件の新規作成 | 顧客に新規提案を開始する | ① /opportunities → 「+ 新規案件」または /households/:id の「+ 商談追加」から QuickOpportunityModal を開く ② 世帯・タイトル・ステージ・担当者を入力 ③ 作成 | /opportunities, /households/:id | ログイン済み |
-| UC-G-10 | 商談ステージ進捗更新（案件詳細から） | /opportunities/:id でステージを手動変更 | ① /opportunities/:id を開く ② 「ステージ変更」ボタンから StageSelector を開く ③ 新ステージ(approach→fact_finding→needs_analysis→proposal→negotiation→application→underwriting→issued/lost)を選択 ④ stageHistoryに自動追記 | /opportunities/:id | 自担当Opportunityのみ編集可 |
-| UC-G-11 | 提案商品の追加・編集 | 商談に保険商品（ProposalProduct）を追加 | ① /opportunities/:id の「商品」タブ → ProposalProductEditModal を開く ② 保険会社・商品名・カテゴリ・月払額・被保険者を入力 ③ 保存 | /opportunities/:id | 自担当Opportunityのみ |
+| UC-G-09 | 商談案件の新規作成 | 顧客に新規提案を開始する | ① /opportunities → 「+ 新規案件」または /households/:id の「+ 商談追加」から QuickOpportunityModal を開く ② 世帯・タイトル・ステージ・担当者を入力 ③ 作成 ④ 作成時に有効なタスクマスタ行ごとに1件の Task が自動生成される（timingType: on_opportunity_created=即時 / offset_from_base_date=基準日±offsetDaysで算出・基準日未入力はスキップ） | /opportunities, /households/:id | ログイン済み。タスク自動生成は taskGenerator.ts / opportunitySlice.ts に実装 |
+| UC-G-10 | 商談ステージ進捗更新（案件詳細から） | /opportunities/:id でステージを手動変更 | ① /opportunities/:id を開く ② 「ステージ変更」ボタンから StageSelector を開く ③ 新ステージ(approach→fact_finding→needs_analysis→proposal→negotiation→application→underwriting→issued/lost)を選択 ④ stageHistoryに自動追記 ⑤ 新ステージに該当するタスクマスタがあれば Task を自動生成（stageReached トリガー・taskGenerator.ts） | /opportunities/:id | 自担当Opportunityのみ編集可 |
+| UC-G-11 | 提案商品の追加・編集 | 商談に保険商品（ProposalProduct）を追加 | ① /opportunities/:id の「商品」タブ → ProposalProductEditModal を開く ② 保険会社(新規はマスタ insurerId 選択・insurer は後方互換維持)・商品名・種目(productCategories マスタ選択・保存は categoryKey enum 維持)・月払額・被保険者を入力 ③ 保存 ④ 新規商品追加時に該当 productCategory のタスクマスタがあれば Task を自動生成（product_added トリガー） | /opportunities/:id | 自担当Opportunityのみ |
 | UC-G-12 | 契約発行（受注） | 申込が確定した商談から契約を発行 | ① /opportunities/:id で「🎉 契約発行（受注）」ボタン → QuickPolicyIssueModal ② 提案商品一覧(ProposalProducts)を確認 ③「発行する」→ Policy が ProposalProduct から 1:1 で自動生成(status: pending) ④ Opportunity が stage: issued / status: won に遷移 | /opportunities/:id | 自担当Opportunity。ProposalProductが1件以上存在すること |
 | UC-G-13 | 証券番号入力・契約有効化 | 保険会社から証券番号が届いたら契約を有効化 | ① /policies で該当Policy(status: pending)を開く ② 「証券番号を入力」ダイアログ → 証券番号 + 契約開始日を入力 ③「有効化」→ status: pending → inforce に昇格 ④ PolicyStatusHistoryに「証券番号: <番号>」メモ付きで自動記録 | /policies, /policies/:id | 自担当Policy(pending状態) |
-| UC-G-14 | 保障マトリクス確認・保障漏れ発見 | 世帯の保険カバレッジを確認し保障漏れを把握 | ① /households/:id → 「🛡️ 保障マトリクス」セクション ② 行=世帯員(Person)・列=保障種別(死亡/入院/がん/就業不能/介護/貯蓄)でマトリクス表示 ③ `-`（保障なし）のセルが「保障漏れ」のサイン ④ 世帯主に死亡保障なしなら赤警告バナー自動表示 | /households/:id | 担当世帯が存在すること |
+| UC-G-14 | 保障マトリクス確認・保障漏れ発見・構成員年収確認 | 世帯の保険カバレッジ・構成員年収を確認し保障漏れを把握 | ① /households/:id → 「🛡️ 保障マトリクス」セクション ② 行=世帯員(Person)・列=保障種別(死亡/入院/がん/就業不能/介護/貯蓄)でマトリクス表示 ③ `-`（保障なし）のセルが「保障漏れ」のサイン ④ 世帯主に死亡保障なしなら赤警告バナー自動表示 ⑤ 世帯員の年収(Person.annualIncome・万円単位)が自動集計・表示される ⑥ スマホ表示時はタブ切替(PC は lg:横3列固定) | /households/:id | 担当世帯が存在すること |
 | UC-G-15 | 保障漏れを端緒に新規商談作成 | 保障漏れを発見したら新規Opportunityを作成 | ① 保障マトリクスで`-`セルを確認 ② /opportunities → 「+ 新規案件」→ QuickOpportunityModal ③ 保障漏れをエビデンスに商談タイトル・内容を入力し作成 | /households/:id, /opportunities | ログイン済み |
 | UC-G-16 | 世帯まとめ入力（HouseholdBatchEntry） | 1世帯の複数Opportunityをまとめて効率入力 | ① /households/:id → 「まとめ入力」ボタン → /households/:id/batch-entry ② 複数のDraftOpportunityを並べて入力・バリデーション ③ 一括保存 | /households/:id/batch-entry | 担当世帯が存在すること |
 | UC-G-17 | 商談活動報告の入力 | 商談単位で訪問活動を記録する | ① /opportunities/:id/report を開く ② 報告日・活動タイプ(visit/phone/web/other)・サマリ・提案内容・次アクションを入力 ③ 確度ラダー(S/A/B/C/D/fixed)を設定 ④ 保存→日報タイムブロックへ自動連携(syncOppReportToNippou) | /opportunities/:id/report | 自担当Opportunity |
