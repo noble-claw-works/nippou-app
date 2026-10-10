@@ -25,9 +25,15 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SalesDashboardPage } from "./pages/SalesDashboardPage";
 import { TeamDashboardPage } from "./pages/TeamDashboardPage";
-import { DashboardWithPerfPage, SalesPerfRedirect } from "./pages/DashboardWithPerfPage";
+import {
+  DashboardWithPerfPage,
+  SalesPerfRedirect,
+} from "./pages/DashboardWithPerfPage";
 import { NippouPage } from "./pages/NippouPage";
 import { CustomerListPage } from "./pages/CustomerListPage";
+import { RenewalListPage } from "./pages/RenewalListPage";
+import { RenewalDetailPage } from "./pages/RenewalDetailPage";
+import { RenewalImportPage } from "./pages/RenewalImportPage";
 import { useAppStore } from "./store";
 
 /** 認証ガード: 未ログインなら /login へリダイレクト */
@@ -103,15 +109,24 @@ function AppLayout() {
         {/* 後方互換: /today → /nippou */}
         <Route path="/today" element={<Navigate to="/nippou" replace />} />
         {/* 後方互換: /calendar → /nippou?tab=calendar */}
-        <Route path="/calendar" element={<Navigate to="/nippou?tab=calendar" replace />} />
+        <Route
+          path="/calendar"
+          element={<Navigate to="/nippou?tab=calendar" replace />}
+        />
         <Route path="/reports/:date" element={<ReportDetailPage />} />
         <Route path="/search" element={<SearchPage />} />
         {/* IA-3: 顧客一覧（世帯＋契約タブ統合、/customers） */}
         <Route path="/customers" element={<CustomerListPage />} />
         {/* 後方互換: /households → /customers（顧客一覧・世帯タブ） */}
-        <Route path="/households" element={<Navigate to="/customers" replace />} />
+        <Route
+          path="/households"
+          element={<Navigate to="/customers" replace />}
+        />
         {/* 後方互換: /policies → /customers?tab=policies */}
-        <Route path="/policies" element={<Navigate to="/customers?tab=policies" replace />} />
+        <Route
+          path="/policies"
+          element={<Navigate to="/customers?tab=policies" replace />}
+        />
         {/* 詳細ページはそのまま維持 */}
         <Route
           path="/households/:customerId"
@@ -126,6 +141,10 @@ function AppLayout() {
           element={<HouseholdDetailPage />}
         />
         <Route path="/policies/:id" element={<PolicyDetailPage />} />
+        {/* 更新一覧 (/renewals) */}
+        <Route path="/renewals" element={<RenewalListPage />} />
+        <Route path="/renewals/import" element={<RenewalImportPage />} />
+        <Route path="/renewals/:id" element={<RenewalDetailPage />} />
         {/* Opportunity routes (Phase 2) */}
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />

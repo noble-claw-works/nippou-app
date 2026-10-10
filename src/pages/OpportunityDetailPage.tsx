@@ -1,7 +1,7 @@
 // OpportunityDetailPage.tsx — 商談案件詳細
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Trash2, CheckSquare, Square } from "lucide-react";
+import { ChevronLeft, Trash2 } from "lucide-react";
 import { useAppStore } from "../store";
 import type { ProposalProduct, Task } from "../types";
 import { StageBadge } from "../components/opportunity/StageBadge";
@@ -15,8 +15,7 @@ import { ProposalsTab } from "./OpportunityDetailPage/ProposalsTab";
 import { IssuedPoliciesTab } from "./OpportunityDetailPage/IssuedPoliciesTab";
 import { ActivityTimeline } from "./OpportunityDetailPage/ActivityTimeline";
 
-type Tab =
-  "overview" | "products" | "tasks" | "proposals" | "todos" | "issued_policies";
+type Tab = "overview" | "products" | "tasks" | "proposals" | "issued_policies";
 
 export function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -73,9 +72,6 @@ export function OpportunityDetailPage() {
     .flatMap((r) => r.blocks ?? [])
     .filter((b) => b.opportunityId === id)
     .sort((a, b) => b.startTime.localeCompare(a.startTime));
-  const relatedTodos = reports
-    .flatMap((r) => (r.todos ?? []).map((t) => ({ ...t, date: r.date })))
-    .filter((t) => t.opportunityId === id);
 
   const handleDeleteProduct = (productId: string) => {
     const products = opp.proposalProducts.filter((p) => p.id !== productId);
@@ -146,8 +142,6 @@ export function OpportunityDetailPage() {
   });
   if (proposals.length > 0)
     TABS.push({ key: "proposals", label: `📝 提案履歴 (${proposals.length})` });
-  if (relatedTodos.length > 0)
-    TABS.push({ key: "todos", label: `✅ TODO (${relatedTodos.length})` });
   if (issuedPolicies.length > 0)
     TABS.push({
       key: "issued_policies",
@@ -298,43 +292,6 @@ export function OpportunityDetailPage() {
               }
               onDelete={(roundId) => deleteProposalRound(id!, roundId)}
             />
-          )}
-          {activeTab === "todos" && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h2 className="font-semibold text-gray-800 mb-4">TODO</h2>
-              {relatedTodos.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  この案件に紐付く TODO がありません
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {relatedTodos.map((todo) => (
-                    <div
-                      key={todo.id}
-                      className="flex items-start gap-2 text-sm"
-                    >
-                      {todo.completed ? (
-                        <CheckSquare className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                      ) : (
-                        <Square className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
-                      )}
-                      <span
-                        className={
-                          todo.completed
-                            ? "line-through text-gray-400"
-                            : "text-gray-700"
-                        }
-                      >
-                        {todo.text}
-                      </span>
-                      <span className="text-gray-400 ml-auto shrink-0">
-                        {todo.date}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           )}
           {activeTab === "issued_policies" && (
             <IssuedPoliciesTab

@@ -42,6 +42,7 @@ export interface Person {
   birthDate?: string; // YYYY-MM-DD
   gender?: PersonGender;
   occupation?: string;
+  annualIncome?: number; // ★NEW 年収（万円）構成員ごとの収入（工程D）
   smoker?: boolean;
   healthNotes?: string;
   memo: string;

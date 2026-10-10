@@ -50,7 +50,8 @@ export interface ProposalProduct {
   id: string;
   productCategory: ProductCategory;
   productName: string;
-  insurer: string; // 保険会社
+  insurer: string; // 保険会社（名前文字列・後方互換維持）
+  insurerId?: string; // ★NEW 保険会社マスタID（工程D）
   insuredPersonId: string; // 被保険者
   monthlyPremium: number; // 月払額
   faceAmount?: number; // 保険金額

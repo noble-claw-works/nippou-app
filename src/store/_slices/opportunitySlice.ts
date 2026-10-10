@@ -300,6 +300,7 @@ export const createOpportunitySlice: StateCreator<
   toggleOppTaskDone: (oppId, taskId, done, today) => {
     const now = new Date().toISOString();
     const todayStr = today ?? format(new Date(), "yyyy-MM-dd");
+    const currentUserId = get().currentUserId;
     set((s) => {
       const updated = s.opportunities.map((o) => {
         if (o.id !== oppId) return o;
@@ -309,6 +310,7 @@ export const createOpportunitySlice: StateCreator<
             ...t,
             done,
             doneDate: done ? (t.doneDate ?? todayStr) : undefined,
+            doneBy: done ? currentUserId : undefined,
           };
         });
         return { ...o, tasks, updatedAt: now };

@@ -247,7 +247,6 @@ describe("normalizeContract", () => {
   });
 
   it("had_meeting/lifeplan デフォルト false", () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const {
       had_meeting: _hm,
       had_lifeplan: _hl,
@@ -255,6 +254,10 @@ describe("normalizeContract", () => {
       had_proposal: _hp,
       ...rest
     } = baseRaw;
+    void _hm;
+    void _hl;
+    void _pc;
+    void _hp;
     const result = normalizeContract({ ...rest });
     expect(result.hadMeeting).toBe(false);
     expect(result.hadLifeplan).toBe(false);

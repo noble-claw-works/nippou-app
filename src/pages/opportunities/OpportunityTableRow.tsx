@@ -1,4 +1,4 @@
-import type { Opportunity } from "../../types";
+import type { Opportunity, User } from "../../types";
 import { effectiveExpectedCloseDate } from "../../utils/opportunityStage";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { TaskProgressBadge } from "./TaskProgressBadge";
@@ -6,14 +6,18 @@ import { TaskListPreview } from "./TaskListPreview";
 
 interface OpportunityTableRowProps {
   opp: Opportunity;
+  users?: User[];
   getContractorName: (id: string | undefined) => string;
   onNavigate: (id: string) => void;
+  onToggleTask?: (oppId: string, taskId: string, done: boolean) => void;
 }
 
 export function OpportunityTableRow({
   opp,
+  users,
   getContractorName,
   onNavigate,
+  onToggleTask,
 }: OpportunityTableRowProps) {
   const tasks = opp.tasks ?? [];
   return (
@@ -61,7 +65,13 @@ export function OpportunityTableRow({
         <td colSpan={7} className="p-0">
           <TaskListPreview
             tasks={tasks}
+            users={users}
             onNavigate={() => onNavigate(opp.id)}
+            onToggle={
+              onToggleTask
+                ? (taskId, done) => onToggleTask(opp.id, taskId, done)
+                : undefined
+            }
           />
         </td>
       </tr>

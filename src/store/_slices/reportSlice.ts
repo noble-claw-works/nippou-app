@@ -9,6 +9,8 @@ import type { DailyReport } from "../_internal/types";
 import { uid } from "../_internal/constants";
 import { format } from "date-fns";
 
+import { reportOwnerIdOf } from "./notificationGen";
+
 export const createReportSlice: StateCreator<
   AppState,
   [],
@@ -93,7 +95,7 @@ export const createReportSlice: StateCreator<
     }));
   },
 
-  withdrawReport: (reportId) => {
+  withdrawReport: (reportId, by?: "manager" | "self") => {
     // 本人取り下げ・上長差し戻し共通: submitted → in_progress
     set((s) => ({
       reports: s.reports.map((r) =>
@@ -107,23 +109,51 @@ export const createReportSlice: StateCreator<
           : r,
       ),
     }));
+    // G1: 上長差戈しの場合のみ通知
+    if (by === "manager") {
+      const s = get();
+      const ownerId = reportOwnerIdOf(s.reports, reportId);
+      if (ownerId) {
+        s.addNotification({
+          userId: ownerId,
+          type: "sent_back",
+          title: "日報が差し戻されました",
+          body: "上長により差し戻されました。内容を確認して再提出してください。",
+          relatedReportId: reportId,
+        });
+      }
+    }
   },
 
   confirmReport: (reportId) => {
     const now = new Date().toISOString();
-    set((s) => ({
-      reports: s.reports.map((r) =>
+    const s = get();
+    const confirmerName =
+      s.users.find((u) => u.id === s.currentUserId)?.name ?? s.currentUserId;
+    set((st) => ({
+      reports: st.reports.map((r) =>
         r.id === reportId && r.status === "submitted"
           ? {
               ...r,
               status: "confirmed",
               confirmedAt: now,
-              confirmedBy: s.currentUserId,
+              confirmedBy: st.currentUserId,
               updatedAt: now,
             }
           : r,
       ),
     }));
+    // G1: 日報オーナーへ確認通知
+    const ownerId = reportOwnerIdOf(get().reports, reportId);
+    if (ownerId) {
+      get().addNotification({
+        userId: ownerId,
+        type: "confirmed",
+        title: "日報が確認されました",
+        body: `${confirmerName}が確認しました。`,
+        relatedReportId: reportId,
+      });
+    }
   },
 
   // MGR-4: 未確認日報の一括確認 - submitted のみを confirmed に遷移

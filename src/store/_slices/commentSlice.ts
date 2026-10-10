@@ -5,6 +5,8 @@ import type { StateCreator } from "zustand";
 import type { AppState, Comment } from "../_internal/types";
 import { uid } from "../_internal/constants";
 
+import { reportOwnerIdByDayKey } from "./notificationGen";
+
 export const createCommentSlice: StateCreator<
   AppState,
   [],
@@ -20,7 +22,7 @@ export const createCommentSlice: StateCreator<
     | "addCompliment"
     | "deleteCompliment"
   >
-> = (set) => ({
+> = (set, get) => ({
   addComment: (reportId, userId, text) => {
     const comment: Comment = {
       id: uid(),
@@ -89,6 +91,23 @@ export const createCommentSlice: StateCreator<
         },
       ],
     }));
+    // G1: 日報オーナーへ通知
+    const s = get();
+    const ownerId = reportOwnerIdByDayKey(s.reports, dayKey);
+    if (ownerId && ownerId !== authorUserId) {
+      const author = s.users.find((u) => u.id === authorUserId);
+      const authorName = author?.name ?? authorUserId;
+      const relatedReport = s.reports.find(
+        (r) => r.date === dayKey && r.userId === ownerId,
+      );
+      s.addNotification({
+        userId: ownerId,
+        type: "comment",
+        title: `${authorName}さんからコメント`,
+        body: body.slice(0, 60),
+        relatedReportId: relatedReport?.id,
+      });
+    }
   },
 
   replyToManagerComment: (
@@ -138,6 +157,20 @@ export const createCommentSlice: StateCreator<
         },
       ],
     }));
+    // G1: praise → 担当営業(=customerId owner)へ通知。request → currentUser宛
+    const s = get();
+    const targetUserId =
+      type === "praise"
+        ? (reportOwnerIdByDayKey(s.reports, dayKey) ?? undefined)
+        : s.currentUserId;
+    if (targetUserId) {
+      s.addNotification({
+        userId: targetUserId,
+        type: "other",
+        title: type === "praise" ? "称賛が届きました" : "依頼が届きました",
+        body: body.slice(0, 60),
+      });
+    }
   },
 
   deleteCompliment: (complimentId: string) => {

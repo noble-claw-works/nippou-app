@@ -239,6 +239,74 @@ pol15.coverages = [
   }),
 ];
 
+// c2: 齋藤 和久 — 火災保険（更新15日後）
+export const pol16 = mkPolicy(pid(), {
+  householdId: "c2",
+  ownerId: "u1",
+  contractorPersonId: "p_c2_head",
+  insuredPersonIds: ["p_c2_head"],
+  insurer: "住友生命損保",
+  productName: "火災保険 スミセイのホームガード",
+  productCategory: "fire",
+  status: "inforce",
+  policyNumber: "F-0022101",
+  startDate: "2021-09-15",
+  renewalDate: f(15),
+  monthlyPremium: 3200,
+  payMode: "annual",
+  annualPremium: 38400,
+  hasCashValue: false,
+  tags: ["火災保険", "要更新"],
+  memo: "自宅(木造)。10年満期→1年更新切替",
+});
+pol16.coverages = [
+  mkCoverage(cid(), pol16.id, {
+    type: "asset_damage",
+    label: "建物火災・水害",
+    insuredPersonId: "p_c2_head",
+    isMain: true,
+    faceAmount: 18000000,
+    unit: "JPY",
+  }),
+];
+
+// c4: 水野 幸重 — 自動車保険（更新40日後）
+export const pol17 = mkPolicy(pid(), {
+  householdId: "c4",
+  ownerId: "u2",
+  contractorPersonId: "p_c4_head",
+  insuredPersonIds: ["p_c4_head"],
+  insurer: "三井住友海上",
+  productName: "GKクルマの保険",
+  productCategory: "auto",
+  status: "inforce",
+  policyNumber: "A-0044202",
+  startDate: d(325),
+  renewalDate: f(40),
+  monthlyPremium: 5800,
+  payMode: "annual",
+  annualPremium: 69600,
+  hasCashValue: false,
+  tags: ["自動車保険", "要更新"],
+  memo: "セカンドカー(軽)。車両保険付",
+});
+pol17.coverages = [
+  mkCoverage(cid(), pol17.id, {
+    type: "liability",
+    label: "対人・対物賠償",
+    insuredPersonId: "p_c4_head",
+    isMain: true,
+  }),
+  mkCoverage(cid(), pol17.id, {
+    type: "asset_damage",
+    label: "車両保険",
+    insuredPersonId: "p_c4_head",
+    isMain: false,
+    faceAmount: 1200000,
+    unit: "JPY",
+  }),
+];
+
 export const POLICIES: Policy[] = [
   pol1,
   pol2,
@@ -255,4 +323,6 @@ export const POLICIES: Policy[] = [
   pol13,
   pol14,
   pol15,
+  pol16,
+  pol17,
 ];

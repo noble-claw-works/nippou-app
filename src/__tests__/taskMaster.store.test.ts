@@ -142,6 +142,68 @@ describe("Store: 案件タスク CRUD", () => {
     expect(task?.doneDate).toBeUndefined();
   });
 
+  it("toggleOppTaskDone: done=true の時 doneBy に currentUserId が入る", () => {
+    // Arrange
+    useAppStore.setState({ currentUserId: "u1" });
+    useAppStore.getState().addOppTask(oppId, {
+      title: "doneByテスト",
+      done: false,
+      priority: "medium",
+      scope: "opportunity",
+      rolledOver: false,
+      householdId: "c1",
+    });
+    const taskId = useAppStore
+      .getState()
+      .opportunities.find((o) => o.id === oppId)!.tasks![0].id;
+
+    // Act
+    useAppStore.getState().toggleOppTaskDone(oppId, taskId, true);
+
+    // Assert
+    const task = useAppStore
+      .getState()
+      .opportunities.find((o) => o.id === oppId)
+      ?.tasks?.find((t) => t.id === taskId);
+    expect(task?.done).toBe(true);
+    expect(task?.doneBy).toBe("u1");
+  });
+
+  it("toggleOppTaskDone: done=false の時 doneBy が消える", () => {
+    // Arrange
+    useAppStore.setState({ currentUserId: "u1" });
+    useAppStore.getState().addOppTask(oppId, {
+      title: "doneByクリアテスト",
+      done: false,
+      priority: "medium",
+      scope: "opportunity",
+      rolledOver: false,
+      householdId: "c1",
+    });
+    const taskId = useAppStore
+      .getState()
+      .opportunities.find((o) => o.id === oppId)!.tasks![0].id;
+    // First mark done
+    useAppStore.getState().toggleOppTaskDone(oppId, taskId, true);
+    expect(
+      useAppStore
+        .getState()
+        .opportunities.find((o) => o.id === oppId)
+        ?.tasks?.find((t) => t.id === taskId)?.doneBy,
+    ).toBe("u1");
+
+    // Act: mark undone
+    useAppStore.getState().toggleOppTaskDone(oppId, taskId, false);
+
+    // Assert
+    const task = useAppStore
+      .getState()
+      .opportunities.find((o) => o.id === oppId)
+      ?.tasks?.find((t) => t.id === taskId);
+    expect(task?.done).toBe(false);
+    expect(task?.doneBy).toBeUndefined();
+  });
+
   it("removeOppTask: タスクが削除される", () => {
     useAppStore.getState().addOppTask(oppId, {
       title: "削除タスク",

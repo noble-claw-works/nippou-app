@@ -22,3 +22,5 @@ export {
   TASK_TEMPLATES,
   OPP_ACTIVITY_REPORTS,
 } from "./seed/sales";
+export { RENEWAL_CASES } from "./seed/renewals";
+export { CUSTOMER_INTERACTIONS } from "./seed/customerInteractions";

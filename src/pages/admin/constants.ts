@@ -17,6 +17,7 @@ export const SCOPE_LABELS: Record<TaskScope, string> = {
   household: "世帯",
   opportunity: "案件",
   product: "商品",
+  renewal: "更新案件",
 };
 
 export const PRIORITY_LABELS: Record<TaskPriority, string> = {

@@ -28,16 +28,25 @@ import { useOpportunitiesFilter } from "./opportunities/useOpportunitiesFilter";
 export function OpportunitiesPage() {
   const navigate = useNavigate();
 
-  const { opportunities, customers, persons, currentUserId, currentRole } =
-    useAppStore(
-      useShallow((s) => ({
-        opportunities: s.opportunities,
-        customers: s.customers,
-        persons: s.persons,
-        currentUserId: s.currentUserId,
-        currentRole: s.currentRole,
-      })),
-    );
+  const {
+    opportunities,
+    customers,
+    persons,
+    users,
+    currentUserId,
+    currentRole,
+    toggleOppTaskDone,
+  } = useAppStore(
+    useShallow((s) => ({
+      opportunities: s.opportunities,
+      customers: s.customers,
+      persons: s.persons,
+      users: s.users,
+      currentUserId: s.currentUserId,
+      currentRole: s.currentRole,
+      toggleOppTaskDone: s.toggleOppTaskDone,
+    })),
+  );
 
   const [activeTab, setActiveTab] = useState<StageTabKey>("first_consult");
   const [ownerFilter] = useState<string>("all");
@@ -145,8 +154,12 @@ export function OpportunitiesPage() {
     <OpportunityTableRow
       key={opp.id}
       opp={opp}
+      users={users}
       getContractorName={getContractorName}
       onNavigate={(id) => navigate(`/opportunities/${id}`)}
+      onToggleTask={(oppId, taskId, done) =>
+        toggleOppTaskDone(oppId, taskId, done)
+      }
     />
   );
 
