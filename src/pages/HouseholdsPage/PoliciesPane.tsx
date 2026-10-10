@@ -32,9 +32,11 @@ const EMPTY_FORM = (prevDate: string): PolicyFormState => ({
 interface PoliciesPaneProps {
   householdId: string | null;
   householdName?: string;
+  /** 'all' = すべて、それ以外 = その Person.id の商品のみ */
+  selectedPersonId?: string;
 }
 
-export function PoliciesPane({ householdId, householdName }: PoliciesPaneProps) {
+export function PoliciesPane({ householdId, householdName, selectedPersonId = 'all' }: PoliciesPaneProps) {
   const {
     persons,
     opportunities,
@@ -62,10 +64,23 @@ export function PoliciesPane({ householdId, householdName }: PoliciesPaneProps) 
   const hOpportunities = householdId
     ? opportunities.filter(o => o.householdId === householdId)
     : [];
+
+  // opportunityマップ（oppId → opportunity の高速引き発キャッシュ）
+  const oppMap = new Map(hOpportunities.map(o => [o.id, o]));
+
   const allProducts: Array<{ product: ProposalProduct; oppId: string }> =
     hOpportunities.flatMap(o =>
       o.proposalProducts.map(p => ({ product: p, oppId: o.id })),
     );
+
+  // selectedPersonId に応じた表示対象
+  const displayProducts = selectedPersonId === 'all'
+    ? allProducts
+    : allProducts.filter(({ product, oppId }) => {
+        if (product.insuredPersonId === selectedPersonId) return true;
+        const opp = oppMap.get(oppId);
+        return opp?.contractorPersonId === selectedPersonId;
+      });
 
   // isActive:true のマスタのみ
   const activeInsurers = insuranceCompanies.filter(c => c.isActive);
@@ -337,10 +352,24 @@ export function PoliciesPane({ householdId, householdName }: PoliciesPaneProps) 
               + 保険商品を追加
             </button>
           </div>
+        ) : displayProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-8">
+            <p className="text-sm">該当する保険商品がありません</p>
+          </div>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {allProducts.map(({ product }) => {
+            {displayProducts.map(({ product, oppId }) => {
               const insuredPerson = persons.find(p => p.id === product.insuredPersonId);
+              const opp = oppMap.get(oppId);
+              // 契約者名：contractorPersonId → personsで引く。無ければ世帯主(head)、それもなければ未設定
+              const contractorPerson = opp?.contractorPersonId
+                ? persons.find(p => p.id === opp.contractorPersonId)
+                : undefined;
+              const contractorName = contractorPerson
+                ? contractorPerson.name
+                : opp?.contractorPersonId
+                  ? '未設定'
+                  : hPersons.find(p => p.relation === 'head')?.name ?? '未設定';
               return (
                 <li key={product.id} className="px-3 py-2.5 hover:bg-gray-50">
                   <div className="flex items-center justify-between gap-1 mb-0.5">
@@ -353,7 +382,8 @@ export function PoliciesPane({ householdId, householdName }: PoliciesPaneProps) 
                   </div>
                   <div className="text-[10px] text-gray-500 flex flex-wrap gap-x-2 gap-y-0.5">
                     <span>🏢 {product.insurer}</span>
-                    {insuredPerson && <span>👤 {insuredPerson.name}</span>}
+                    <span>📝 契約者: {contractorName}</span>
+                    {insuredPerson && <span>👤 被保険者: {insuredPerson.name}</span>}
                     <span className="text-green-700">
                       💰 {product.monthlyPremium.toLocaleString()}円/月
                     </span>
@@ -377,10 +407,13 @@ export function PoliciesPane({ householdId, householdName }: PoliciesPaneProps) 
       {allProducts.length > 0 && (
         <div className="px-3 py-1.5 border-t border-gray-100 bg-gray-50">
           <p className="text-[10px] text-gray-500">
-            {allProducts.length}件
+            {displayProducts.length}件
+            {selectedPersonId !== 'all' && (
+              <span className="text-gray-400">（全{allProducts.length}件中）</span>
+            )}
             <span className="ml-2 text-green-700 font-medium">
               合計:{' '}
-              {allProducts
+              {displayProducts
                 .reduce((sum, { product }) => sum + product.monthlyPremium, 0)
                 .toLocaleString()}
               円/月

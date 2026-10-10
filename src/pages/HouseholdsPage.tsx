@@ -2,7 +2,7 @@
 // PC(lg:以上)=横3カラム ①世帯リスト ②構成員 ③保険商品+初回相談日
 // スマホ=上部タブで①②③切替
 
-
+import { useState } from 'react';
 import { useHouseholdsPaneState, type PaneTab } from './HouseholdsPage/useHouseholdsPaneState';
 import { HouseholdListPane } from './HouseholdsPage/HouseholdListPane';
 import { PersonsPane } from './HouseholdsPage/PersonsPane';
@@ -20,12 +20,17 @@ export function HouseholdsPage() {
     useHouseholdsPaneState();
   const { customers } = useAppStore();
 
+  // 選択中の構成員ID。'all' = すべて（初期値）
+  const [selectedPersonId, setSelectedPersonId] = useState<string>('all');
+
   const selectedHousehold = selectedHouseholdId
     ? customers.find(c => c.id === selectedHouseholdId)
     : undefined;
 
+  // 世帯を切り替えたら構成員選択を「すべて」にリセット
   const handleSelectHousehold = (id: string) => {
     selectHousehold(id);
+    setSelectedPersonId('all');
   };
 
   return (
@@ -78,6 +83,8 @@ export function HouseholdsPage() {
           <PersonsPane
             householdId={selectedHouseholdId}
             householdName={selectedHousehold?.name}
+            selectedPersonId={selectedPersonId}
+            onSelectPerson={setSelectedPersonId}
           />
         </div>
 
@@ -91,6 +98,7 @@ export function HouseholdsPage() {
           <PoliciesPane
             householdId={selectedHouseholdId}
             householdName={selectedHousehold?.name}
+            selectedPersonId={selectedPersonId}
           />
         </div>
       </div>

@@ -31,9 +31,16 @@ const DEFAULT_FORM: AddPersonForm = {
 interface PersonsPaneProps {
   householdId: string | null;
   householdName?: string;
+  selectedPersonId?: string;
+  onSelectPerson?: (id: string) => void;
 }
 
-export function PersonsPane({ householdId, householdName }: PersonsPaneProps) {
+export function PersonsPane({
+  householdId,
+  householdName,
+  selectedPersonId = 'all',
+  onSelectPerson,
+}: PersonsPaneProps) {
   const { persons, addPerson, addToast } = useAppStore();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<AddPersonForm>(DEFAULT_FORM);
@@ -182,36 +189,71 @@ export function PersonsPane({ householdId, householdName }: PersonsPaneProps) {
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {hPersons.map(person => (
-              <li key={person.id} className="px-3 py-2.5 hover:bg-gray-50">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="font-medium text-gray-900 text-sm">{person.name}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">
-                    {RELATION_LABELS[person.relation]}
-                  </span>
-                  {person.relation === 'head' && (
-                    <span className="text-xs text-yellow-600">👑</span>
-                  )}
-                </div>
-                <div className="text-[10px] text-gray-500 flex gap-2 flex-wrap">
-                  {person.birthDate && (
-                    <span>{person.birthDate}（{calcAge(person.birthDate)}）</span>
-                  )}
-                  {person.occupation && <span>職業: {person.occupation}</span>}
-                  {person.annualIncome !== undefined && (
-                    <span className="text-green-700">
-                      年収: {person.annualIncome.toLocaleString()}万円
+            {/* 「すべて」行 */}
+            <li
+              className={`px-3 py-2.5 cursor-pointer transition-colors ${
+                selectedPersonId === 'all'
+                  ? 'bg-blue-50 border-l-2 border-blue-500'
+                  : 'hover:bg-gray-50 border-l-2 border-transparent'
+              }`}
+              onClick={() => onSelectPerson?.('all')}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`font-medium text-sm ${
+                  selectedPersonId === 'all' ? 'text-blue-700' : 'text-gray-700'
+                }`}>
+                  👥 すべて
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded">
+                  全構成員
+                </span>
+              </div>
+            </li>
+            {hPersons.map(person => {
+              const isSelected = selectedPersonId === person.id;
+              return (
+                <li
+                  key={person.id}
+                  className={`px-3 py-2.5 cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-blue-50 border-l-2 border-blue-500'
+                      : 'hover:bg-gray-50 border-l-2 border-transparent'
+                  }`}
+                  onClick={() => onSelectPerson?.(person.id)}
+                >
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className={`font-medium text-sm ${
+                      isSelected ? 'text-blue-700' : 'text-gray-900'
+                    }`}>
+                      {person.name}
                     </span>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded">
+                      {RELATION_LABELS[person.relation]}
+                    </span>
+                    {person.relation === 'head' && (
+                      <span className="text-xs text-yellow-600">👑</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-gray-500 flex gap-2 flex-wrap">
+                    {person.birthDate && (
+                      <span>{person.birthDate}（{calcAge(person.birthDate)}）</span>
+                    )}
+                    {person.occupation && <span>職業: {person.occupation}</span>}
+                    {person.annualIncome !== undefined && (
+                      <span className="text-green-700">
+                        年収: {person.annualIncome.toLocaleString()}万円
+                      </span>
+                    )}
+                    {person.smoker && (
+                      <span className="px-1 py-0.5 bg-orange-50 text-orange-700 rounded">🚬 喫煙</span>
+                    )}
+                  </div>
+                  {person.memo && (
+                    <p className="text-[10px] text-gray-400 mt-0.5">{person.memo}</p>
                   )}
-                  {person.smoker && (
-                    <span className="px-1 py-0.5 bg-orange-50 text-orange-700 rounded">🚬 喫煙</span>
-                  )}
-                </div>
-                {person.memo && (
-                  <p className="text-[10px] text-gray-400 mt-0.5">{person.memo}</p>
-                )}
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
