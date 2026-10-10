@@ -1,21 +1,23 @@
 // =====================================================
-// CustomerListPage — 顧客一覧（世帯＋契約 統合タブ）(IA-3)
-// - 「世帯」(HouseholdsPage)・「契約」(PoliciesPage) をタブで切替
+// CustomerListPage — 顧客一覧（世帯／商品／契約 統合タブ）(IA-3, 工程F)
+// - 「世帯」(HouseholdsPage)・「商品」(ProductsPage)・「契約」(PoliciesPage) をタブで切替
 // - 「更新一覧」は /renewals 独立ページへ移設（DESIGN-RENEWAL T4）
-// - /households, /policies への直アクセスは初期タブ選択で吸収
-// - URL: /customers?tab=households (default) | ?tab=policies
+// - /households, /policies, /products への直アクセスは初期タブ選択で吸収
+// - URL: /customers?tab=households (default) | ?tab=products | ?tab=policies
 // =====================================================
 import { useSearchParams } from "react-router-dom";
 import { HouseholdsPage } from "./HouseholdsPage";
+import { ProductsPage } from "./ProductsPage";
 import { PoliciesPage } from "./PoliciesPage";
 
-type CustomerTab = "households" | "policies";
+type CustomerTab = "households" | "products" | "policies";
 
 export function CustomerListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const raw = searchParams.get("tab");
-  const tab: CustomerTab = raw === "policies" ? "policies" : "households";
+  const tab: CustomerTab =
+    raw === "policies" ? "policies" : raw === "products" ? "products" : "households";
 
   const setTab = (t: CustomerTab) =>
     setSearchParams(
@@ -47,6 +49,16 @@ export function CustomerListPage() {
             世帯
           </button>
           <button
+            onClick={() => setTab("products")}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              tab === "products"
+                ? "border-blue-600 text-blue-700"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            商品
+          </button>
+          <button
             onClick={() => setTab("policies")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               tab === "policies"
@@ -61,7 +73,13 @@ export function CustomerListPage() {
 
       {/* コンテンツ */}
       <div className="flex-1 overflow-auto">
-        {tab === "households" ? <HouseholdsPage /> : <PoliciesPage />}
+        {tab === "households" ? (
+          <HouseholdsPage />
+        ) : tab === "products" ? (
+          <ProductsPage />
+        ) : (
+          <PoliciesPage />
+        )}
       </div>
     </div>
   );

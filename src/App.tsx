@@ -127,6 +127,11 @@ function AppLayout() {
           path="/policies"
           element={<Navigate to="/customers?tab=policies" replace />}
         />
+        {/* 後方互換: /products → /customers?tab=products */}
+        <Route
+          path="/products"
+          element={<Navigate to="/customers?tab=products" replace />}
+        />
         {/* 詳細ページはそのまま維持 */}
         <Route
           path="/households/:customerId"

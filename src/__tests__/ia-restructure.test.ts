@@ -166,12 +166,16 @@ describe('IA-2: NippouPage タブ選択ロジック', () => {
 // ── IA-3: CustomerListPage — タブ選択ロジック ────────────────────────────────
 
 describe('IA-3: CustomerListPage タブ選択ロジック', () => {
-  const resolveTab = (searchParam: string | null): 'households' | 'policies' => {
-    return searchParam === 'policies' ? 'policies' : 'households';
+  const resolveTab = (searchParam: string | null): 'households' | 'products' | 'policies' => {
+    return searchParam === 'policies' ? 'policies' : searchParam === 'products' ? 'products' : 'households';
   };
 
   it('tab パラメータなし → 世帯タブ', () => {
     expect(resolveTab(null)).toBe('households');
+  });
+
+  it('tab=products → 商品タブ', () => {
+    expect(resolveTab('products')).toBe('products');
   });
 
   it('tab=policies → 契約タブ', () => {
@@ -197,6 +201,7 @@ describe('IA: 後方互換パスのリダイレクト設計確認', () => {
     '/calendar':   '/nippou?tab=calendar',
     '/households': '/customers',
     '/policies':   '/customers?tab=policies',
+    '/products':   '/customers?tab=products',
     '/sales-perf': '/dashboard?tab=salesperf',
   };
 
@@ -214,6 +219,10 @@ describe('IA: 後方互換パスのリダイレクト設計確認', () => {
 
   it('/policies → /customers?tab=policies にリダイレクトされる設計', () => {
     expect(REDIRECTS['/policies']).toBe('/customers?tab=policies');
+  });
+
+  it('/products → /customers?tab=products にリダイレクトされる設計', () => {
+    expect(REDIRECTS['/products']).toBe('/customers?tab=products');
   });
 
   it('/sales-perf → /dashboard?tab=salesperf にリダイレクトされる設計', () => {
