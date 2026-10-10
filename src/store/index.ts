@@ -1,454 +1,137 @@
 // =====================================================
-// Zustand Store - 日報管理システム
+// Zustand Store - 305-hrl-nippou-app
+// Refactored: slice pattern (pure refactor, no logic change)
 // =====================================================
-import { create } from 'zustand';
-import type {
-  User, Team, Customer, DailyReport, Template, QuickChip,
-  Notification, AuditLog, TimeBlock, Todo, Comment,
-  Role, TrackingSession, BlockType
-} from '../types';
+import { create } from "zustand";
+import type { AppState } from "./_internal/types";
 import {
-  USERS, TEAMS, CUSTOMERS, REPORTS, TEMPLATES,
-  DEFAULT_QUICK_CHIPS, NOTIFICATIONS, AUDIT_LOGS
-} from '../data/seed';
-import { format } from 'date-fns';
+  _initialAuthSession,
+  _initialUser,
+  _initialRoleSwitch,
+  _initialCustomers,
+  _initialSalesTargets,
+  _initialOpportunities,
+  _initialPolicies,
+  _initialPolicyStatusHistory,
+  _initialOppActivityReports,
+  _initialTaskTemplates,
+  _initialRenewalCases,
+  _initialCustomerInteractions,
+  _initialInsuranceCompanies,
+  _initialProductCategories,
+  _initialSalesChannels,
+} from "./_internal/constants";
+import {
+  USERS,
+  TEAMS,
+  REPORTS,
+  TEMPLATES,
+  DEFAULT_QUICK_CHIPS,
+  NOTIFICATIONS,
+  AUDIT_LOGS,
+  PERSONS,
+} from "../data/seed";
+import { DEFAULT_DEMO_PASSWORD } from "./auth";
+
+// Slices
+import { createAuthSlice } from "./_slices/authSlice";
+import { createToastSlice } from "./_slices/toastSlice";
+import { createReportSlice } from "./_slices/reportSlice";
+import { createBlockSlice } from "./_slices/blockSlice";
+import { createTodoSlice } from "./_slices/todoSlice";
+import { createCommentSlice } from "./_slices/commentSlice";
+import { createCustomerSlice } from "./_slices/customerSlice";
+import { createUserTeamSlice } from "./_slices/userTeamSlice";
+import { createTemplateSlice } from "./_slices/templateSlice";
+import { createSalesTargetSlice } from "./_slices/salesTargetSlice";
+import { createPolicySlice } from "./_slices/policySlice";
+import { createOpportunitySlice } from "./_slices/opportunitySlice";
+import { createOppActivitySlice } from "./_slices/oppActivitySlice";
+import { createTaskTemplateSlice } from "./_slices/taskTemplateSlice";
+import { createNotificationTrackingSlice } from "./_slices/notificationTrackingSlice";
+import { createNotificationGenSlice } from "./_slices/notificationGen";
+import { createRenewalSlice } from "./_slices/renewalSlice";
+import { createCustomerInteractionSlice } from "./_slices/customerInteractionSlice";
+import { createInsuranceCompanySlice } from "./_slices/insuranceCompanySlice";
+import { createProductCategorySlice } from "./_slices/productCategorySlice";
+import { createSalesChannelSlice } from "./_slices/salesChannelSlice";
 
 // =====================================================
-// トースト
+// 再エクスポート (既存の import パス互換用)
 // =====================================================
-export interface Toast {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  message: string;
-  undoFn?: () => void;
-}
+export {
+  AUTH_STORAGE_KEY,
+  AUTH_SESSION_TTL_MS,
+  DEFAULT_DEMO_PASSWORD,
+} from "./auth";
+export { ROLE_SWITCH_STORAGE_KEY, USER_SWITCH_STORAGE_KEY } from "./auth";
+export type { AuthSession } from "./auth";
 
-interface AppState {
-  // Auth
-  currentRole: Role;
-  currentUserId: string;
+// Toast + EmailChangeRequest types (消費者が直接 import している)
+export type { Toast, EmailChangeRequest } from "./_internal/types";
 
-  // Data
-  users: User[];
-  teams: Team[];
-  customers: Customer[];
-  reports: DailyReport[];
-  templates: Template[];
-  quickChips: QuickChip[];
-  notifications: Notification[];
-  auditLogs: AuditLog[];
-  trackingSession: TrackingSession | null;
-
-  // UI
-  toasts: Toast[];
-
-  // Actions: Role
-  setRole: (role: Role) => void;
-
-  // Actions: Toast
-  addToast: (toast: Omit<Toast, 'id'>) => void;
-  removeToast: (id: string) => void;
-
-  // Actions: Report
-  getReport: (userId: string, date: string) => DailyReport | undefined;
-  getTodayReport: () => DailyReport | undefined;
-  createReport: (userId: string, date: string) => DailyReport;
-  updateReport: (reportId: string, updates: Partial<DailyReport>) => void;
-  submitReport: (reportId: string) => void;
-  withdrawReport: (reportId: string) => void;
-  confirmReport: (reportId: string) => void;
-  sendBackReport: (reportId: string, reason: string) => void;
-
-  // Actions: TimeBlock
-  addBlock: (reportId: string, block: Omit<TimeBlock, 'id'>) => TimeBlock;
-  updateBlock: (reportId: string, blockId: string, updates: Partial<TimeBlock>) => void;
-  deleteBlock: (reportId: string, blockId: string) => void;
-
-  // Actions: Todo
-  addTodo: (reportId: string, text: string) => void;
-  toggleTodo: (reportId: string, todoId: string) => void;
-  deleteTodo: (reportId: string, todoId: string) => void;
-
-  // Actions: Comment
-  addComment: (reportId: string, userId: string, text: string) => void;
-  updateComment: (reportId: string, commentId: string, text: string) => void;
-  deleteComment: (reportId: string, commentId: string) => void;
-
-  // Actions: Customer
-  addCustomer: (customer: Omit<Customer, 'id'>) => Customer;
-  updateCustomer: (customerId: string, updates: Partial<Customer>) => void;
-  deactivateCustomer: (customerId: string, reason?: string) => void;
-
-  // Actions: User
-  addUser: (user: Omit<User, 'id'>) => User;
-  updateUser: (userId: string, updates: Partial<User>) => void;
-  deactivateUser: (userId: string) => void;
-
-  // Actions: Team
-  addTeam: (team: Omit<Team, 'id'>) => Team;
-  updateTeam: (teamId: string, updates: Partial<Team>) => void;
-  deleteTeam: (teamId: string) => void;
-
-  // Actions: Template
-  addTemplate: (template: Omit<Template, 'id' | 'usageCount' | 'createdAt' | 'updatedAt'>) => Template;
-  updateTemplate: (templateId: string, updates: Partial<Template>) => void;
-  publishTemplate: (templateId: string) => void;
-  deactivateTemplate: (templateId: string) => void;
-
-  // Actions: QuickChip
-  addQuickChip: (chip: Omit<QuickChip, 'id'>) => void;
-  updateQuickChip: (chipId: string, updates: Partial<QuickChip>) => void;
-  deleteQuickChip: (chipId: string) => void;
-
-  // Actions: Notification
-  markNotificationRead: (notifId: string) => void;
-  markAllNotificationsRead: () => void;
-  deleteNotification: (notifId: string) => void;
-
-  // Actions: Tracking
-  startTracking: (blockType: BlockType, customerId?: string, memo?: string) => void;
-  stopTracking: () => TimeBlock | null;
-  discardTracking: () => void;
-
-  // Reset
-  resetAll: () => void;
-}
-
-let idCounter = 10000;
-const uid = () => `id_${++idCounter}_${Date.now()}`;
-
+// =====================================================
+// Store
+// =====================================================
 export const useAppStore = create<AppState>((set, get) => ({
-  currentRole: 'general',
-  currentUserId: 'u1',
+  // -------------------------------------------------------
+  // 初期 state
+  // -------------------------------------------------------
+  // E-9: ロール切替が永続化されていればそちら優先、なければ auth ユーザーのロール
+  currentRole: _initialRoleSwitch?.role ?? _initialUser?.role ?? "general",
+  currentUserId: _initialRoleSwitch?.userId ?? _initialUser?.id ?? "u1",
+  authSession: _initialUser ? _initialAuthSession : null,
+  passwords: Object.fromEntries(
+    USERS.map((u) => [u.id, DEFAULT_DEMO_PASSWORD]),
+  ),
   users: USERS,
   teams: TEAMS,
-  customers: CUSTOMERS,
+  customers: _initialCustomers,
+  persons: PERSONS,
   reports: REPORTS,
   templates: TEMPLATES,
   quickChips: DEFAULT_QUICK_CHIPS,
   notifications: NOTIFICATIONS,
   auditLogs: AUDIT_LOGS,
   trackingSession: null,
+  emailChangeRequests: [],
+  managerComments: [],
+  compliments: [],
+  salesTargets: _initialSalesTargets,
+  opportunities: _initialOpportunities,
+  policies: _initialPolicies,
+  policyStatusHistory: _initialPolicyStatusHistory,
+  oppActivityReports: _initialOppActivityReports,
+  taskTemplates: _initialTaskTemplates,
+  renewalCases: _initialRenewalCases,
+  customerInteractions: _initialCustomerInteractions,
+  insuranceCompanies: _initialInsuranceCompanies,
+  productCategories: _initialProductCategories,
+  salesChannels: _initialSalesChannels,
   toasts: [],
 
-  setRole: (role) => {
-    const roleUserMap: Record<Role, string> = {
-      general: 'u1',
-      manager: 'u4',
-      executive: 'u5',
-      admin: 'u6',
-    };
-    set({ currentRole: role, currentUserId: roleUserMap[role] });
-  },
-
-  addToast: (toast) => {
-    const id = uid();
-    set(s => ({ toasts: [...s.toasts, { ...toast, id }] }));
-    setTimeout(() => get().removeToast(id), toast.type === 'error' ? 4000 : toast.type === 'warning' ? 3000 : 2000);
-  },
-  removeToast: (id) => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
-
-  getReport: (userId, date) => get().reports.find(r => r.userId === userId && r.date === date),
-  getTodayReport: () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    return get().reports.find(r => r.userId === get().currentUserId && r.date === today);
-  },
-
-  createReport: (userId, date) => {
-    const report: DailyReport = {
-      id: uid(), userId, date, status: 'draft',
-      mainTheme: '', monthlyTheme: '', dailyTheme: '',
-      blocks: [], todos: [], customerVisits: [],
-      gratitude: ['', '', ''], morningMood: null, eveningMood: null,
-      managerSignal: null, selfComment: '', comments: [], attachments: [],
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    set(s => ({ reports: [...s.reports, report] }));
-    return report;
-  },
-
-  updateReport: (reportId, updates) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, ...updates, updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  submitReport: (reportId) => {
-    const now = new Date().toISOString();
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'submitted', submittedAt: now, updatedAt: now }
-        : r
-      )
-    }));
-  },
-
-  withdrawReport: (reportId) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'draft', submittedAt: undefined, updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  confirmReport: (reportId) => {
-    const now = new Date().toISOString();
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'confirmed', confirmedAt: now, confirmedBy: s.currentUserId, updatedAt: now }
-        : r
-      )
-    }));
-  },
-
-  sendBackReport: (reportId, reason) => {
-    const now = new Date().toISOString();
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, status: 'sent_back', sentBackAt: now, sentBackReason: reason, updatedAt: now }
-        : r
-      )
-    }));
-  },
-
-  addBlock: (reportId, block) => {
-    const newBlock: TimeBlock = { ...block, id: uid() };
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, blocks: [...r.blocks, newBlock], updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-    return newBlock;
-  },
-
-  updateBlock: (reportId, blockId, updates) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? {
-            ...r,
-            blocks: r.blocks.map(b => b.id === blockId ? { ...b, ...updates } : b),
-            updatedAt: new Date().toISOString()
-          }
-        : r
-      )
-    }));
-  },
-
-  deleteBlock: (reportId, blockId) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, blocks: r.blocks.filter(b => b.id !== blockId), updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  addTodo: (reportId, text) => {
-    const todo: Todo = { id: uid(), reportId, text, completed: false, rolledOver: false };
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, todos: [...r.todos, todo], updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  toggleTodo: (reportId, todoId) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? {
-            ...r,
-            todos: r.todos.map(t => t.id === todoId ? { ...t, completed: !t.completed } : t),
-            updatedAt: new Date().toISOString()
-          }
-        : r
-      )
-    }));
-  },
-
-  deleteTodo: (reportId, todoId) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, todos: r.todos.filter(t => t.id !== todoId), updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  addComment: (reportId, userId, text) => {
-    const comment: Comment = { id: uid(), reportId, userId, text, createdAt: new Date().toISOString() };
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, comments: [...r.comments, comment], updatedAt: new Date().toISOString() }
-        : r
-      )
-    }));
-  },
-
-  updateComment: (reportId, commentId, text) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? {
-            ...r,
-            comments: r.comments.map(c => c.id === commentId
-              ? { ...c, text, updatedAt: new Date().toISOString() }
-              : c
-            )
-          }
-        : r
-      )
-    }));
-  },
-
-  deleteComment: (reportId, commentId) => {
-    set(s => ({
-      reports: s.reports.map(r => r.id === reportId
-        ? { ...r, comments: r.comments.filter(c => c.id !== commentId) }
-        : r
-      )
-    }));
-  },
-
-  addCustomer: (customer) => {
-    const newCustomer: Customer = { ...customer, id: uid() };
-    set(s => ({ customers: [...s.customers, newCustomer] }));
-    return newCustomer;
-  },
-
-  updateCustomer: (customerId, updates) => {
-    set(s => ({ customers: s.customers.map(c => c.id === customerId ? { ...c, ...updates } : c) }));
-  },
-
-  deactivateCustomer: (customerId) => {
-    set(s => ({ customers: s.customers.map(c => c.id === customerId ? { ...c, status: 'inactive' } : c) }));
-  },
-
-  addUser: (user) => {
-    const newUser: User = { ...user, id: uid() };
-    set(s => ({ users: [...s.users, newUser] }));
-    return newUser;
-  },
-
-  updateUser: (userId, updates) => {
-    set(s => ({ users: s.users.map(u => u.id === userId ? { ...u, ...updates } : u) }));
-  },
-
-  deactivateUser: (userId) => {
-    set(s => ({ users: s.users.map(u => u.id === userId ? { ...u, status: 'inactive' } : u) }));
-  },
-
-  addTeam: (team) => {
-    const newTeam: Team = { ...team, id: uid() };
-    set(s => ({ teams: [...s.teams, newTeam] }));
-    return newTeam;
-  },
-
-  updateTeam: (teamId, updates) => {
-    set(s => ({ teams: s.teams.map(t => t.id === teamId ? { ...t, ...updates } : t) }));
-  },
-
-  deleteTeam: (teamId) => {
-    set(s => ({ teams: s.teams.filter(t => t.id !== teamId) }));
-  },
-
-  addTemplate: (template) => {
-    const now = new Date().toISOString();
-    const newTemplate: Template = { ...template, id: uid(), usageCount: 0, createdAt: now, updatedAt: now };
-    set(s => ({ templates: [...s.templates, newTemplate] }));
-    return newTemplate;
-  },
-
-  updateTemplate: (templateId, updates) => {
-    set(s => ({
-      templates: s.templates.map(t => t.id === templateId
-        ? { ...t, ...updates, updatedAt: new Date().toISOString() }
-        : t
-      )
-    }));
-  },
-
-  publishTemplate: (templateId) => {
-    set(s => ({
-      templates: s.templates.map(t => t.id === templateId
-        ? { ...t, status: 'published', isActive: true, updatedAt: new Date().toISOString() }
-        : t
-      )
-    }));
-  },
-
-  deactivateTemplate: (templateId) => {
-    set(s => ({
-      templates: s.templates.map(t => t.id === templateId
-        ? { ...t, isActive: false, updatedAt: new Date().toISOString() }
-        : t
-      )
-    }));
-  },
-
-  addQuickChip: (chip) => {
-    const newChip: QuickChip = { ...chip, id: uid() };
-    set(s => ({ quickChips: [...s.quickChips, newChip] }));
-  },
-
-  updateQuickChip: (chipId, updates) => {
-    set(s => ({ quickChips: s.quickChips.map(c => c.id === chipId ? { ...c, ...updates } : c) }));
-  },
-
-  deleteQuickChip: (chipId) => {
-    set(s => ({ quickChips: s.quickChips.filter(c => c.id !== chipId) }));
-  },
-
-  markNotificationRead: (notifId) => {
-    set(s => ({ notifications: s.notifications.map(n => n.id === notifId ? { ...n, isRead: true } : n) }));
-  },
-
-  markAllNotificationsRead: () => {
-    set(s => ({ notifications: s.notifications.map(n => ({ ...n, isRead: true })) }));
-  },
-
-  deleteNotification: (notifId) => {
-    set(s => ({ notifications: s.notifications.filter(n => n.id !== notifId) }));
-  },
-
-  startTracking: (blockType, customerId, memo = '') => {
-    const session: TrackingSession = {
-      id: uid(), userId: get().currentUserId, blockType, customerId, memo,
-      startedAt: new Date().toISOString(), status: 'running',
-    };
-    set({ trackingSession: session });
-  },
-
-  stopTracking: () => {
-    const session = get().trackingSession;
-    if (!session) return null;
-    const now = new Date();
-    const start = new Date(session.startedAt);
-    const startHH = String(start.getHours()).padStart(2, '0');
-    const startMM = String(Math.floor(start.getMinutes() / 15) * 15).padStart(2, '0');
-    const endHH = String(now.getHours()).padStart(2, '0');
-    const endMM = String(Math.floor(now.getMinutes() / 15) * 15).padStart(2, '0');
-    set({ trackingSession: null });
-    return {
-      id: uid(), reportId: '',
-      type: session.blockType, customerId: session.customerId,
-      startTime: `${startHH}:${startMM}`, endTime: `${endHH}:${endMM}`,
-      title: session.memo || '', memo: '',
-      isPlanned: false, isActual: true, attachments: [],
-    };
-  },
-
-  discardTracking: () => set({ trackingSession: null }),
-
-  resetAll: () => set({
-    currentRole: 'general', currentUserId: 'u1',
-    users: USERS, teams: TEAMS, customers: CUSTOMERS, reports: REPORTS,
-    templates: TEMPLATES, quickChips: DEFAULT_QUICK_CHIPS,
-    notifications: NOTIFICATIONS, auditLogs: AUDIT_LOGS,
-    trackingSession: null, toasts: [],
-  }),
+  // -------------------------------------------------------
+  // Actions (spread slices — 同一 set/get を全スライスで共有)
+  // -------------------------------------------------------
+  ...createAuthSlice(set, get, undefined as never),
+  ...createToastSlice(set, get, undefined as never),
+  ...createReportSlice(set, get, undefined as never),
+  ...createBlockSlice(set, get, undefined as never),
+  ...createTodoSlice(set, get, undefined as never),
+  ...createCommentSlice(set, get, undefined as never),
+  ...createCustomerSlice(set, get, undefined as never),
+  ...createUserTeamSlice(set, get, undefined as never),
+  ...createTemplateSlice(set, get, undefined as never),
+  ...createSalesTargetSlice(set, get, undefined as never),
+  ...createPolicySlice(set, get, undefined as never),
+  ...createOpportunitySlice(set, get, undefined as never),
+  ...createOppActivitySlice(set, get, undefined as never),
+  ...createTaskTemplateSlice(set, get, undefined as never),
+  ...createNotificationGenSlice(set, get, undefined as never),
+  ...createNotificationTrackingSlice(set, get, undefined as never),
+  ...createRenewalSlice(set, get, undefined as never),
+  ...createCustomerInteractionSlice(set, get, undefined as never),
+  ...createInsuranceCompanySlice(set, get, undefined as never),
+  ...createProductCategorySlice(set, get, undefined as never),
+  ...createSalesChannelSlice(set, get, undefined as never),
 }));

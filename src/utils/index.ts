@@ -29,7 +29,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const ROLE_DEMO_USERS: Record<Role, string> = {
-  general: '袴田 祐司', manager: '佐藤 健一', executive: '鈴木 美咲', admin: '高田 一郎',
+  general: '霧島 遥', manager: '佐藤 健一', executive: '鈴木 美咲', admin: '高田 一郎',
 };
 
 export function timeToMinutes(time: string): number {
@@ -59,6 +59,64 @@ export function formatRelativeTime(isoStr: string): string {
   return formatDate(isoStr.split('T')[0]);
 }
 
+/** タイムラインのスキマ時間（gap）を表す要素。1 日のブロック並びを timeline 順に走査して生成。 */
+export interface TimelineGap {
+  kind: 'gap';
+  startTime: string;  // HH:MM
+  endTime: string;    // HH:MM
+  durationMin: number;
+}
+
+export interface TimelineBlockRef<T> {
+  kind: 'block';
+  block: T;
+}
+
+export type TimelineItem<T> = TimelineBlockRef<T> | TimelineGap;
+
+/**
+ * ブロック列を startTime 昇順に並べ、隣り合うブロック間に minGapMin 分以上の空白が
+ * あれば gap を挿入した混在配列を返す。
+ *
+ * @param blocks startTime/endTime (HH:MM) を持つブロック
+ * @param minGapMin gap として表示する最小分（既定 5 分。これ未満は誤差扱いで無視）
+ */
+export function buildTimelineWithGaps<T extends { startTime: string; endTime: string }>(
+  blocks: T[],
+  minGapMin = 5,
+): TimelineItem<T>[] {
+  const sorted = [...blocks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const result: TimelineItem<T>[] = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const cur = sorted[i];
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      const prevEnd = timeToMinutes(prev.endTime);
+      const curStart = timeToMinutes(cur.startTime);
+      const diff = curStart - prevEnd;
+      if (diff >= minGapMin) {
+        result.push({
+          kind: 'gap',
+          startTime: prev.endTime,
+          endTime: cur.startTime,
+          durationMin: diff,
+        });
+      }
+    }
+    result.push({ kind: 'block', block: cur });
+  }
+  return result;
+}
+
+/** 分数を「1時間30分」「45分」形式に整形 */
+export function formatGapDuration(mins: number): string {
+  if (mins < 60) return `${mins}分`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (m === 0) return `${h}時間`;
+  return `${h}時間${m}分`;
+}
+
 export function canViewReport(viewerRole: Role, viewerUserId: string, reportUserId: string, viewerTeamIds: string[], reportUserTeamIds: string[]): boolean {
   if (viewerRole === 'admin') return false;
   if (viewerRole === 'executive') return true;
@@ -66,4 +124,42 @@ export function canViewReport(viewerRole: Role, viewerUserId: string, reportUser
     return viewerUserId === reportUserId || viewerTeamIds.some(tid => reportUserTeamIds.includes(tid));
   }
   return viewerUserId === reportUserId;
+}
+
+/**
+ * MGR-3: ミニタイムライン帯を (left%, width%) で表す。
+ * dayStartMin〜dayEndMin を 0ー100% にマッピングし、レンジ外はクリップ。
+ * 上長確認カード上で 1 日のブロック配置を一望させるための出力・テスト用。
+ */
+export interface MiniTimelineSegment {
+  startTime: string;
+  endTime: string;
+  leftPct: number;
+  widthPct: number;
+  /** 表示対象外（範囲クリップで width 0 以下）の場合 true */
+  hidden: boolean;
+}
+/**
+ * ミニタイムライン帯を (left%, width%) で表す。
+ * 入力順を保ち、範囲外は hidden=true として返す（1:1 対応を保証）。
+ */
+export function calcMiniTimelineSegments(
+  blocks: Array<{ startTime: string; endTime: string }>,
+  dayStartMin = 8 * 60,
+  dayEndMin = 20 * 60,
+): MiniTimelineSegment[] {
+  const span = dayEndMin - dayStartMin;
+  if (span <= 0) return blocks.map(b => ({ startTime: b.startTime, endTime: b.endTime, leftPct: 0, widthPct: 0, hidden: true }));
+  return blocks.map(b => {
+    const s = Math.max(timeToMinutes(b.startTime) - dayStartMin, 0);
+    const e = Math.min(timeToMinutes(b.endTime) - dayStartMin, span);
+    const hidden = e <= 0 || s >= span || e <= s;
+    return {
+      startTime: b.startTime,
+      endTime: b.endTime,
+      leftPct: hidden ? 0 : (s / span) * 100,
+      widthPct: hidden ? 0 : ((e - s) / span) * 100,
+      hidden,
+    };
+  });
 }
