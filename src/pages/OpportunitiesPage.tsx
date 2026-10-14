@@ -300,7 +300,7 @@ export function OpportunitiesPage() {
       {viewMode === "household" ? (
         <HouseholdAccordion
           groups={householdGroups}
-          allOpenDefault={true}
+          allOpenDefault={false}
           renderItem={renderItem}
           renderTableHeader={renderTableHeader}
           colSpan={7}

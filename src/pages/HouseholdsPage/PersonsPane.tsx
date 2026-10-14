@@ -33,6 +33,8 @@ interface PersonsPaneProps {
   householdName?: string;
   selectedPersonId?: string;
   onSelectPerson?: (id: string) => void;
+  /** 表示専用モード（カルテタブ）: 追加フォーム・追加ボタンを隠す */
+  readOnly?: boolean;
 }
 
 export function PersonsPane({
@@ -40,6 +42,7 @@ export function PersonsPane({
   householdName,
   selectedPersonId = 'all',
   onSelectPerson,
+  readOnly = false,
 }: PersonsPaneProps) {
   const { persons, addPerson, addToast } = useAppStore();
   const [showForm, setShowForm] = useState(false);
@@ -93,17 +96,19 @@ export function PersonsPane({
             <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[160px]">{householdName}</p>
           )}
         </div>
-        <button
-          onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <UserPlus className="w-3 h-3" />
-          {showForm ? '閉じる' : '追加'}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setShowForm(v => !v)}
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <UserPlus className="w-3 h-3" />
+            {showForm ? '閉じる' : '追加'}
+          </button>
+        )}
       </div>
 
       {/* 追加フォーム */}
-      {showForm && (
+      {!readOnly && showForm && (
         <div className="px-3 py-3 border-b border-blue-100 bg-blue-50">
           <p className="text-xs font-semibold text-blue-700 mb-2">構成員を追加</p>
           <div className="space-y-2">
@@ -180,12 +185,14 @@ export function PersonsPane({
         {hPersons.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-8">
             <p className="text-sm">構成員が登録されていません</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="text-xs text-blue-600 hover:underline"
-            >
-              + 構成員を追加
-            </button>
+            {!readOnly && (
+              <button
+                onClick={() => setShowForm(true)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                + 構成員を追加
+              </button>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">

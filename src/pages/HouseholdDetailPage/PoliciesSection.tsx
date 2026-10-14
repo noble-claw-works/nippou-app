@@ -8,6 +8,8 @@ interface PoliciesSectionProps {
   activePolicies: Policy[];
   closedPolicies: Policy[];
   onAddPolicy: () => void;
+  onEditPolicy: (policy: Policy) => void;
+  onDeletePolicy: (policyId: string) => void;
 }
 
 export function PoliciesSection({
@@ -15,6 +17,8 @@ export function PoliciesSection({
   activePolicies,
   closedPolicies,
   onAddPolicy,
+  onEditPolicy,
+  onDeletePolicy,
 }: PoliciesSectionProps) {
   const [tab, setTab] = useState<"active" | "closed">("active");
   const visible = tab === "active" ? activePolicies : closedPolicies;
@@ -59,12 +63,11 @@ export function PoliciesSection({
         ) : (
           <div className="space-y-2">
             {visible.map((policy) => (
-              <a
+              <div
                 key={policy.id}
-                href={`/policies/${policy.id}`}
-                className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors block"
+                className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
               >
-                <div>
+                <a href={`/policies/${policy.id}`} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <PolicyStatusBadge status={policy.status} size="sm" />
                   </div>
@@ -72,8 +75,8 @@ export function PoliciesSection({
                     {policy.productName}
                   </p>
                   <p className="text-xs text-gray-500">{policy.insurer}</p>
-                </div>
-                <div className="text-right">
+                </a>
+                <div className="text-right mx-3">
                   <p className="text-sm font-semibold text-gray-900">
                     {policy.monthlyPremium > 0
                       ? `￥${policy.monthlyPremium.toLocaleString()}/月`
@@ -81,7 +84,23 @@ export function PoliciesSection({
                   </p>
                   <p className="text-xs text-gray-500">{policy.startDate}</p>
                 </div>
-              </a>
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onEditPolicy(policy)}
+                    className="px-2 py-1 text-[10px] text-gray-600 border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    ✎ 編集
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDeletePolicy(policy.id)}
+                    className="px-2 py-1 text-[10px] text-red-600 border border-red-200 rounded hover:bg-red-50"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}

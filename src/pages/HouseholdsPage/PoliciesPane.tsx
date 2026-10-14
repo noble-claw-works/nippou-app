@@ -23,9 +23,11 @@ interface PoliciesPaneProps {
   householdId: string | null;
   householdName?: string;
   selectedPersonId?: string;
+  /** 表示専用モード（カルテタブ）: 追加・編集の口を隠す */
+  readOnly?: boolean;
 }
 
-export function PoliciesPane({ householdId, householdName, selectedPersonId = 'all' }: PoliciesPaneProps) {
+export function PoliciesPane({ householdId, householdName, selectedPersonId = 'all', readOnly = false }: PoliciesPaneProps) {
   const {
     persons, opportunities, users, addOpportunity, updateOpportunity,
     addToast, currentUserId, insuranceCompanies, productCategories,
@@ -202,13 +204,15 @@ export function PoliciesPane({ householdId, householdName, selectedPersonId = 'a
             <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[160px]">{householdName}</p>
           )}
         </div>
-        <button onClick={openForm} className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <ShieldPlus className="w-3 h-3" />追加
-        </button>
+        {!readOnly && (
+          <button onClick={openForm} className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <ShieldPlus className="w-3 h-3" />追加
+          </button>
+        )}
       </div>
 
       {/* 追加フォーム */}
-      {showForm && (
+      {!readOnly && showForm && (
         <div className="px-3 py-3 border-b border-blue-100 bg-blue-50 overflow-y-auto max-h-80">
           <p className="text-xs font-semibold text-blue-700 mb-2">保険商品を追加</p>
           <ProductFormFields
@@ -233,7 +237,9 @@ export function PoliciesPane({ householdId, householdName, selectedPersonId = 'a
         {allProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-8">
             <p className="text-sm">保険商品が登録されていません</p>
-            <button onClick={openForm} className="text-xs text-blue-600 hover:underline">+ 保険商品を追加</button>
+            {!readOnly && (
+              <button onClick={openForm} className="text-xs text-blue-600 hover:underline">+ 保険商品を追加</button>
+            )}
           </div>
         ) : displayProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-gray-400 py-8">
@@ -270,10 +276,12 @@ export function PoliciesPane({ householdId, householdName, selectedPersonId = 'a
                           <span className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded whitespace-nowrap">
                             {product.productCategory}
                           </span>
-                          <button type="button" onClick={() => openEditForm(product, oppId)}
-                            className="p-1 text-gray-400 hover:text-amber-600 rounded" aria-label="編集" title="編集">
-                            <Pencil className="w-3 h-3" />
-                          </button>
+                          {!readOnly && (
+                            <button type="button" onClick={() => openEditForm(product, oppId)}
+                              className="p-1 text-gray-400 hover:text-amber-600 rounded" aria-label="編集" title="編集">
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="text-[10px] text-gray-500 flex flex-wrap gap-x-2 gap-y-0.5">

@@ -10,6 +10,7 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { PersonEditModal } from "../components/household/PersonEditModal";
 import { QuickOpportunityModal } from "../components/opportunity/QuickOpportunityModal";
 import { PolicyEditModal } from "../components/policy/PolicyEditModal";
+import type { Policy } from "../types";
 import { CustomerEditForm } from "./HouseholdDetailPage/CustomerEditForm";
 import { HouseholdTimelineBody } from "./HouseholdDetailPage/HouseholdTimelineBody";
 import { HouseholdInfoCard } from "./HouseholdDetailPage/HouseholdInfoCard";
@@ -47,6 +48,7 @@ export function HouseholdDetailPage() {
     addPerson,
     updatePerson,
     deletePerson,
+    deletePolicy,
     getPoliciesByHousehold,
     addHouseholdTask,
     updateHouseholdTask,
@@ -62,6 +64,8 @@ export function HouseholdDetailPage() {
   const [deletePersonId, setDeletePersonId] = useState<string | null>(null);
   const [showQuickAddOpp, setShowQuickAddOpp] = useState(false);
   const [showAddPolicy, setShowAddPolicy] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [deletePolicyId, setDeletePolicyId] = useState<string | null>(null);
   const [showAddInteraction, setShowAddInteraction] = useState(false);
 
   const customer = customers.find((c) => c.id === customerId);
@@ -162,6 +166,8 @@ export function HouseholdDetailPage() {
             activePolicies={activePolicies}
             closedPolicies={closedPolicies}
             onAddPolicy={() => setShowAddPolicy(true)}
+            onEditPolicy={(policy) => setEditingPolicy(policy)}
+            onDeletePolicy={(id) => setDeletePolicyId(id)}
           />
 
           <HouseholdTaskSection
@@ -361,6 +367,29 @@ export function HouseholdDetailPage() {
           onClose={() => setShowAddPolicy(false)}
         />
       )}
+
+      {editingPolicy && (
+        <PolicyEditModal
+          householdId={customer.id}
+          policy={editingPolicy}
+          onClose={() => setEditingPolicy(null)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!deletePolicyId}
+        onClose={() => setDeletePolicyId(null)}
+        onConfirm={() => {
+          if (deletePolicyId) {
+            deletePolicy(deletePolicyId);
+            addToast({ type: "success", message: "保険商品を削除しました" });
+          }
+          setDeletePolicyId(null);
+        }}
+        title="保険商品を削除しますか？"
+        message="この保険商品を削除します。よろしいですか？"
+        confirmLabel="削除する"
+      />
     </div>
   );
 }

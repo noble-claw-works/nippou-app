@@ -17,7 +17,12 @@ const TAB_LABELS: Record<PaneTab, string> = {
   2: '🛡️ 保険商品',
 };
 
-export function ProductsPage() {
+interface ProductsPageProps {
+  /** 表示専用（カルテタブ）: 構成員・保険商品ペインの入力導線を隠す */
+  readOnly?: boolean;
+}
+
+export function ProductsPage({ readOnly = false }: ProductsPageProps = {}) {
   const { selectedHouseholdId, activeTab, setActiveTab, selectHousehold } =
     useHouseholdsPaneState();
   const { customers } = useAppStore();
@@ -87,6 +92,7 @@ export function ProductsPage() {
             householdName={selectedHousehold?.name}
             selectedPersonId={selectedPersonId}
             onSelectPerson={setSelectedPersonId}
+            readOnly={readOnly}
           />
         </div>
 
@@ -101,6 +107,7 @@ export function ProductsPage() {
             householdId={selectedHouseholdId}
             householdName={selectedHousehold?.name}
             selectedPersonId={selectedPersonId}
+            readOnly={readOnly}
           />
         </div>
       </div>

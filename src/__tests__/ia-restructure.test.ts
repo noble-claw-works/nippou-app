@@ -163,27 +163,39 @@ describe('IA-2: NippouPage タブ選択ロジック', () => {
   });
 });
 
-// ── IA-3: CustomerListPage — タブ選択ロジック ────────────────────────────────
+// ── IA-3③: CustomerListPage — タブ選択ロジック（カルテ/世帯/構成員/保険商品） ──────
 
-describe('IA-3: CustomerListPage タブ選択ロジック', () => {
-  const resolveTab = (searchParam: string | null): 'households' | 'products' | 'policies' => {
-    return searchParam === 'policies' ? 'policies' : searchParam === 'products' ? 'products' : 'households';
-  };
+// 顧客一覧タブ再編③で 4 タブ（カルテ/世帯/構成員/保険商品）へ再編。
+// 実装の resolveTab をそのまま検証する（後方互換: products→カルテ, policies→保険商品）。
+import { resolveTab as resolveCustomerTab } from '../pages/customerListTabs';
 
+describe('IA-3③: CustomerListPage タブ選択ロジック（4タブ）', () => {
   it('tab パラメータなし → 世帯タブ', () => {
-    expect(resolveTab(null)).toBe('households');
+    expect(resolveCustomerTab(null)).toBe('households');
   });
 
-  it('tab=products → 商品タブ', () => {
-    expect(resolveTab('products')).toBe('products');
+  it('tab=karte → カルテタブ', () => {
+    expect(resolveCustomerTab('karte')).toBe('karte');
   });
 
-  it('tab=policies → 契約タブ', () => {
-    expect(resolveTab('policies')).toBe('policies');
+  it('tab=products → カルテタブ（後方互換・旧「商品」）', () => {
+    expect(resolveCustomerTab('products')).toBe('karte');
+  });
+
+  it('tab=households → 世帯タブ', () => {
+    expect(resolveCustomerTab('households')).toBe('households');
+  });
+
+  it('tab=members → 構成員タブ', () => {
+    expect(resolveCustomerTab('members')).toBe('members');
+  });
+
+  it('tab=policies → 保険商品タブ', () => {
+    expect(resolveCustomerTab('policies')).toBe('policies');
   });
 
   it('tab=unknown → 世帯タブ（フォールバック）', () => {
-    expect(resolveTab('unknown')).toBe('households');
+    expect(resolveCustomerTab('unknown')).toBe('households');
   });
 });
 

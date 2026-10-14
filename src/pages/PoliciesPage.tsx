@@ -1,11 +1,10 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useAppStore } from '../store';
 import type { PolicyStatus, ProductCategory, Policy } from '../types';
 import { PolicyStatusBadge } from '../components/policy/PolicyStatusBadge';
-import { PolicyEditModal } from '../components/policy/PolicyEditModal';
 import { HouseholdAccordion } from '../components/ui/HouseholdAccordion';
 import { groupByHousehold } from '../utils/groupByHousehold';
 
@@ -33,8 +32,6 @@ export function PoliciesPage() {
     })),
   );
 
-  const [showAdd, setShowAdd] = useState(false);
-  const [addHouseholdId, setAddHouseholdId] = useState<string>('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<PolicyStatus | ''>('');
   const [filterCategory, setFilterCategory] = useState<ProductCategory | ''>('');
@@ -134,8 +131,6 @@ export function PoliciesPage() {
     .filter(p => p.status === 'inforce')
     .reduce((s, p) => s + p.monthlyPremium, 0);
 
-  // Active customers with policies for add modal
-  const activeCustomers = customers.filter(c => c.status === 'active');
 
   const renderTableHeader = () => (
     <tr>
@@ -215,18 +210,11 @@ export function PoliciesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-lg font-bold text-gray-900">📜 契約一覧</h1>
+          <h1 className="text-lg font-bold text-gray-900">🛡️ 保険商品</h1>
           <p className="text-xs text-gray-500 mt-0.5">
             有効中 {totalActive}件 / 月払合計 ¥{totalMonthly.toLocaleString()} / {householdGroups.length} 世帯
           </p>
         </div>
-        <button
-          onClick={() => { setAddHouseholdId(activeCustomers[0]?.id ?? customers[0]?.id ?? ''); setShowAdd(true); }}
-          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-sm rounded-xl hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4" />
-          新規契約
-        </button>
       </div>
 
       {/* Filters */}
@@ -283,13 +271,6 @@ export function PoliciesPage() {
         emptyMessage="契約が見つかりません"
       />
 
-      {/* Add Modal */}
-      {showAdd && addHouseholdId && (
-        <PolicyEditModal
-          householdId={addHouseholdId}
-          onClose={() => setShowAdd(false)}
-        />
-      )}
     </div>
   );
 }

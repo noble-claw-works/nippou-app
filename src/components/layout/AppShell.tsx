@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -21,6 +21,18 @@ import { useAppStore } from "../../store";
 import { ROLE_LABELS, ROLE_DEMO_USERS } from "../../utils";
 import type { Role } from "../../types";
 import { NotificationBell } from "../notifications/NotificationBell";
+import { Sidebar } from "./Sidebar";
+
+const SIDEBAR_COLLAPSED_KEY = "nippou.sidebar.collapsed";
+
+function readSidebarCollapsed(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 // IA-5: メニュー順序 ①ダッシュボード ②商談一覧 ③顧客一覧 ④日報 ⑤設定
 // IA-1: 営業実績はダッシュボード配下タブへ統合（単独項目削除）
@@ -86,6 +98,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { currentRole, setRole, addToast, resetAll, logout } = useAppStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(readSidebarCollapsed);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SIDEBAR_COLLAPSED_KEY,
+        sidebarCollapsed ? "1" : "0",
+      );
+    } catch {
+      /* ignore persistence failures */
+    }
+  }, [sidebarCollapsed]);
   const [headerQuery, setHeaderQuery] = useState("");
   const headerInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -117,31 +142,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar (PC) */}
-      <aside className="hidden lg:flex lg:flex-col w-56 bg-white border-r border-gray-200 flex-shrink-0">
-        <div className="px-4 py-4 border-b border-gray-100">
-          <span className="text-base font-bold text-gray-900">
-            📋 305-hrl-nippou-app
-          </span>
-        </div>
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-          {visibleNav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? "bg-blue-50 text-blue-700 font-medium"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`
-              }
-            >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+      <Sidebar
+        items={visibleNav}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
 
       {/* Mobile Nav Drawer */}
       {mobileNavOpen && (
