@@ -536,3 +536,10 @@ HouseholdDetailPage
 - **2026-06-04 8ccb832**: 保安司 P0 — `src/utils/customerAttachment.ts` (付帯情報判定ユーティリティ) と単体テストを新規作成（UI/Store への組み込みは e54993b で完成）
 - **2026-06-04 f2cd145**: 保安司 P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
 - **2026-06-03 以前**: BlockModal バリデーション + 訪問結果アコーディオン (M-2/W-2), BlockCard メモ表示 (P1-3), Todo ステータス・優先度・期限 (P1-2), ThemeCard 3段レイアウト (P1-1), ComplimentsCard (P0-2), ManagerCommentSection/Card (P0-1), SettingsPage メール変更申請 (M-1) を反映
+
+---
+
+### 工程G 実装履歴（指示書②③ — 2026-10-14 commit 6a374fe）
+
+- **2026-10-14 6a374fe 指示書②**: PCサイドバー折りたたみ実装。`src/components/layout/Sidebar.tsx`（89行）新規作成、`src/components/layout/AppShell.tsx`（316行）変更。展開(w-56)⇔レール(w-16)トグル。localStorage key `nippou.sidebar.collapsed` で永続化。レール時はナビアイコンに Tooltip 表示。モバイルドロワーは既存流用。
+- **2026-10-14 6a374fe 指示書③**: 顧客一覧タブ再編（3タブ→4タブ）＋商談アコーディオン初期折りたたみ。新規: `src/pages/customerListTabs.ts`（29行）・`src/pages/MembersPage.tsx`（185行）・`src/pages/HouseholdDetailPage/PoliciesSection.tsx`（117行）。変更: CustomerListPage / ProductsPage / PoliciesPage / OpportunitiesPage / PersonsPane / PoliciesPane / HouseholdDetailPage / ia-restructure.test.ts。タブ構成: カルテ(旧商品・表示専用) / 世帯(入力集約) / 構成員(新設MembersPage・横断表示専用) / 保険商品(旧契約・表示専用)。保険商品の行編集/削除導線を世帯詳細に移設。後方互換URL: `?tab=products`→カルテ、`?tab=policies`→保険商品。商談一覧アコーディオンを初期折りたたみに変更。DoD: tsc=0, lint=0, test 78files/1312tests 緑, build OK, 全ファイル≤400行。

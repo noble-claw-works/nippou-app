@@ -498,3 +498,49 @@ $ grep -n "function PolicyCardInlineEdit\|<Pencil\|onClick={() => openEditForm" 
 ---
 
 *本ドキュメントは実コード検証に基づいて作成。検証は git HEAD 025f266 を対象。*
+
+---
+
+## 工程G 差分ノート（2026-10-14 commit 6a374fe）
+
+工程Fで確立した IA-3（CustomerListPage 3タブ）を、Notion 変更指示書②③に基づいてさらに再編した。
+
+### 指示書②: PCサイドバー折りたたみ
+
+| 項目 | 内容 |
+|---|---|
+| 対象ファイル（新規） | `src/components/layout/Sidebar.tsx`（89行） |
+| 対象ファイル（変更） | `src/components/layout/AppShell.tsx`（316行） |
+| 展開幅 | `w-56`（224px） |
+| レール幅 | `w-16`（64px） |
+| 永続化 | `localStorage` key: `nippou.sidebar.collapsed` |
+| レール時 | ナビアイコンに Tooltip 表示 |
+| モバイル | 既存ドロワー流用（変更なし） |
+
+### 指示書③: 顧客一覧タブ再編 + 商談アコーディオン初期折りたたみ
+
+**タブ構成（工程F 3タブ → 工程G 4タブ）:**
+
+| タブキー | ラベル | コンポーネント | 役割 |
+|---|---|---|---|
+| `carte` (default) | カルテ | 旧 ProductsPage | 表示専用 |
+| `households` | 世帯 | HouseholdsPage | 入力集約 |
+| `members` | 構成員 | MembersPage（新設） | 横断表示専用 |
+| `policies` | 保険商品 | 旧 PoliciesPage | 表示専用 |
+
+**後方互換 URL:**
+- `?tab=products` → カルテ
+- `?tab=policies` → 保険商品
+
+**保険商品の入力導線移動:** 世帯詳細（HouseholdDetailPage）に行編集・削除導線を新設し、旧保険商品タブから入力導線を削除。
+
+**商談アコーディオン:** OpportunitiesPage の商談一覧アコーディオンを初期折りたたみに変更。
+
+**新規ファイル:**
+- `src/pages/customerListTabs.ts`（29行）: タブ定義
+- `src/pages/MembersPage.tsx`（185行）: 構成員横断表示
+- `src/pages/HouseholdDetailPage/PoliciesSection.tsx`（117行）: 世帯詳細内保険商品セクション
+
+**変更ファイル:** CustomerListPage / ProductsPage / PoliciesPage / OpportunitiesPage / PersonsPane / PoliciesPane / HouseholdDetailPage / ia-restructure.test.ts
+
+**DoD:** tsc=0, lint=0, test 78files/1312tests 緑, build OK, 全ファイル≤400行。

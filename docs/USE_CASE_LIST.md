@@ -7,6 +7,7 @@
 > **更新 2026-08-25**: タスク初期値マスタ／IA再編（メニュー5項目）／日報3点（過去ブロック閲覧・日付ナビ統一・日報一覧）を反映。
 > **更新 2026-10-10 工程E**: 商談追加時タスク自動生成 (timingType: on_opportunity_created/offset_from_base_date・dueDate自動算出) ／ タスク列進捗表示(N/M)／ 構成員年収合計・保険会社insurerId+insurer後方互換・種目productCategories・スマホタブ切替(PC 3列固定) を反映。
 > **更新 2026-10-10 工程F**: CustomerListPage 3タブ実装（世帯/商品/契約）・商品編集機能インライン化・名称逆引き後方互換を反映。
+> **更新 2026-10-14 工程G**: PCサイドバー折りたたみ（展開 w-56 ⇔ レール w-16・localStorage 永続化）実装。CustomerListPage タブ再編（4タブ: カルテ/世帯/構成員/保険商品）・商談アコーディオン初期折りたたみ・後方互換 URL を反映。
 
 ---
 
@@ -25,6 +26,16 @@
 - `/customers?tab=policies` → PoliciesPage（契約一覧）
 - **後方互換**: `/households`, `/policies`, `/products` は CustomerListPage へリダイレクト（初期タブ選択で吸収）
 - **コード**: `src/App.tsx` に後方互換リダイレクト、`src/pages/CustomerListPage.tsx` で 3タブ実装
+
+**【最新構造】**（工程G: 2026-10-14 commit 6a374fe）
+- `/customers?tab=carte` (default) → カルテ（旧商品ページ・表示専用）
+- `/customers?tab=households` → 世帯（旧世帯タブ＋入力集約）
+- `/customers?tab=members` → 構成員（新設 MembersPage・横断表示専用）
+- `/customers?tab=policies` → 保険商品（旧契約一覧・表示専用）
+- **後方互換 URL**: `?tab=products` → カルテ、`?tab=policies` → 保険商品
+- **入力**: 世帯詳細（HouseholdDetailPage）に集約。保険商品の行編集/削除導線を世帯詳細に新設
+- **商談アコーディオン**: OpportunitiesPage の商談一覧アコーディオンを初期折りたたみに変更
+- **コード**: `src/pages/customerListTabs.ts`（タブ定義 29行）・`src/pages/MembersPage.tsx`（185行）・`src/pages/HouseholdDetailPage/PoliciesSection.tsx`（117行）を新規追加
 
 ### 商品タブの 3ペイン構成（PC lg: 横3列固定、スマホ: タブ切替）
 
