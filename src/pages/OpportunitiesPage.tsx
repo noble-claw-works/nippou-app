@@ -55,7 +55,6 @@ export function OpportunitiesPage() {
   const [sortKey, setSortKey] = useState<SortKey>("contractor");
   const [sortAsc, setSortAsc] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("household");
 
   const isLostTab = activeTab === "lost";
@@ -191,7 +190,7 @@ export function OpportunitiesPage() {
             フィルタ
           </button>
           <button
-            onClick={() => setShowQuickAdd(true)}
+            onClick={() => navigate("/opportunities/new")}
             className="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
             <Plus className="w-4 h-4" />
@@ -314,36 +313,6 @@ export function OpportunitiesPage() {
           groups={productGroups}
           getContractorName={getContractorName}
         />
-      )}
-
-      {/* Quick add modal */}
-      {showQuickAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-5">
-            <h2 className="font-semibold text-gray-800 mb-3">
-              世帯を選択して案件を作成
-            </h2>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {customers
-                .filter((c) => c.status === "active")
-                .map((c) => (
-                  <button
-                    key={c.id}
-                    className="w-full text-left px-3 py-2 border border-gray-200 rounded-lg hover:bg-blue-50 text-sm"
-                    onClick={() => setShowQuickAdd(false)}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-            </div>
-            <button
-              onClick={() => setShowQuickAdd(false)}
-              className="mt-3 w-full px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              キャンセル
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

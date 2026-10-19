@@ -8,7 +8,6 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Modal } from "../components/ui/Modal";
 import { ConfirmDialog } from "../components/ui/ConfirmDialog";
 import { PersonEditModal } from "../components/household/PersonEditModal";
-import { QuickOpportunityModal } from "../components/opportunity/QuickOpportunityModal";
 import { PolicyEditModal } from "../components/policy/PolicyEditModal";
 import type { Policy } from "../types";
 import { CustomerEditForm } from "./HouseholdDetailPage/CustomerEditForm";
@@ -62,7 +61,6 @@ export function HouseholdDetailPage() {
   const [showAddPerson, setShowAddPerson] = useState(false);
   const [editPersonId, setEditPersonId] = useState<string | null>(null);
   const [deletePersonId, setDeletePersonId] = useState<string | null>(null);
-  const [showQuickAddOpp, setShowQuickAddOpp] = useState(false);
   const [showAddPolicy, setShowAddPolicy] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
   const [deletePolicyId, setDeletePolicyId] = useState<string | null>(null);
@@ -158,7 +156,9 @@ export function HouseholdDetailPage() {
             onBatchEntry={() =>
               navigate(`/households/${customerId}/batch-entry`)
             }
-            onQuickAdd={() => setShowQuickAddOpp(true)}
+            onQuickAdd={() =>
+              navigate(`/households/${customerId}/opportunities/new`)
+            }
           />
 
           <PoliciesSection
@@ -348,18 +348,6 @@ export function HouseholdDetailPage() {
         message={`「${customer.name}」を無効化します。`}
         confirmLabel="無効化する"
       />
-
-      {showQuickAddOpp && (
-        <QuickOpportunityModal
-          householdId={customer.id}
-          householdName={customer.name}
-          onCreated={(_id) => {
-            setShowQuickAddOpp(false);
-            navigate(`/opportunities/${_id}`);
-          }}
-          onClose={() => setShowQuickAddOpp(false)}
-        />
-      )}
 
       {showAddPolicy && (
         <PolicyEditModal

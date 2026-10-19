@@ -16,6 +16,7 @@ import { HouseholdDetailPage } from "./pages/HouseholdDetailPage";
 import { HouseholdBatchEntryPage } from "./pages/HouseholdBatchEntryPage";
 import { OpportunitiesPage } from "./pages/OpportunitiesPage";
 import { OpportunityDetailPage } from "./pages/OpportunityDetailPage";
+import { NewOpportunityPage } from "./pages/NewOpportunityPage";
 import { OpportunityReportPage } from "./pages/OpportunityReportPage";
 import { PolicyDetailPage } from "./pages/PolicyDetailPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
@@ -142,6 +143,10 @@ function AppLayout() {
           element={<HouseholdBatchEntryPage />}
         />
         <Route
+          path="/households/:customerId/opportunities/new"
+          element={<NewOpportunityPage />}
+        />
+        <Route
           path="/customers/:customerId"
           element={<HouseholdDetailPage />}
         />
@@ -152,6 +157,7 @@ function AppLayout() {
         <Route path="/renewals/:id" element={<RenewalDetailPage />} />
         {/* Opportunity routes (Phase 2) */}
         <Route path="/opportunities" element={<OpportunitiesPage />} />
+        <Route path="/opportunities/new" element={<NewOpportunityPage />} />
         <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
         {/* ADR-B4 v2 要件6: 報告ページ */}
         <Route
