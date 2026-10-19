@@ -3,8 +3,8 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-19T15:24:42.809Z
-対象ファイル数: 348
+生成日時: 2026-10-19T16:20:55.606Z
+対象ファイル数: 351
 
 ## (root)/
 - `src/App.tsx` (194行) — exports: App
@@ -27,7 +27,8 @@
 - `src/components/notifications/NotificationBell.tsx` (62行) — exports: NotificationBell
 - `src/components/opportunity/OpportunityCombobox.tsx` (160行) — exports: OpportunityCombobox
 - `src/components/opportunity/ProposalProductEditModal.tsx` (211行) — exports: ProposalProductEditModal
-- `src/components/opportunity/QuickOpportunityModal.tsx` (187行) — exports: QuickOpportunityModal
+- `src/components/opportunity/ProposalProductListEditor.tsx` (116行) — exports: ProposalProductListEditor
+- `src/components/opportunity/QuickOpportunityModal.tsx` (276行) — exports: QuickOpportunityModal
 - `src/components/opportunity/StageBadge.tsx` (31行) — exports: StageBadge
 - `src/components/opportunity/StageSelector.tsx` (151行) — exports: StageSelector
 - `src/components/opportunity/stageMeta.ts` (55行) — exports: StageMeta, STAGE_META
@@ -223,7 +224,8 @@
 - `src/pages/PolicyDetailPage.tsx` (304行) — exports: PolicyDetailPage
 - `src/pages/ProductsPage.tsx` (129行) — exports: ProductsPage
 - `src/pages/RenewalDetailPage.tsx` (457行) — exports: RenewalDetailPage, Tab
-- `src/pages/RenewalDetailPage/ConsultTab.tsx` (313行) — exports: ConsultTab
+- `src/pages/RenewalDetailPage/ConsultTab.tsx` (334行) — exports: ConsultTab
+- `src/pages/RenewalDetailPage/ContactEditor.tsx` (108行) — exports: ContactEditor
 - `src/pages/RenewalDetailPage/NotesSection.tsx` (103行) — exports: NotesSection
 - `src/pages/RenewalDetailPage/PairMtgTab.tsx` (89行) — exports: PairMtgTab
 - `src/pages/RenewalDetailPage/PolicyCollectTab.tsx` (137行) — exports: PolicyCollectTab
@@ -336,7 +338,7 @@
 - `src/types/insurance.ts` (23行) — exports: InsuranceCompany, ProductCategoryMaster
 - `src/types/opportunity.ts` (237行) — exports: OpportunityStage, OpportunityStatus, LostReason, ProductCategory, ProposalProduct, ReflectionMode, ProposalReflection, OpportunityStageHistory, SalesChannel, ContractMilestones, DeficiencyItem, ConfidenceUnified, ProposalRound, OpportunityActivityReport, LIFE_CATEGORIES, NONLIFE_CATEGORIES, Opportunity
 - `src/types/policy.ts` (126行) — exports: PolicyStatus, PayMode, CoverageType, Coverage, Policy, PolicyValueChange, PolicyValueDelta, PolicyStatusHistory
-- `src/types/renewal.ts` (217行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, SuperInsuranceLossStatus, RenewalPairMtgSurvey, PolicyCollectStatus, RenewalPolicyCollectSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, RenewalCase
+- `src/types/renewal.ts` (239行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalContactResult, RenewalContactRecord, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, SuperInsuranceLossStatus, RenewalPairMtgSurvey, PolicyCollectStatus, RenewalPolicyCollectSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, RenewalCase
 - `src/types/report.ts` (127行) — exports: Attachment, TimeBlock, Todo, CustomerVisit, Comment, ManagerCommentReply, ManagerComment, Compliment, DailyReport
 - `src/types/salesTarget.ts` (49行) — exports: TargetScope, TargetPeriodType, SalesTarget, TrackingSession
 - `src/types/system.ts` (28行) — exports: Notification, AuditLog
@@ -359,8 +361,9 @@
 - `src/utils/policyHistory.ts` (62行) — exports: buildValueChange
 - `src/utils/reflectionAggregate.ts` (58行) — exports: AggregateScope, sumMonthlyPremium, toAnnual, diffReflection
 - `src/utils/reflectionPolicyFactory.ts` (129行) — exports: mainCoverageType, buildNewPolicyFromProduct, projectReflectedPolicies
+- `src/utils/renewalContacts.ts` (42行) — exports: sortContactsByDate, deriveFirstContactDate
 - `src/utils/renewalDays.ts` (61行) — exports: daysFromToday, daysFromFirstContact, daysAtProcedure, formatDayCount
-- `src/utils/renewalLabels.ts` (156行) — exports: RENEWAL_STATUS_LABEL, RENEWAL_METHOD_LABEL, RENEWAL_PRODUCT_TYPE_LABEL, RENEWAL_CONCERN_LABEL, RENEWAL_FLYER_LABEL, RENEWAL_GENDER_LABEL, RENEWAL_AGE_BAND_LABEL, RENEWAL_STATUS_OPTIONS, RENEWAL_METHOD_OPTIONS, RENEWAL_PRODUCT_TYPE_OPTIONS, RENEWAL_CONCERN_OPTIONS, RENEWAL_FLYER_OPTIONS, RENEWAL_GENDER_OPTIONS, RENEWAL_AGE_BAND_OPTIONS, RENEWAL_SUPER_INS_LOSS_LABEL, RENEWAL_SUPER_INS_LOSS_OPTIONS, RENEWAL_POLICY_COLLECT_LABEL, RENEWAL_POLICY_COLLECT_OPTIONS
+- `src/utils/renewalLabels.ts` (177行) — exports: RENEWAL_STATUS_LABEL, RENEWAL_METHOD_LABEL, RENEWAL_PRODUCT_TYPE_LABEL, RENEWAL_CONCERN_LABEL, RENEWAL_FLYER_LABEL, RENEWAL_GENDER_LABEL, RENEWAL_AGE_BAND_LABEL, RENEWAL_STATUS_OPTIONS, RENEWAL_METHOD_OPTIONS, RENEWAL_PRODUCT_TYPE_OPTIONS, RENEWAL_CONCERN_OPTIONS, RENEWAL_FLYER_OPTIONS, RENEWAL_GENDER_OPTIONS, RENEWAL_AGE_BAND_OPTIONS, RENEWAL_SUPER_INS_LOSS_LABEL, RENEWAL_SUPER_INS_LOSS_OPTIONS, RENEWAL_POLICY_COLLECT_LABEL, RENEWAL_POLICY_COLLECT_OPTIONS, RENEWAL_CONTACT_RESULT_LABEL, RENEWAL_CONTACT_RESULT_OPTIONS
 - `src/utils/renewalListView.ts` (61行) — exports: RenewalListViewMode, RenewalRowView, buildRenewalRowView
 - `src/utils/renewalMigration.ts` (97行) — exports: SEED_ROADMAP_ITEM_DEFS, buildSeedRoadmapTemplateV1, migrateRoadmapToVersioned
 - `src/utils/roadmapTemplate.ts` (65行) — exports: MAX_ROADMAP_ITEMS, RoadmapItemsValidation, validateRoadmapItems, sortRoadmapItems, activeRoadmapItems
