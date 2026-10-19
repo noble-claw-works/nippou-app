@@ -6,6 +6,7 @@ import type {
   RenewalMethod,
   RenewalProductType,
   RenewalConcern,
+  RenewalContactResult,
   SuperInsuranceLossStatus,
   PolicyCollectStatus,
 } from "../types/renewal";
@@ -150,6 +151,26 @@ export const RENEWAL_POLICY_COLLECT_LABEL: Record<PolicyCollectStatus, string> =
 export const RENEWAL_POLICY_COLLECT_OPTIONS = (
   Object.entries(RENEWAL_POLICY_COLLECT_LABEL) as [
     PolicyCollectStatus,
+    string,
+  ][]
+).map(([value, label]) => ({ value, label }));
+
+// ─────────────────────────────────────────────────────
+// コンタクト結果（実入力式コンタクト履歴の「結果」5種）
+// ─────────────────────────────────────────────────────
+
+export const RENEWAL_CONTACT_RESULT_LABEL: Record<RenewalContactResult, string> =
+  {
+    talked: "話せた",
+    voicemail: "留守電",
+    no_answer: "不通",
+    callback_scheduled: "折り返し予定",
+    recall: "再架電",
+  };
+
+export const RENEWAL_CONTACT_RESULT_OPTIONS = (
+  Object.entries(RENEWAL_CONTACT_RESULT_LABEL) as [
+    RenewalContactResult,
     string,
   ][]
 ).map(([value, label]) => ({ value, label }));

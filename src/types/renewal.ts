@@ -38,8 +38,30 @@ export type RenewalProductType =
 // アンケート（renewal2〜4 の実項目を型化）
 // ─────────────────────────────────────────────────────
 
+/** コンタクト結果（話せた/留守電/不通/折り返し予定/再架電） */
+export type RenewalContactResult =
+  | "talked" // 話せた
+  | "voicemail" // 留守電
+  | "no_answer" // 不通
+  | "callback_scheduled" // 折り返し予定
+  | "recall"; // 再架電
+
+/** コンタクト履歴1件（実入力式）。接触を時系列で記録する行 */
+export interface RenewalContactRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  result: RenewalContactResult;
+  memo?: string;
+}
+
 /** renewal2 コンサル入力画面 */
 export interface RenewalConsultSurvey {
+  /** コンタクト履歴（実入力式・行追加/削除）。FC日はここから導出 */
+  contacts?: RenewalContactRecord[];
+  /**
+   * @deprecated 独立入力は廃止。後方互換のため残置。
+   * FC日は contacts(result==="talked"の最古) から deriveFirstContactDate で導出する。
+   */
   firstContactDate?: string; // ファーストコンタクト日 (YYYY-MM-DD)
   earlyRenewalUnavailable?: boolean; // お客様都合 早期更新不可
   procedureDate?: string; // 手続日

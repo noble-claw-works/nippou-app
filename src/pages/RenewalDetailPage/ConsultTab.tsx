@@ -1,24 +1,33 @@
 // =====================================================
-// ConsultTab — renewal2 コンサル入力（T5-05: 2エリア化）
-//   エリアA: コンタクト履歴（FC日・FC基点日数併記・接触ログ時系列）
+// ConsultTab — renewal2 コンサル入力（実入力式コンタクト履歴版）
+//   エリアA: コンタクト履歴（実入力式テーブル: 日付/結果5種/メモ/行追加削除）
+//            FC日は contacts(talked最古) から自動判定して表示
 //   エリアB: コンサル内容 8項目（うち2項目は renewalDays util による算出・太字）
 // 設計: specs/ARCH_DOC4_DOC5_design.md §5 / §0確定事項①
-//   - 日数=本日基点を主表示、FC日基点を併記
+//   - 独立「ファーストコンタクト日」入力は廃止（主上指摘）
+//   - FC日=「話せた」の最古 date を自動判定（deriveFirstContactDate）
+//   - 日数=本日基点を主表示、FC日基点(自動判定値)を併記
 //   - 手続き時点日数 = 手続日 − 満期日（満期前は負値 / 空は —）
-//   - RenewalConsultSurvey を流用（新フィールドなし）
 // =====================================================
 import type { RenewalCase, RenewalSurvey } from "../../types";
 import type { User } from "../../types";
+import type { RenewalContactRecord } from "../../types/renewal";
 import {
   RENEWAL_METHOD_OPTIONS,
   RENEWAL_FLYER_OPTIONS,
+  RENEWAL_CONTACT_RESULT_LABEL,
 } from "../../utils/renewalLabels";
+import { ContactEditor } from "./ContactEditor";
 import {
   daysFromToday,
   daysFromFirstContact,
   daysAtProcedure,
   formatDayCount,
 } from "../../utils/renewalDays";
+import {
+  deriveFirstContactDate,
+  sortContactsByDate,
+} from "../../utils/renewalContacts";
 
 interface ConsultTabProps {
   rc: RenewalCase;
@@ -98,28 +107,29 @@ function ComputedDays({
 export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps) {
   const c = rc.survey.consult ?? {};
   const base = today ?? todayStr();
+  const contacts = c.contacts ?? [];
 
   const handleChange = (field: string, value: unknown) => {
     onSurveyChange({ consult: { [field]: value } });
   };
+  const handleContactsChange = (next: RenewalContactRecord[]) => {
+    onSurveyChange({ consult: { contacts: next } });
+  };
+
+  // ── FC日（自動判定：talked最古、無ければ後方互換 firstContactDate） ──
+  const derivedFc = deriveFirstContactDate(contacts, c.firstContactDate);
 
   // ── 算出値（renewalDays util） ──────────────────
-  // 満期日までの日数（本日基点＝主表示）
   const daysTodayToMaturity = daysFromToday(rc.maturityDate, base);
-  // 満期日までの日数（FC日基点＝併記）
-  const daysFcToMaturity = daysFromFirstContact(
-    rc.maturityDate,
-    c.firstContactDate,
-  );
-  // 手続き時点での満期日からの日数（= 手続日 − 満期日・負値あり）
+  const daysFcToMaturity = daysFromFirstContact(rc.maturityDate, derivedFc);
   const daysProc = daysAtProcedure(c.procedureDate, rc.maturityDate);
 
-  // ── コンタクト履歴（接触ログ・時系列昇順） ──────
-  const contactLogs = rc.activityLog
+  // ── 接触記録（時系列昇順・参照表示） ──────
+  const contactsAsc = sortContactsByDate(contacts);
+  const legacyContactLogs = rc.activityLog
     .filter((l) => l.kind === "contact")
     .slice()
     .sort((a, b) => a.at.localeCompare(b.at));
-
   const userName = (userId: string) =>
     users?.find((u) => u.id === userId)?.name ?? userId;
 
@@ -128,55 +138,66 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
       {/* ───────────── エリアA: コンタクト履歴 ───────────── */}
       <SectionCard
         title="コンタクト履歴"
-        subtitle="ファーストコンタクトからの接触を時系列で把握します"
+        subtitle="各接触を実入力。FC日は「話せた」の最古日から自動判定します"
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* ファーストコンタクト日 + FC基点日数併記 */}
-          <div>
-            <FieldLabel note="一番最初に連絡がついた日">
-              ファーストコンタクト日
-            </FieldLabel>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={c.firstContactDate ?? ""}
-                onChange={(e) =>
-                  handleChange("firstContactDate", e.target.value || undefined)
-                }
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
-              {/* FC日基点の満期日までの日数（併記） */}
-              <span className="whitespace-nowrap text-[11px] text-gray-500">
-                満期まで(FC基点)：
-                <span className="font-medium text-gray-700 tabular-nums">
-                  {formatDayCount(daysFcToMaturity)}
-                </span>
-              </span>
-            </div>
+        {/* 実入力テーブル */}
+        <ContactEditor contacts={contacts} onChange={handleContactsChange} />
+
+        {/* FC日の自動判定＋FC基点日数 */}
+        <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+          <div className="text-[11px] text-gray-500">
+            ファーストコンタクト日（自動判定）：
+            <span className="font-medium text-gray-800">
+              {derivedFc || "未接触"}
+            </span>
+          </div>
+          <div className="text-[11px] text-gray-500 mt-0.5">
+            満期まで(FC基点)：
+            <span className="font-medium text-gray-700 tabular-nums">
+              {formatDayCount(daysFcToMaturity)}
+            </span>
           </div>
         </div>
 
-        {/* 接触ログ（時系列）— 対応履歴にも表示される記録を参照表示 */}
+        {/* 接触記録（時系列・参照表示） */}
         <div className="mt-4">
           <div className="text-[11px] font-medium text-gray-500 mb-1.5">
             接触記録（時系列）
           </div>
-          {contactLogs.length === 0 ? (
+          {contactsAsc.length === 0 ? (
             <p className="text-xs text-gray-400">
-              接触記録はまだありません（対応履歴に「顧客接触」として記録されます）
+              接触記録はまだありません
             </p>
           ) : (
             <ul className="space-y-1.5">
-              {contactLogs.map((log) => (
+              {contactsAsc.map((ct) => (
                 <li
-                  key={log.id}
+                  key={ct.id}
                   className="flex items-start gap-2 text-xs text-gray-600"
                 >
                   <span className="whitespace-nowrap tabular-nums text-gray-400">
+                    {ct.date || "日付未設定"}
+                  </span>
+                  <span className="whitespace-nowrap font-medium text-gray-700">
+                    {RENEWAL_CONTACT_RESULT_LABEL[ct.result]}
+                  </span>
+                  {ct.memo && <span className="flex-1">{ct.memo}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {legacyContactLogs.length > 0 && (
+            <ul className="space-y-1.5 mt-2 pt-2 border-t border-gray-100">
+              {legacyContactLogs.map((log) => (
+                <li
+                  key={log.id}
+                  className="flex items-start gap-2 text-xs text-gray-400"
+                >
+                  <span className="whitespace-nowrap tabular-nums">
                     {log.at.slice(0, 16).replace("T", " ")}
                   </span>
                   <span className="flex-1">{log.body}</span>
-                  <span className="whitespace-nowrap text-gray-400">
+                  <span className="whitespace-nowrap">
                     {userName(log.byUserId)}
                   </span>
                 </li>
@@ -189,13 +210,13 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
       {/* ───────────── エリアB: コンサル内容（8項目） ───────────── */}
       <SectionCard title="コンサル内容">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* 1. FC日（参照・エリアAで入力。ここでは確認表示） */}
+          {/* 1. FC日（参照・自動判定値） */}
           <div>
-            <FieldLabel note="エリアA「コンタクト履歴」で入力">
+            <FieldLabel note="エリアA「コンタクト履歴」から自動判定">
               ファーストコンタクト日
             </FieldLabel>
             <div className="px-3 py-2 text-sm border border-gray-100 bg-gray-50 rounded-lg text-gray-700">
-              {c.firstContactDate || "—"}
+              {derivedFc || "—"}
             </div>
           </div>
 
