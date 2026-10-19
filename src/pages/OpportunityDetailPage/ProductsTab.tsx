@@ -1,6 +1,7 @@
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import type { Opportunity, Person, ProposalProduct } from "../../types";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
+import { ReflectionControl } from "../../components/policy/ReflectionControl";
 
 interface ProductsTabProps {
   opp: Opportunity;
@@ -84,6 +85,8 @@ export function ProductsTab({
                     </button>
                   </div>
                 </div>
+                {/* §T4-05/§T4-08: 明細ごとの反映方法3択＋商談中データ注記 */}
+                <ReflectionControl opp={opp} pp={pp} />
               </div>
             );
           })}

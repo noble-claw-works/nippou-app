@@ -13,6 +13,9 @@ import type {
   Task,
   ProposalRound,
   ProposalProduct,
+  Policy,
+  ProductCategory,
+  OpportunityStage,
 } from "../_internal/types";
 import { uid } from "../_internal/constants";
 import { format } from "date-fns";
@@ -21,6 +24,8 @@ import {
   generateTasksOnProductAdded,
   generateTasksOnStageReached,
 } from "../../utils/taskGenerator";
+import { buildValueChange } from "../../utils/policyHistory";
+import { buildNewPolicyFromProduct } from "../../utils/reflectionPolicyFactory";
 
 export const createOpportunitySlice: StateCreator<
   AppState,
@@ -400,14 +405,190 @@ export const createOpportunitySlice: StateCreator<
     });
   },
 
-  // ★宣言のみ（M2 coder が実装予定）。現状は未反映（空配列）を返す no-op。
-  // TODO(M2): reflection.mode に応じて Policy を新規追加/既存変更として反映し、
-  //           PolicyValueChange(policyHistory.buildValueChange) を記録、
-  //           resultPolicyId で冪等化（§T4-03）する。opportunityId/userId は実装時に使用。
+  // ── Doc4 反映トランザクション（§T4-02 / §T4-03 / §3論点1）──
+  // 単一 set・全or無・冪等（resultPolicyId）・事前検証→一括 commit・競合検知。
+  // 各 proposalProduct.reflection（mode: new|existing_change|none）に従い
+  //  - new: Policy を新規「申込中(pending)」で追加（reflectionSource.mode="new"）
+  //  - existing_change: 既存 Policy を変更し valueHistory に追記、status は申込中(見込)へ
+  //  - none: スキップ
+  // 反映済み(resultPolicyId が実在)は再実行しても二重生成しない（冪等）。
   reflectOpportunityToPolicies: (opportunityId, userId) => {
-    void opportunityId;
-    void userId;
-    return [];
+    const opp = get().opportunities.find((o) => o.id === opportunityId);
+    if (!opp) throw new Error("REFLECT_OPP_NOT_FOUND");
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
+    const currentPolicies = get().policies;
+
+    // ── 1) 事前検証（純粋・state 変更前）──
+    // 対象行: mode が未設定なら "new" にフォールバック（§T4-05 既定）。
+    type PlanItem =
+      | { kind: "skip" }
+      | { kind: "idempotent"; policy: Policy }
+      | { kind: "new"; pp: ProposalProduct }
+      | {
+          kind: "existing_change";
+          pp: ProposalProduct;
+          before: Policy;
+        };
+
+    const plan: { pp: ProposalProduct; item: PlanItem }[] = [];
+    for (const pp of opp.proposalProducts ?? []) {
+      const mode = pp.reflection?.mode ?? "new";
+      if (mode === "none") {
+        plan.push({ pp, item: { kind: "skip" } });
+        continue;
+      }
+      // 冪等: 既に反映済み(resultPolicyId 実在)ならスキップ扱い（二重生成防止）
+      const resultId = pp.reflection?.resultPolicyId;
+      if (resultId) {
+        const existing = currentPolicies.find((p) => p.id === resultId);
+        if (existing) {
+          plan.push({ pp, item: { kind: "idempotent", policy: existing } });
+          continue;
+        }
+        // resultPolicyId があるが実在しない＝削除された → 競合（全or無で中断）
+        throw new Error("REFLECT_CONFLICT_RESULT_MISSING");
+      }
+      if (mode === "existing_change") {
+        const targetId = pp.reflection?.targetPolicyId;
+        if (!targetId) throw new Error("REFLECT_TARGET_REQUIRED");
+        const before = currentPolicies.find((p) => p.id === targetId);
+        if (!before) throw new Error("REFLECT_TARGET_NOT_FOUND");
+        // householdId 一致検証（§T4-05 候補制約）
+        if (before.householdId !== opp.householdId) {
+          throw new Error("REFLECT_TARGET_HOUSEHOLD_MISMATCH");
+        }
+        plan.push({ pp, item: { kind: "existing_change", pp, before } });
+      } else {
+        plan.push({ pp, item: { kind: "new", pp } });
+      }
+    }
+
+    // ── 2) 変更セットを純粋に構築（この時点で state は未変更）──
+    const newPolicies: Policy[] = [];
+    // proposalProductId -> resultPolicyId（reflection 更新用）
+    const resultMap = new Map<string, string>();
+    // policyId -> 変更後 Policy（existing_change 用）
+    const changedMap = new Map<string, Policy>();
+    const reflected: Policy[] = [];
+
+    for (const { pp, item } of plan) {
+      if (item.kind === "skip") continue;
+      if (item.kind === "idempotent") {
+        reflected.push(item.policy);
+        continue;
+      }
+      if (item.kind === "new") {
+        const policy = buildNewPolicyFromProduct(opp, pp, userId, now, uid);
+        policy.reflectionSource = {
+          opportunityId: opp.id,
+          proposalProductId: pp.id,
+          mode: "new",
+          reflectedAt: now,
+          reflectedByUserId: userId,
+        };
+        newPolicies.push(policy);
+        resultMap.set(pp.id, policy.id);
+        reflected.push(policy);
+      } else {
+        // existing_change: before を複製し、商品行の値で上書き
+        const before = item.before;
+        const after: Policy = {
+          ...before,
+          insurer: pp.insurer,
+          productName: pp.productName,
+          productCategory: pp.productCategory as ProductCategory,
+          monthlyPremium: pp.monthlyPremium,
+          status: "pending", // 見込（申込中）。確定集計からは非算入（§0-②）
+          reflectionSource: {
+            opportunityId: opp.id,
+            proposalProductId: pp.id,
+            mode: "existing_change",
+            reflectedAt: now,
+            reflectedByUserId: userId,
+          },
+          updatedAt: now,
+        };
+        // 主契約 coverage の faceAmount を反映（存在時）
+        if (pp.faceAmount !== undefined) {
+          const covs = [...(before.coverages ?? [])];
+          const mainIdx = covs.findIndex((c) => c.isMain);
+          if (mainIdx >= 0) {
+            covs[mainIdx] = { ...covs[mainIdx], faceAmount: pp.faceAmount };
+          }
+          after.coverages = covs;
+        }
+        const change = buildValueChange(before, after, {
+          changedByUserId: userId,
+          source: "doc4_reflection",
+          opportunityId: opp.id,
+          changedAt: now,
+        });
+        if (change) {
+          after.valueHistory = [...(before.valueHistory ?? []), change];
+        }
+        changedMap.set(before.id, after);
+        resultMap.set(pp.id, after.id);
+        reflected.push(after);
+      }
+    }
+
+    // ── 3) 変更が無ければ no-op（state 不変）──
+    if (newPolicies.length === 0 && changedMap.size === 0) {
+      return reflected;
+    }
+
+    // ── 4) 単一 set で一括 commit（全or無）──
+    set((s) => {
+      const updatedPolicies = [
+        ...s.policies.map((p) => changedMap.get(p.id) ?? p),
+        ...newPolicies,
+      ];
+      const updatedOpps = s.opportunities.map((o) => {
+        if (o.id !== opportunityId) return o;
+        const proposalProducts = (o.proposalProducts ?? []).map((p) => {
+          const resultPolicyId = resultMap.get(p.id);
+          if (!resultPolicyId || !p.reflection) return p;
+          return {
+            ...p,
+            reflection: {
+              ...p.reflection,
+              resultPolicyId,
+              reflectedAt: now,
+            },
+          };
+        });
+        // 反映が1件でもあれば受注(issued/won)へ遷移（既存 issue と整合）
+        const historyEntry = {
+          stage: "issued" as OpportunityStage,
+          changedAt: now,
+          changedByUserId: userId,
+          note: "商談明細を契約へ反映",
+        };
+        return {
+          ...o,
+          proposalProducts,
+          stage: "issued" as OpportunityStage,
+          status: "won" as const,
+          actualCloseDate: o.actualCloseDate ?? today,
+          stageHistory: [...o.stageHistory, historyEntry],
+          updatedAt: now,
+        };
+      });
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.policies.v1",
+          JSON.stringify(updatedPolicies),
+        );
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updatedOpps),
+        );
+      }
+      return { policies: updatedPolicies, opportunities: updatedOpps };
+    });
+
+    return reflected;
   },
 
   deleteProposalRound: (id, roundId) => {

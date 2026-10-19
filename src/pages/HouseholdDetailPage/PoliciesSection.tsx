@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Policy } from "../../types";
 import { PolicyStatusBadge } from "../../components/policy/PolicyStatusBadge";
 import { CoverageMatrix } from "../../components/policy/CoverageMatrix";
+import { ReflectionSourceBadge } from "../../components/policy/ReflectionSourceBadge";
 
 interface PoliciesSectionProps {
   householdId: string;
@@ -22,13 +23,24 @@ export function PoliciesSection({
 }: PoliciesSectionProps) {
   const [tab, setTab] = useState<"active" | "closed">("active");
   const visible = tab === "active" ? activePolicies : closedPolicies;
+  // §T4-09 件数定義の是正: 確定集計と整合する「有効中(inforce)」と
+  // 確定非算入の「申込中(pending)」を分離して件数表示する。
+  const inforceCount = activePolicies.filter(
+    (p) => p.status === "inforce",
+  ).length;
+  const pendingCount = activePolicies.filter(
+    (p) => p.status === "pending",
+  ).length;
 
   return (
     <>
       <section className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-700">
-            📜 契約 ({activePolicies.length + closedPolicies.length}件)
+            📜 契約 有効{inforceCount}件
+            {pendingCount > 0 && (
+              <span className="text-amber-600">（＋申込中{pendingCount}件）</span>
+            )}
           </h2>
           <button
             type="button"
@@ -44,7 +56,7 @@ export function PoliciesSection({
             onClick={() => setTab("active")}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${tab === "active" ? "bg-blue-100 border-blue-300 text-blue-700" : "border-gray-200 text-gray-500"}`}
           >
-            強効中 ({activePolicies.length})
+            有効・申込中 ({activePolicies.length})
           </button>
           <button
             onClick={() => setTab("closed")}
@@ -75,6 +87,8 @@ export function PoliciesSection({
                     {policy.productName}
                   </p>
                   <p className="text-xs text-gray-500">{policy.insurer}</p>
+                  {/* §T4-07: 商談由来の追加/変更バッジ・元商談リンク・旧値打消線 */}
+                  <ReflectionSourceBadge policy={policy} />
                 </a>
                 <div className="text-right mx-3">
                   <p className="text-sm font-semibold text-gray-900">

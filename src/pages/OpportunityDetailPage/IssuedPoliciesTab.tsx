@@ -43,6 +43,14 @@ export function IssuedPoliciesTab({
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <PolicyStatusBadge status={policy.status} size="sm" />
+                    {/* §T4-08: 反映方法ラベル（読取専用） */}
+                    {policy.reflectionSource && (
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        {policy.reflectionSource.mode === "new"
+                          ? "新規追加"
+                          : "既存変更"}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-medium text-gray-800">
                     {policy.productName}

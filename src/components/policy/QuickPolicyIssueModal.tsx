@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import { useAppStore } from '../../store';
 import type { Opportunity } from '../../types';
+import { uid } from '../../store/_internal/constants';
+import { projectReflectedPolicies } from '../../utils/reflectionPolicyFactory';
+import { ReflectionBeforeAfter } from './ReflectionBeforeAfter';
 
 const PRODUCT_CATEGORY_LABELS: Record<string, string> = {
   life: '生命保険', medical: '医療保険', cancer: 'がん保険',
@@ -18,21 +21,83 @@ interface Props {
 type Step = 'confirm' | 'done';
 
 export function QuickPolicyIssueModal({ opportunity, onClose, onIssued }: Props) {
-  const { issuePoliciesFromOpportunity, currentUserId, getPersonsByHousehold, addToast } = useAppStore();
+  const {
+    reflectOpportunityToPolicies,
+    currentUserId,
+    getPersonsByHousehold,
+    getPoliciesByHousehold,
+    addToast,
+  } = useAppStore();
+  // policies を購読して Before/After を再計算（store 更新に追随）
+  const allPolicies = useAppStore((s) => s.policies);
   const persons = getPersonsByHousehold(opportunity.householdId);
   const [step, setStep] = useState<Step>('confirm');
   const [issuedPolicyIds, setIssuedPolicyIds] = useState<string[]>([]);
 
+  // ── §T4-06 Before/After（確定/見込 二本立て）──
+  const beforePolicies = useMemo(
+    () => getPoliciesByHousehold(opportunity.householdId),
+    // allPolicies 依存で再計算
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [opportunity.householdId, allPolicies],
+  );
+  const afterPolicies = useMemo(
+    () =>
+      projectReflectedPolicies(
+        opportunity,
+        beforePolicies,
+        currentUserId,
+        new Date().toISOString(),
+        uid,
+      ),
+    [opportunity, beforePolicies, currentUserId],
+  );
+
+  // ── E2: existing_change で変更対象未選択の明細があるか ──
+  const targetMissing = opportunity.proposalProducts.some(
+    (pp) =>
+      (pp.reflection?.mode ?? 'new') === 'existing_change' &&
+      !pp.reflection?.targetPolicyId,
+  );
+  // E1: 明細0件
+  const noProducts = opportunity.proposalProducts.length === 0;
+  const canIssue = !noProducts && !targetMissing;
+
   const handleIssue = () => {
-    if (opportunity.proposalProducts.length === 0) {
+    // E1: 明細0件は不可
+    if (noProducts) {
       addToast({ type: 'error', message: '提案商品がありません。先に商品を追加してください' });
       return;
     }
-    const issued = issuePoliciesFromOpportunity(opportunity.id, currentUserId);
-    setIssuedPolicyIds(issued.map(p => p.id));
-    onIssued?.(issued.map(p => p.id));
-    addToast({ type: 'success', message: `${issued.length}件の契約を発行しました (ステータス: 申込中)` });
-    setStep('done');
+    // E2: 既存変更の対象未選択は不可
+    if (targetMissing) {
+      addToast({
+        type: 'error',
+        message: '「既存契約の変更」の変更対象が未選択の明細があります',
+      });
+      return;
+    }
+    try {
+      // §T4-03 反映トランザクション（全or無・冪等・mode別）
+      const reflected = reflectOpportunityToPolicies(
+        opportunity.id,
+        currentUserId,
+      );
+      setIssuedPolicyIds(reflected.map((p) => p.id));
+      onIssued?.(reflected.map((p) => p.id));
+      addToast({
+        type: 'success',
+        message: `${reflected.length}件の契約へ反映しました (ステータス: 申込中)`,
+      });
+      setStep('done');
+    } catch (e) {
+      // E3: 競合/検証失敗 → 全ロールバック済み。出し直しを促す。
+      const msg =
+        e instanceof Error && /CONFLICT|TARGET/.test(e.message)
+          ? '反映対象の契約が変更/削除されたため反映できませんでした。内容を確認して再度お試しください。'
+          : '反映処理に失敗しました。内容を確認して再度お試しください。';
+      addToast({ type: 'error', message: msg });
+    }
   };
 
   const getPersonName = (personId: string) => {
@@ -101,9 +166,27 @@ export function QuickPolicyIssueModal({ opportunity, onClose, onIssued }: Props)
                 </div>
               )}
 
+              {/* §T4-06 Before/After（確定=非算入 / 見込=申込中含む） */}
+              {!noProducts && (
+                <ReflectionBeforeAfter
+                  before={beforePolicies}
+                  after={afterPolicies}
+                />
+              )}
+
+              {targetMissing && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-xs text-red-700">
+                    「既存契約の変更」を選んだ明細の変更対象が未選択です。
+                    商品タブで変更対象を選択してください。
+                  </p>
+                </div>
+              )}
+
               <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
                 <p className="text-xs text-yellow-800">
-                  ⚠️ 発行後のステータスは <strong>申込中</strong> です。
+                  ⚠️ 反映後のステータスは <strong>申込中</strong> です。
+                  確定集計（総月払/年換算）には算入されません。
                   証券番号取得後に「有効化」してください。
                 </p>
               </div>
@@ -119,10 +202,10 @@ export function QuickPolicyIssueModal({ opportunity, onClose, onIssued }: Props)
               </button>
               <button
                 onClick={handleIssue}
-                disabled={opportunity.proposalProducts.length === 0}
+                disabled={!canIssue}
                 className="flex-1 py-2 text-sm bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50"
               >
-                🎉 契約発行 ({opportunity.proposalProducts.length}件)
+                🎉 契約へ反映 ({opportunity.proposalProducts.length}件)
               </button>
             </div>
           </>

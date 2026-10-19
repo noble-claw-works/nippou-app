@@ -81,6 +81,12 @@ export function OpportunitiesSection({
                     {opp.title}
                   </span>
                   <StageBadge stage={opp.stage} size="sm" />
+                  {/* §T4-07: 商談行に提案明細の件数を表示 */}
+                  {opp.proposalProducts.length > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 border border-gray-200">
+                      明細 {opp.proposalProducts.length}件
+                    </span>
+                  )}
                 </div>
                 {opp.nextAction && (
                   <div className="text-xs text-gray-500 mt-0.5 truncate">
