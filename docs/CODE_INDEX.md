@@ -3,11 +3,11 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-09-18T05:13:02.537Z
-対象ファイル数: 308
+生成日時: 2026-10-19T15:24:42.809Z
+対象ファイル数: 348
 
 ## (root)/
-- `src/App.tsx` (189行) — exports: App
+- `src/App.tsx` (194行) — exports: App
 - `src/main.tsx` (11行) — exports: (no exports)
 
 ## components/
@@ -21,8 +21,9 @@
 - `src/components/dashboard/SummaryReportPanel.tsx` (209行) — exports: SummaryReportPanel
 - `src/components/dashboard/TodoProgressPanel.tsx` (155行) — exports: TodoProgressPanel
 - `src/components/household/PersonEditModal.tsx` (162行) — exports: PersonEditModal
-- `src/components/household/QuickHouseholdModal.tsx` (201行) — exports: QuickHouseholdModalProps, QuickHouseholdModal
-- `src/components/layout/AppShell.tsx` (312行) — exports: AppShell
+- `src/components/household/QuickHouseholdModal.tsx` (261行) — exports: QuickHouseholdModalProps, QuickHouseholdModal
+- `src/components/layout/AppShell.tsx` (317行) — exports: AppShell
+- `src/components/layout/Sidebar.tsx` (90行) — exports: NavItem, Sidebar
 - `src/components/notifications/NotificationBell.tsx` (62行) — exports: NotificationBell
 - `src/components/opportunity/OpportunityCombobox.tsx` (160行) — exports: OpportunityCombobox
 - `src/components/opportunity/ProposalProductEditModal.tsx` (211行) — exports: ProposalProductEditModal
@@ -34,7 +35,10 @@
 - `src/components/policy/CoverageMatrix.tsx` (127行) — exports: CoverageMatrix
 - `src/components/policy/PolicyEditModal.tsx` (270行) — exports: PolicyEditModal
 - `src/components/policy/PolicyStatusBadge.tsx` (34行) — exports: PolicyStatusBadge, STATUS_META
-- `src/components/policy/QuickPolicyIssueModal.tsx` (159行) — exports: QuickPolicyIssueModal
+- `src/components/policy/QuickPolicyIssueModal.tsx` (242行) — exports: QuickPolicyIssueModal
+- `src/components/policy/ReflectionBeforeAfter.tsx` (92行) — exports: ReflectionBeforeAfter
+- `src/components/policy/ReflectionControl.tsx` (134行) — exports: ReflectionControl
+- `src/components/policy/ReflectionSourceBadge.tsx` (82行) — exports: ReflectionSourceBadge
 - `src/components/report/ReadOnlyTimeline.tsx` (244行) — exports: ReadOnlyTimeline
 - `src/components/report/ReadOnlyTimeline/BlockBar.tsx` (55行) — exports: BlockBar
 - `src/components/report/ReadOnlyTimeline/BlockDetailModal.tsx` (155行) — exports: BlockDetailModal
@@ -84,12 +88,15 @@
 - `src/components/ui/Toast.tsx` (38行) — exports: ToastContainer
 
 ## data/
+- `src/data/insuranceCompanies.ts` (20行) — exports: INITIAL_INSURANCE_COMPANIES
+- `src/data/prefectures.ts` (59行) — exports: Prefecture, PREFECTURES
+- `src/data/productCategories.ts` (79行) — exports: INITIAL_PRODUCT_CATEGORIES
 - `src/data/salesChannels.ts` (177行) — exports: SALES_CHANNELS, PARENT_CHANNELS, LEAF_CHANNELS
 - `src/data/seed.ts` (27行) — exports: (no exports)
 - `src/data/seed/customerInteractions.ts` (75行) — exports: CUSTOMER_INTERACTIONS
 - `src/data/seed/customers.ts` (167行) — exports: CUSTOMERS
 - `src/data/seed/helpers.ts` (130行) — exports: today, d, f, _lastWeekday, _recentWeekdays, _oarDate2, _oarDate3, _now, makeBlock, makeTodo, makeComment, makeReport
-- `src/data/seed/opportunities-1.ts` (370行) — exports: OPP_DATA_1_3
+- `src/data/seed/opportunities-1.ts` (374行) — exports: OPP_DATA_1_3
 - `src/data/seed/opportunities-2.ts` (140行) — exports: OPP_DATA_4_5
 - `src/data/seed/opportunities-3.ts` (276行) — exports: OPP_DATA_6_8
 - `src/data/seed/opportunities-4.ts` (355行) — exports: OPP_DATA_9_DEMO1
@@ -158,15 +165,15 @@
 - `src/features/salesPerf/types.ts` (222行) — exports: SalesLine, LineFilter, ConfidenceLife, ConfidenceNonlife, ConfidenceCode, ConfidenceAgg, SalesContractRaw, SalesContract, SalesTargetRow, SalesPerfFilter, SalesPerfUser, SalesPerfGroup, SalesPerfInsurer, SalesPerfProductType, SalesPerfChannel, SalesPerfMasters, KpiSummary, MonthlyPoint, ConfidenceStackPoint, OwnerRankRow, FunnelMetrics, DataQuality
 
 ## pages/
-- `src/pages/AdminPage.tsx` (76行) — exports: AdminPage
+- `src/pages/AdminPage.tsx` (101行) — exports: AdminPage
 - `src/pages/CalendarPage.tsx` (282行) — exports: CalendarPage
 - `src/pages/CustomerDetailPage.tsx` (265行) — exports: CustomerDetailPage
-- `src/pages/CustomerListPage.tsx` (69行) — exports: CustomerListPage
+- `src/pages/CustomerListPage.tsx` (71行) — exports: CustomerListPage
 - `src/pages/CustomersPage.tsx` (312行) — exports: CustomersPage
 - `src/pages/DashboardPage.tsx` (65行) — exports: DashboardPage
 - `src/pages/DashboardWithPerfPage.tsx` (77行) — exports: DashboardWithPerfPage, SalesPerfRedirect
 - `src/pages/HouseholdBatchEntryPage.tsx` (396行) — exports: HouseholdBatchEntryPage
-- `src/pages/HouseholdBatchEntryPage/ChannelSelect.tsx` (75行) — exports: ChannelSelect
+- `src/pages/HouseholdBatchEntryPage/ChannelSelect.tsx` (76行) — exports: ChannelSelect
 - `src/pages/HouseholdBatchEntryPage/HouseholdHeaderSection.tsx` (96行) — exports: HouseholdHeaderSection
 - `src/pages/HouseholdBatchEntryPage/MilestoneDateField.tsx` (39行) — exports: MilestoneDateField
 - `src/pages/HouseholdBatchEntryPage/OpportunityCard.tsx` (341行) — exports: OpportunityCard
@@ -176,19 +183,27 @@
 - `src/pages/HouseholdBatchEntryPage/PageHeader.tsx` (55行) — exports: PageHeader
 - `src/pages/HouseholdBatchEntryPage/ProductRow.tsx` (142行) — exports: ProductRow
 - `src/pages/HouseholdBatchEntryPage/constants.ts` (28行) — exports: PRODUCT_CATEGORY_LABELS, PRODUCT_CATEGORIES
-- `src/pages/HouseholdDetailPage.tsx` (367行) — exports: HouseholdDetailPage
-- `src/pages/HouseholdDetailPage/CustomerEditForm.tsx` (103行) — exports: CustomerEditForm
+- `src/pages/HouseholdDetailPage.tsx` (396行) — exports: HouseholdDetailPage
+- `src/pages/HouseholdDetailPage/CustomerEditForm.tsx` (113行) — exports: CustomerEditForm
 - `src/pages/HouseholdDetailPage/HouseholdInfoCard.tsx` (153行) — exports: HouseholdInfoCard
 - `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (269行) — exports: HouseholdTaskSection
 - `src/pages/HouseholdDetailPage/HouseholdTimelineBody.tsx` (293行) — exports: TimelineEntry, UnifiedTimelineEntry, HouseholdTimelineBody
 - `src/pages/HouseholdDetailPage/InteractionAddForm.tsx` (229行) — exports: InteractionAddForm
-- `src/pages/HouseholdDetailPage/OpportunitiesSection.tsx` (104行) — exports: OpportunitiesSection
+- `src/pages/HouseholdDetailPage/OpportunitiesSection.tsx` (110行) — exports: OpportunitiesSection
 - `src/pages/HouseholdDetailPage/PersonsSection.tsx` (115行) — exports: PersonsSection
-- `src/pages/HouseholdDetailPage/PoliciesSection.tsx` (99行) — exports: PoliciesSection
-- `src/pages/HouseholdDetailPage/helpers.ts` (46行) — exports: TYPE_LABELS, RELATION_LABELS, GENDER_LABELS, RELATION_ORDER, calcAge
+- `src/pages/HouseholdDetailPage/PoliciesSection.tsx` (132行) — exports: PoliciesSection
+- `src/pages/HouseholdDetailPage/helpers.ts` (45行) — exports: TYPE_LABELS, RELATION_LABELS, GENDER_LABELS, RELATION_ORDER, calcAge
 - `src/pages/HouseholdDetailPage/useHouseholdDetail.ts` (142行) — exports: HouseholdDetailData, useHouseholdDetail
-- `src/pages/HouseholdsPage.tsx` (399行) — exports: HouseholdsPage
+- `src/pages/HouseholdsPage.tsx` (14行) — exports: HouseholdsPage
+- `src/pages/HouseholdsPage/HouseholdListFull.tsx` (600行) — exports: HouseholdListFull
+- `src/pages/HouseholdsPage/HouseholdListPane.tsx` (452行) — exports: HouseholdListPane
+- `src/pages/HouseholdsPage/PersonsPane.tsx` (287行) — exports: PersonsPane
+- `src/pages/HouseholdsPage/PoliciesPane.tsx` (321行) — exports: PoliciesPane
+- `src/pages/HouseholdsPage/PolicyCardInlineEdit.tsx` (67行) — exports: PolicyCardInlineEdit
+- `src/pages/HouseholdsPage/ProductFormFields.tsx` (148行) — exports: PolicyFormState, ProductFormFields
+- `src/pages/HouseholdsPage/useHouseholdsPaneState.ts` (29行) — exports: PaneTab, useHouseholdsPaneState
 - `src/pages/LoginPage.tsx` (261行) — exports: LoginPage
+- `src/pages/MembersPage.tsx` (186行) — exports: MembersPage
 - `src/pages/NippouListPage.tsx` (259行) — exports: NippouListPage
 - `src/pages/NippouPage.tsx` (85行) — exports: NippouPage
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
@@ -196,30 +211,39 @@
 - `src/pages/OpportunitiesPage.tsx` (351行) — exports: OpportunitiesPage
 - `src/pages/OpportunityDetailPage.tsx` (352行) — exports: OpportunityDetailPage
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
-- `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (79行) — exports: IssuedPoliciesTab
+- `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (87行) — exports: IssuedPoliciesTab
 - `src/pages/OpportunityDetailPage/OverviewTab.tsx` (207行) — exports: OverviewTab
-- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (100行) — exports: ProductsTab
+- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (103行) — exports: ProductsTab
 - `src/pages/OpportunityDetailPage/ProposalsTab.tsx` (258行) — exports: ProposalsTab
 - `src/pages/OpportunityDetailPage/TaskRow.tsx` (173行) — exports: TaskRow
 - `src/pages/OpportunityDetailPage/TasksTab.tsx` (202行) — exports: TasksTab
 - `src/pages/OpportunityDetailPage/constants.ts` (26行) — exports: PRODUCT_CATEGORY_LABELS, LOST_REASON_LABELS
 - `src/pages/OpportunityReportPage.tsx` (188行) — exports: OpportunityReportPage
-- `src/pages/PoliciesPage.tsx` (296行) — exports: PoliciesPage
+- `src/pages/PoliciesPage.tsx` (277行) — exports: PoliciesPage
 - `src/pages/PolicyDetailPage.tsx` (304行) — exports: PolicyDetailPage
-- `src/pages/RenewalDetailPage.tsx` (317行) — exports: RenewalDetailPage, Tab
-- `src/pages/RenewalDetailPage/ConsultTab.tsx` (155行) — exports: ConsultTab
+- `src/pages/ProductsPage.tsx` (129行) — exports: ProductsPage
+- `src/pages/RenewalDetailPage.tsx` (457行) — exports: RenewalDetailPage, Tab
+- `src/pages/RenewalDetailPage/ConsultTab.tsx` (313行) — exports: ConsultTab
 - `src/pages/RenewalDetailPage/NotesSection.tsx` (103行) — exports: NotesSection
+- `src/pages/RenewalDetailPage/PairMtgTab.tsx` (89行) — exports: PairMtgTab
+- `src/pages/RenewalDetailPage/PolicyCollectTab.tsx` (137行) — exports: PolicyCollectTab
 - `src/pages/RenewalDetailPage/RenewalTimeline.tsx` (78行) — exports: RenewalTimeline
 - `src/pages/RenewalDetailPage/RiderTab.tsx` (136行) — exports: RiderTab
-- `src/pages/RenewalDetailPage/RoadmapTab.tsx` (160行) — exports: RoadmapTab
+- `src/pages/RenewalDetailPage/RoadmapTab.tsx` (166行) — exports: RoadmapTab
+- `src/pages/RenewalDetailPage/RoadmapVersionedSection.tsx` (228行) — exports: RoadmapVersionedSection
 - `src/pages/RenewalDetailPage/TasksSection.tsx` (196行) — exports: TasksSection
 - `src/pages/RenewalImportPage.tsx` (321行) — exports: RenewalImportPage
-- `src/pages/RenewalListPage.tsx` (255行) — exports: RenewalListPage
+- `src/pages/RenewalListPage.tsx` (216行) — exports: RenewalListPage
+- `src/pages/RenewalListRow.tsx` (346行) — exports: RenewalListRowProps, RenewalListRow
 - `src/pages/ReportAdminPage.tsx` (191行) — exports: ReportAdminPage
 - `src/pages/ReportDetailPage.tsx` (353行) — exports: ReportDetailPage
 - `src/pages/SalesDashboardPage.tsx` (156行) — exports: SalesDashboardPage
 - `src/pages/SearchPage.tsx` (204行) — exports: SearchPage
-- `src/pages/SettingsPage.tsx` (351行) — exports: SettingsPage
+- `src/pages/SettingsPage.tsx` (354行) — exports: SettingsPage
+- `src/pages/SettingsPage/ChannelMasterTab.tsx` (308行) — exports: ChannelMasterTab
+- `src/pages/SettingsPage/TaskMasterForm.tsx` (225行) — exports: TaskMasterForm
+- `src/pages/SettingsPage/TaskMasterTab.tsx` (204行) — exports: TaskMasterTab
+- `src/pages/SettingsPage/taskMasterConstants.ts` (31行) — exports: TIMING_LABELS, BASE_DATE_LABELS, DraftTemplate, BLANK_TASK_MASTER
 - `src/pages/TeamDashboardPage.tsx` (194行) — exports: TeamDashboardPage
 - `src/pages/TemplatesPage.tsx` (111行) — exports: TemplatesPage
 - `src/pages/TodayPage.tsx` (368行) — exports: TodayPage
@@ -233,13 +257,15 @@
 - `src/pages/TodayPage/useTodayBlockHandlers.ts` (336行) — exports: useTodayBlockHandlers
 - `src/pages/TodayPage/useTrackingTimer.ts` (34行) — exports: useTrackingTimer
 - `src/pages/admin/AuditLogTab.tsx` (47行) — exports: AuditLogTab
+- `src/pages/admin/RoadmapTemplateTab.tsx` (238行) — exports: RoadmapTemplateTab
 - `src/pages/admin/TaskTemplateForm.tsx` (241行) — exports: TaskTemplateForm
 - `src/pages/admin/TaskTemplatesTab.tsx` (203行) — exports: TaskTemplatesTab
 - `src/pages/admin/constants.ts` (56行) — exports: TRIGGER_LABELS, SCOPE_LABELS, PRIORITY_LABELS, STAGE_OPTIONS, BLANK_TMPL, ProductCategorySet
 - `src/pages/admin/helpers.ts` (31行) — exports: getCategorySet, categorySetToValue
+- `src/pages/customerListTabs.ts` (30行) — exports: CustomerTab, resolveTab, CUSTOMER_TABS
 - `src/pages/customers/CustomerCard.tsx` (156行) — exports: CustomerCard
-- `src/pages/customers/CustomerForm.tsx` (146行) — exports: CustomerForm
-- `src/pages/customers/constants.ts` (15行) — exports: TYPE_LABELS, SortKey
+- `src/pages/customers/CustomerForm.tsx` (154行) — exports: CustomerForm
+- `src/pages/customers/constants.ts` (14行) — exports: TYPE_LABELS, SortKey
 - `src/pages/customers/helpers.ts` (62行) — exports: buildHistoryCountMap, sortCustomers, filterCustomers
 - `src/pages/opportunities/OpportunityTableHeader.tsx` (55行) — exports: OpportunityTableHeader
 - `src/pages/opportunities/OpportunityTableRow.tsx` (81行) — exports: OpportunityTableRow
@@ -265,28 +291,33 @@
 - `src/pages/renewalImport/parsers.ts` (45行) — exports: parseProductType, parseMethod, parsePremium, genId
 
 ## store/
-- `src/store/_internal/appstate.ts` (24行) — exports: AppState
+- `src/store/_internal/appstate.ts` (26行) — exports: AppState
 - `src/store/_internal/appstate/auth.ts` (52行) — exports: AppStateAuthSlice
 - `src/store/_internal/appstate/customers.ts` (26行) — exports: AppStateCustomersSlice
-- `src/store/_internal/appstate/opportunities.ts` (144行) — exports: AppStateOpportunitiesSlice
+- `src/store/_internal/appstate/masters.ts` (41行) — exports: AppStateMastersSlice
+- `src/store/_internal/appstate/opportunities.ts` (166行) — exports: AppStateOpportunitiesSlice
 - `src/store/_internal/appstate/policies.ts` (59行) — exports: AppStatePoliciesSlice
-- `src/store/_internal/appstate/renewals.ts` (62行) — exports: AppStateRenewalsSlice
+- `src/store/_internal/appstate/renewals.ts` (94行) — exports: AppStateRenewalsSlice
 - `src/store/_internal/appstate/reports.ts` (134行) — exports: AppStateReportsSlice
-- `src/store/_internal/constants.ts` (193行) — exports: uid, SEED_VERSION, SEED_VERSION_KEY, SEED_DATA_KEYS, _initialAuthSession, _initialUser, _initialRoleSwitch, _deletedCustomerIds, _initialCustomers, _initialSalesTargets, _initialOpportunities, _initialPolicies, _initialPolicyStatusHistory, _initialOppActivityReports, _initialTaskTemplates, _initialRenewalCases, _initialCustomerInteractions
-- `src/store/_internal/exportedTypes.ts` (115行) — exports: Toast, EmailChangeRequest, User, Team, Customer, DailyReport, Template, QuickChip, Notification, AuditLog, TimeBlock, Todo, Comment, Role, TrackingSession, BlockType, ManagerComment, Compliment, Person, Opportunity, OpportunityStage, Policy, PolicyStatusHistory, Coverage, PolicyStatus, CoverageType, ProductCategory, SalesTarget, TargetScope, TargetPeriodType, OpportunityActivityReport, ProposalRound, Task, TaskTemplate, Household, ProposalProduct, AuthSession, RenewalCase, RenewalSurvey, RenewalStatus, RenewalLogKind, CustomerInteraction, InteractionKind
-- `src/store/_internal/types.ts` (50行) — exports: (no exports)
+- `src/store/_internal/constants.ts` (255行) — exports: uid, SEED_VERSION, SEED_VERSION_KEY, SEED_DATA_KEYS, _initialAuthSession, _initialUser, _initialRoleSwitch, _deletedCustomerIds, _initialCustomers, _initialSalesTargets, _initialOpportunities, _initialPolicies, _initialPolicyStatusHistory, _initialOppActivityReports, _initialTaskTemplates, _initialRenewalCases, _initialRoadmapTemplateVersions, _initialCustomerInteractions, _initialInsuranceCompanies, _initialProductCategories, _initialSalesChannels
+- `src/store/_internal/exportedTypes.ts` (141行) — exports: Toast, EmailChangeRequest, User, Team, Customer, DailyReport, Template, QuickChip, Notification, AuditLog, TimeBlock, Todo, Comment, Role, TrackingSession, BlockType, ManagerComment, Compliment, Person, Opportunity, OpportunityStage, Policy, PolicyStatusHistory, Coverage, PolicyStatus, CoverageType, ProductCategory, SalesTarget, TargetScope, TargetPeriodType, OpportunityActivityReport, ProposalRound, Task, TaskTemplate, TaskTimingType, TaskBaseDateType, Household, ProposalProduct, ReflectionMode, ProposalReflection, PolicyValueChange, PolicyValueDelta, SalesChannel, AuthSession, RenewalCase, RenewalSurvey, RenewalStatus, RenewalLogKind, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, CustomerInteraction, InteractionKind, InsuranceCompany, ProductCategoryMaster
+- `src/store/_internal/types.ts` (63行) — exports: (no exports)
 - `src/store/_slices/authSlice.ts` (144行) — exports: createAuthSlice
 - `src/store/_slices/blockSlice.ts` (60行) — exports: createBlockSlice
 - `src/store/_slices/commentSlice.ts` (182行) — exports: createCommentSlice
 - `src/store/_slices/customerInteractionSlice.ts` (83行) — exports: createCustomerInteractionSlice
 - `src/store/_slices/customerSlice.ts` (159行) — exports: createCustomerSlice
+- `src/store/_slices/insuranceCompanySlice.ts` (58行) — exports: createInsuranceCompanySlice
 - `src/store/_slices/notificationGen.ts` (88行) — exports: reportOwnerIdOf, reportOwnerIdByDayKey, managerIdsFor, AddNotificationInput, createNotificationGenSlice
 - `src/store/_slices/notificationTrackingSlice.ts` (189行) — exports: createNotificationTrackingSlice
 - `src/store/_slices/oppActivitySlice.ts` (192行) — exports: createOppActivitySlice
-- `src/store/_slices/opportunitySlice.ts` (399行) — exports: createOpportunitySlice
+- `src/store/_slices/opportunitySlice.ts` (617行) — exports: createOpportunitySlice
 - `src/store/_slices/policySlice.ts` (378行) — exports: createPolicySlice
-- `src/store/_slices/renewalSlice.ts` (333行) — exports: createRenewalSlice
+- `src/store/_slices/productCategorySlice.ts` (58行) — exports: createProductCategorySlice
+- `src/store/_slices/renewalRoadmapTemplateSlice.ts` (80行) — exports: createRenewalRoadmapTemplateSlice
+- `src/store/_slices/renewalSlice.ts` (378行) — exports: createRenewalSlice
 - `src/store/_slices/reportSlice.ts` (182行) — exports: createReportSlice
+- `src/store/_slices/salesChannelSlice.ts` (55行) — exports: createSalesChannelSlice
 - `src/store/_slices/salesTargetSlice.ts` (109行) — exports: createSalesTargetSlice
 - `src/store/_slices/taskTemplateSlice.ts` (131行) — exports: createTaskTemplateSlice
 - `src/store/_slices/templateSlice.ts` (88行) — exports: createTemplateSlice
@@ -295,20 +326,21 @@
 - `src/store/_slices/userTeamSlice.ts` (58行) — exports: createUserTeamSlice
 - `src/store/auth.ts` (77行) — exports: AuthSession, AUTH_STORAGE_KEY, AUTH_SESSION_TTL_MS, DEFAULT_DEMO_PASSWORD, loadAuthSession, persistAuthSession, ROLE_SWITCH_STORAGE_KEY, USER_SWITCH_STORAGE_KEY, loadRoleSwitch, persistRoleSwitch
 - `src/store/deletedCustomers.ts` (41行) — exports: DELETED_CUSTOMERS_STORAGE_KEY, loadDeletedCustomerIds, saveDeletedCustomerIds, persistDeletedCustomerId
-- `src/store/index.ts` (126行) — exports: useAppStore
+- `src/store/index.ts` (142行) — exports: useAppStore
 
 ## types/
-- `src/types/core.ts` (24行) — exports: Role, ReportStatus, BlockType, CustomerType, CustomerStatus, HouseholdType, HouseholdStatus, PersonRelation, PersonGender, UserStatus, MoodType, ManagerSignal
+- `src/types/core.ts` (26行) — exports: Role, ReportStatus, BlockType, CustomerType, CustomerTypeWithLegacyProspect, CustomerStatus, HouseholdType, HouseholdStatus, PersonRelation, PersonGender, UserStatus, MoodType, ManagerSignal
 - `src/types/customerInteraction.ts` (29行) — exports: InteractionKind, INTERACTION_KIND_LABEL, CustomerInteraction
-- `src/types/household.ts` (50行) — exports: Household, Customer, Person
-- `src/types/index.ts` (118行) — exports: (no exports)
-- `src/types/opportunity.ts` (217行) — exports: OpportunityStage, OpportunityStatus, LostReason, ProductCategory, ProposalProduct, OpportunityStageHistory, SalesChannel, ContractMilestones, DeficiencyItem, ConfidenceUnified, ProposalRound, OpportunityActivityReport, LIFE_CATEGORIES, NONLIFE_CATEGORIES, Opportunity
-- `src/types/policy.ts` (88行) — exports: PolicyStatus, PayMode, CoverageType, Coverage, Policy, PolicyStatusHistory
-- `src/types/renewal.ts` (151行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalCase
+- `src/types/household.ts` (52行) — exports: Household, Customer, Person
+- `src/types/index.ts` (131行) — exports: (no exports)
+- `src/types/insurance.ts` (23行) — exports: InsuranceCompany, ProductCategoryMaster
+- `src/types/opportunity.ts` (237行) — exports: OpportunityStage, OpportunityStatus, LostReason, ProductCategory, ProposalProduct, ReflectionMode, ProposalReflection, OpportunityStageHistory, SalesChannel, ContractMilestones, DeficiencyItem, ConfidenceUnified, ProposalRound, OpportunityActivityReport, LIFE_CATEGORIES, NONLIFE_CATEGORIES, Opportunity
+- `src/types/policy.ts` (126行) — exports: PolicyStatus, PayMode, CoverageType, Coverage, Policy, PolicyValueChange, PolicyValueDelta, PolicyStatusHistory
+- `src/types/renewal.ts` (217行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, SuperInsuranceLossStatus, RenewalPairMtgSurvey, PolicyCollectStatus, RenewalPolicyCollectSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, RenewalCase
 - `src/types/report.ts` (127行) — exports: Attachment, TimeBlock, Todo, CustomerVisit, Comment, ManagerCommentReply, ManagerComment, Compliment, DailyReport
 - `src/types/salesTarget.ts` (49行) — exports: TargetScope, TargetPeriodType, SalesTarget, TrackingSession
 - `src/types/system.ts` (28行) — exports: Notification, AuditLog
-- `src/types/task.ts` (61行) — exports: TaskScope, TaskPriority, TaskTriggerType, Task, TaskTemplate
+- `src/types/task.ts` (75行) — exports: TaskScope, TaskTimingType, TaskBaseDateType, TaskPriority, TaskTriggerType, Task, TaskTemplate
 - `src/types/template.ts` (47行) — exports: Template, TemplateBlock, QuickChip
 - `src/types/user.ts` (25行) — exports: User, Team
 
@@ -324,7 +356,15 @@
 - `src/utils/matchRenewalHousehold.ts` (187行) — exports: ImportRow, MatchStatus, MatchedImportRow, matchRenewalHousehold, matchRenewalHouseholdBulk, parseRenewalCsv
 - `src/utils/opportunityStage.ts` (359行) — exports: FUNNEL_ORDER, StageTabKey7, TAB_META, STAGE_TO_TAB, latestProposalDate, stageFromMilestones, effectiveStage, isRagged, effectiveExpectedCloseDate, isActiveOpp, householdActiveOpps, representativeOpp, tabOf, isVisited
 - `src/utils/orgChart.ts` (44行) — exports: getManagersOf, getSubordinatesOf
-- `src/utils/renewalLabels.ts` (124行) — exports: RENEWAL_STATUS_LABEL, RENEWAL_METHOD_LABEL, RENEWAL_PRODUCT_TYPE_LABEL, RENEWAL_CONCERN_LABEL, RENEWAL_FLYER_LABEL, RENEWAL_GENDER_LABEL, RENEWAL_AGE_BAND_LABEL, RENEWAL_STATUS_OPTIONS, RENEWAL_METHOD_OPTIONS, RENEWAL_PRODUCT_TYPE_OPTIONS, RENEWAL_CONCERN_OPTIONS, RENEWAL_FLYER_OPTIONS, RENEWAL_GENDER_OPTIONS, RENEWAL_AGE_BAND_OPTIONS
+- `src/utils/policyHistory.ts` (62行) — exports: buildValueChange
+- `src/utils/reflectionAggregate.ts` (58行) — exports: AggregateScope, sumMonthlyPremium, toAnnual, diffReflection
+- `src/utils/reflectionPolicyFactory.ts` (129行) — exports: mainCoverageType, buildNewPolicyFromProduct, projectReflectedPolicies
+- `src/utils/renewalDays.ts` (61行) — exports: daysFromToday, daysFromFirstContact, daysAtProcedure, formatDayCount
+- `src/utils/renewalLabels.ts` (156行) — exports: RENEWAL_STATUS_LABEL, RENEWAL_METHOD_LABEL, RENEWAL_PRODUCT_TYPE_LABEL, RENEWAL_CONCERN_LABEL, RENEWAL_FLYER_LABEL, RENEWAL_GENDER_LABEL, RENEWAL_AGE_BAND_LABEL, RENEWAL_STATUS_OPTIONS, RENEWAL_METHOD_OPTIONS, RENEWAL_PRODUCT_TYPE_OPTIONS, RENEWAL_CONCERN_OPTIONS, RENEWAL_FLYER_OPTIONS, RENEWAL_GENDER_OPTIONS, RENEWAL_AGE_BAND_OPTIONS, RENEWAL_SUPER_INS_LOSS_LABEL, RENEWAL_SUPER_INS_LOSS_OPTIONS, RENEWAL_POLICY_COLLECT_LABEL, RENEWAL_POLICY_COLLECT_OPTIONS
+- `src/utils/renewalListView.ts` (61行) — exports: RenewalListViewMode, RenewalRowView, buildRenewalRowView
+- `src/utils/renewalMigration.ts` (97行) — exports: SEED_ROADMAP_ITEM_DEFS, buildSeedRoadmapTemplateV1, migrateRoadmapToVersioned
+- `src/utils/roadmapTemplate.ts` (65行) — exports: MAX_ROADMAP_ITEMS, RoadmapItemsValidation, validateRoadmapItems, sortRoadmapItems, activeRoadmapItems
+- `src/utils/roles.ts` (11行) — exports: isAdmin
 - `src/utils/salesMetrics.ts` (147行) — exports: UNDER_TARGET_THRESHOLD, monthlyEquivPremium, isAchievedInPeriod, Achievement, calcAchievement, achievementRate, calcFunnel, rollupAchievements, TargetConsistency, checkTargetRollup, getScopeUsers
 - `src/utils/salesPeriod.ts` (106行) — exports: PeriodType, FISCAL_START_MONTH, toPeriod, dateInPeriod, childPeriods, shiftPeriod, periodsOfYear, periodLabel
 - `src/utils/taskGenerator.ts` (238行) — exports: generateTasksOnHouseholdCreated, generateTasksOnOpportunityCreated, generateTasksOnProductAdded, generateTasksOnStageReached
