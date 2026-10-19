@@ -11,6 +11,8 @@ import type {
   ProposalRound,
   Task,
   TaskTemplate,
+  Policy,
+  ProposalReflection,
 } from "../../../types";
 
 export interface AppStateOpportunitiesSlice {
@@ -140,4 +142,24 @@ export interface AppStateOpportunitiesSlice {
    * - 二重生成しない
    */
   syncOppReportToNippou: (reportId: string) => void;
+
+  // ── Doc4 反映（§2.3 / §T4-03 / PC-6）──
+  /**
+   * 商品行の反映指定(mode/targetPolicyId)を設定する（宣言＋最小実装）。
+   * 実際の契約生成/更新は reflectOpportunityToPolicies で行う。
+   */
+  setProposalReflection: (
+    opportunityId: string,
+    proposalProductId: string,
+    reflection: ProposalReflection,
+  ) => void;
+  /**
+   * ★宣言のみ（M2 coder が実装）: 案件の reflection 指定に従い
+   * 契約(Policy)を新規追加 or 既存変更として反映する。冪等（§T4-03 resultPolicyId）。
+   * @returns 反映で生成/更新された Policy 配列
+   */
+  reflectOpportunityToPolicies: (
+    opportunityId: string,
+    userId: string,
+  ) => Policy[];
 }

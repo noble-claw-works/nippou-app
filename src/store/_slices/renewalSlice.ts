@@ -60,6 +60,7 @@ export const createRenewalSlice: StateCreator<
     | "toggleRenewalTaskDone"
     | "removeRenewalTask"
     | "importRenewalCases"
+    | "saveRoadmapAnswers"
   >
 > = (set, get) => ({
   getRenewalCases: (opts) => {
@@ -311,6 +312,42 @@ export const createRenewalSlice: StateCreator<
       return {
         ...rc,
         tasks: rc.tasks.filter((t) => t.id !== taskId),
+        updatedAt: now,
+      };
+    });
+
+    set({ renewalCases: updated });
+    persist(updated);
+  },
+
+  // ── Doc5 ロードマップ回答保存（§2.5 / PC-6 宣言。実体は M6 で実装）──
+  // TODO(M6): 回答時点の最新テンプレ版をスナップショットして roadmapVersions に push。
+  //           version 不変・追記型。activityLog へ "survey_saved" 記録を追加する。
+  saveRoadmapAnswers: (caseId, answers, meta) => {
+    const state = get();
+    const now = new Date().toISOString();
+    const current = state.getCurrentRoadmapTemplate?.();
+    const templateVersion = current?.version ?? 1;
+    const userId = meta?.userId ?? state.currentUserId;
+
+    const updated = state.renewalCases.map((rc) => {
+      if (rc.id !== caseId) return rc;
+      const newVersion = {
+        templateVersion,
+        answers,
+        inputDate: meta?.inputDate,
+        gender: meta?.gender,
+        ageBand: meta?.ageBand,
+        answeredByUserId: userId,
+        answeredAt: now,
+      };
+      return {
+        ...rc,
+        roadmapVersions: [...(rc.roadmapVersions ?? []), newVersion],
+        activityLog: [
+          ...rc.activityLog,
+          makeLog("survey_saved", "ロードマップ回答を保存しました", userId),
+        ],
         updatedAt: now,
       };
     });

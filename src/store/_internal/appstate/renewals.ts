@@ -8,6 +8,9 @@ import type {
   RenewalLogKind,
   CustomerInteraction,
   Task,
+  RenewalRoadmapItemDef,
+  RenewalRoadmapTemplateVersion,
+  RenewalRoadmapAnswer,
 } from "../../../types";
 
 export interface AppStateRenewalsSlice {
@@ -58,4 +61,33 @@ export interface AppStateRenewalsSlice {
   removeRenewalTask: (id: string, taskId: string) => void;
   /** M3: CSVインポートで生成した RenewalCase 群を一括追加 */
   importRenewalCases: (cases: RenewalCase[]) => void;
+
+  // ── Doc5 ロードマップ テンプレ版管理（§2.5 / PC-5・PC-6）──
+  /** 公開済みテンプレ版（昇順, 末尾=最新）。初期値は seed v1 */
+  roadmapTemplateVersions: RenewalRoadmapTemplateVersion[];
+  /** 最新テンプレ版を取得（PC-5 で実体実装） */
+  getCurrentRoadmapTemplate: () => RenewalRoadmapTemplateVersion | undefined;
+  /** 指定版のテンプレを取得（PC-5 で実体実装） */
+  getRoadmapTemplateVersion: (
+    version: number,
+  ) => RenewalRoadmapTemplateVersion | undefined;
+  /** 新テンプレ版を発行（manager 必須, PC-5 で実体実装） */
+  publishRoadmapTemplate: (
+    items: RenewalRoadmapItemDef[],
+    userId: string,
+  ) => RenewalRoadmapTemplateVersion;
+  /**
+   * ★宣言のみ（M6 coder が実装）: 案件のロードマップ回答を保存。
+   * 回答時点の最新テンプレ版をスナップショットして roadmapVersions に push。
+   */
+  saveRoadmapAnswers: (
+    caseId: string,
+    answers: RenewalRoadmapAnswer[],
+    meta?: {
+      inputDate?: string;
+      gender?: "male" | "female" | "other";
+      ageBand?: string;
+      userId?: string;
+    },
+  ) => void;
 }

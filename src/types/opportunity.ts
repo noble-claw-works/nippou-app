@@ -62,6 +62,24 @@ export interface ProposalProduct {
   // ── NEW（ADR-B3 A案・例外の進捗ズレ用。すべて任意。未設定＝案件の値を継承）──
   stage?: OpportunityStage; // 商品個別ステージ。未設定なら Opportunity.stage を継承
   milestones?: ContractMilestones; // 商品個別のステージ日付。未設定なら案件 milestones を継承
+
+  // ── Doc4 反映（§2.1）。この商品行を契約へ反映する際の指定。未設定＝未反映。──
+  reflection?: ProposalReflection;
+}
+
+// =====================================================
+// Doc4 反映モデル（§2.1）
+// =====================================================
+
+/** 反映モード: 新規契約として追加 / 既存契約の変更として反映 / 反映しない */
+export type ReflectionMode = "new" | "existing_change" | "none";
+
+/** 商品行→契約 への反映指定（§2.1(c)） */
+export interface ProposalReflection {
+  mode: ReflectionMode; // 既定 "new"（未選択時フォールバックは §T4-05）
+  targetPolicyId?: string; // mode==="existing_change" のとき必須
+  resultPolicyId?: string; // 反映後に生成/更新された契約id（冪等性キー, §T4-03）
+  reflectedAt?: string;
 }
 
 export interface OpportunityStageHistory {

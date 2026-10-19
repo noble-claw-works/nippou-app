@@ -24,11 +24,13 @@ import type {
   OpportunityActivityReport,
   TaskTemplate,
   RenewalCase,
+  RenewalRoadmapTemplateVersion,
   CustomerInteraction,
   InsuranceCompany,
   ProductCategoryMaster,
   SalesChannel,
 } from "../../types";
+import { buildSeedRoadmapTemplateV1 } from "../../utils/renewalMigration";
 import { loadAuthSession, loadRoleSwitch } from "../auth";
 import { loadDeletedCustomerIds } from "../deletedCustomers";
 
@@ -183,6 +185,24 @@ export const _initialRenewalCases = (() => {
     }
   }
   return RENEWAL_CASES;
+})();
+
+// Doc5 ロードマップ テンプレ版（PC-5）。localStorage 無ければ seed v1。
+export const _initialRoadmapTemplateVersions = ((): RenewalRoadmapTemplateVersion[] => {
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = window.localStorage.getItem(
+        "nippou.renewalRoadmapTemplate.v1",
+      );
+      if (raw) {
+        const parsed = JSON.parse(raw) as RenewalRoadmapTemplateVersion[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return [buildSeedRoadmapTemplateV1()];
 })();
 
 export const _initialCustomerInteractions = (() => {

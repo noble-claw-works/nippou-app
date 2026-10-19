@@ -16,6 +16,7 @@ import {
   _initialOppActivityReports,
   _initialTaskTemplates,
   _initialRenewalCases,
+  _initialRoadmapTemplateVersions,
   _initialCustomerInteractions,
   _initialInsuranceCompanies,
   _initialProductCategories,
@@ -51,6 +52,7 @@ import { createTaskTemplateSlice } from "./_slices/taskTemplateSlice";
 import { createNotificationTrackingSlice } from "./_slices/notificationTrackingSlice";
 import { createNotificationGenSlice } from "./_slices/notificationGen";
 import { createRenewalSlice } from "./_slices/renewalSlice";
+import { createRenewalRoadmapTemplateSlice } from "./_slices/renewalRoadmapTemplateSlice";
 import { createCustomerInteractionSlice } from "./_slices/customerInteractionSlice";
 import { createInsuranceCompanySlice } from "./_slices/insuranceCompanySlice";
 import { createProductCategorySlice } from "./_slices/productCategorySlice";
@@ -104,6 +106,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   oppActivityReports: _initialOppActivityReports,
   taskTemplates: _initialTaskTemplates,
   renewalCases: _initialRenewalCases,
+  roadmapTemplateVersions: _initialRoadmapTemplateVersions,
   customerInteractions: _initialCustomerInteractions,
   insuranceCompanies: _initialInsuranceCompanies,
   productCategories: _initialProductCategories,
@@ -130,6 +133,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...createNotificationGenSlice(set, get, undefined as never),
   ...createNotificationTrackingSlice(set, get, undefined as never),
   ...createRenewalSlice(set, get, undefined as never),
+  ...createRenewalRoadmapTemplateSlice(set, get, undefined as never),
   ...createCustomerInteractionSlice(set, get, undefined as never),
   ...createInsuranceCompanySlice(set, get, undefined as never),
   ...createProductCategorySlice(set, get, undefined as never),

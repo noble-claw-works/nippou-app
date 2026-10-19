@@ -107,6 +107,7 @@ export interface RenewalPolicyCollectSurvey {
   fire?: PolicyCollectStatus; // 火災
   other?: PolicyCollectStatus; // その他
   life?: PolicyCollectStatus; // 生保
+  otherFree?: string; // ★Doc5: その他（自由記述）
 }
 
 /** RenewalCase.survey ラッパー */
@@ -147,6 +148,45 @@ export interface RenewalNote {
 }
 
 // ─────────────────────────────────────────────────────
+// Doc5 ロードマップ テンプレ版管理（§2.5）
+// ─────────────────────────────────────────────────────
+
+/** テンプレ上の①〜④関心事項の項目定義1件（§2.1(d)） */
+export interface RenewalRoadmapItemDef {
+  id: string; // 項目定義id（版をまたいで安定）
+  order: number; // 1..4
+  label: string; // 表示名（管理者が編集）
+  concernKey?: RenewalConcern; // 既存 concern enum とのマッピング（任意）
+  active: boolean; // 無効化（削除扱いだが過去版参照のため残置）
+}
+
+/** 公開されたテンプレの1版（§2.5。昇順, 末尾=最新） */
+export interface RenewalRoadmapTemplateVersion {
+  version: number; // 1,2,3...
+  items: RenewalRoadmapItemDef[]; // この版の①〜④定義（最大4）
+  editedByUserId: string;
+  editedAt: string; // ISO
+}
+
+/** ある版に対する回答1件 */
+export interface RenewalRoadmapAnswer {
+  itemDefId: string; // どの項目への回答か（版の items.id を指す）
+  value: boolean | string; // チェック/自由記述
+}
+
+/** 案件に紐づく「どの版にどう答えたか」の記録（§2.1(d)） */
+export interface RenewalRoadmapVersion {
+  templateVersion: number; // 回答時点のテンプレ版（スナップショット）
+  answers: RenewalRoadmapAnswer[];
+  // 回答時点のメタ（既存 roadmap survey 由来）
+  inputDate?: string;
+  gender?: "male" | "female" | "other";
+  ageBand?: string;
+  answeredByUserId: string;
+  answeredAt: string; // ISO
+}
+
+// ─────────────────────────────────────────────────────
 // RenewalCase 本体
 // ─────────────────────────────────────────────────────
 export interface RenewalCase {
@@ -169,6 +209,8 @@ export interface RenewalCase {
   notes: RenewalNote[]; // 留意事項（追記型）
   activityLog: RenewalActivityLog[]; // 対応履歴（追記型・削除なし）
   tasks: Task[]; // 更新案件スコープのタスク（既存 Task 流用）
+  /** ★Doc5: ロードマップ回答の版管理（§2.5）。未設定＝未回答 */
+  roadmapVersions?: RenewalRoadmapVersion[];
   createdAt: string;
   updatedAt: string;
 }

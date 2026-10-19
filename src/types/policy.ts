@@ -68,6 +68,16 @@ export interface Policy {
   hasCashValue: boolean;
   cashValue?: number;
   sourceOpportunityId?: string;
+  /** Doc4反映: この契約の由来（新規追加 or 既存変更）。sourceOpportunityId と併存（後者は後方互換のため残す）。 */
+  reflectionSource?: {
+    opportunityId: string;
+    proposalProductId: string;
+    mode: "new" | "existing_change";
+    reflectedAt: string;
+    reflectedByUserId: string;
+  };
+  /** Doc4反映: 既存契約変更(existing_change)の値履歴（§2.4） */
+  valueHistory?: PolicyValueChange[];
   coverages: Coverage[];
   renewalDate?: string;
   renewalReminderSent?: boolean;
@@ -75,6 +85,34 @@ export interface Policy {
   memo: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// =====================================================
+// Doc4 反映: 値変更履歴モデル（§2.4）
+// =====================================================
+
+/** 既存契約変更(existing_change)で記録する1回分の値変更 */
+export interface PolicyValueChange {
+  id: string;
+  changedAt: string; // ISO
+  changedByUserId: string;
+  source: "doc4_reflection" | "manual";
+  opportunityId?: string; // doc4_reflection 時
+  // 履歴化する最小項目集合（§2.4 で確定）
+  fields: PolicyValueDelta[];
+}
+
+/** 値変更の差分1件（変更があったフィールドのみ） */
+export interface PolicyValueDelta {
+  field:
+    | "monthlyPremium"
+    | "faceAmount"
+    | "productName"
+    | "insurer"
+    | "payMode"
+    | "status";
+  before: string | number | null;
+  after: string | number | null;
 }
 
 export interface PolicyStatusHistory {

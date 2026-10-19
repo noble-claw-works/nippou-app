@@ -41,6 +41,8 @@ export const createOpportunitySlice: StateCreator<
     | "addProposalRound"
     | "updateProposalRound"
     | "deleteProposalRound"
+    | "setProposalReflection"
+    | "reflectOpportunityToPolicies"
   >
 > = (set, get) => ({
   addOpportunity: (partial) => {
@@ -371,6 +373,41 @@ export const createOpportunitySlice: StateCreator<
       }
       return { opportunities: updated };
     });
+  },
+
+  // ── Doc4 反映（§2.3 / PC-6）──
+  // 商品行の反映指定を設定（最小実装）。
+  setProposalReflection: (opportunityId, proposalProductId, reflection) => {
+    set((s) => {
+      const updated = s.opportunities.map((o) => {
+        if (o.id !== opportunityId) return o;
+        const proposalProducts = (o.proposalProducts ?? []).map((p) =>
+          p.id === proposalProductId ? { ...p, reflection } : p,
+        );
+        return {
+          ...o,
+          proposalProducts,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.setItem(
+          "nippou.opportunities.v2",
+          JSON.stringify(updated),
+        );
+      }
+      return { opportunities: updated };
+    });
+  },
+
+  // ★宣言のみ（M2 coder が実装予定）。現状は未反映（空配列）を返す no-op。
+  // TODO(M2): reflection.mode に応じて Policy を新規追加/既存変更として反映し、
+  //           PolicyValueChange(policyHistory.buildValueChange) を記録、
+  //           resultPolicyId で冪等化（§T4-03）する。opportunityId/userId は実装時に使用。
+  reflectOpportunityToPolicies: (opportunityId, userId) => {
+    void opportunityId;
+    void userId;
+    return [];
   },
 
   deleteProposalRound: (id, roundId) => {

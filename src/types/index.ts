@@ -45,6 +45,8 @@ export type {
   LostReason,
   ProductCategory,
   ProposalProduct,
+  ReflectionMode,
+  ProposalReflection,
   OpportunityStageHistory,
   SalesChannel,
   ContractMilestones,
@@ -82,6 +84,8 @@ export type {
   Coverage,
   Policy,
   PolicyStatusHistory,
+  PolicyValueChange,
+  PolicyValueDelta,
 } from "./policy";
 
 // 営業目標 / トラッキング
@@ -106,6 +110,10 @@ export type {
   RenewalActivityLog,
   RenewalNote,
   RenewalCase,
+  RenewalRoadmapItemDef,
+  RenewalRoadmapTemplateVersion,
+  RenewalRoadmapAnswer,
+  RenewalRoadmapVersion,
 } from "./renewal";
 
 // システム
