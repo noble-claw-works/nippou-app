@@ -3,11 +3,11 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-19T16:20:55.606Z
-対象ファイル数: 351
+生成日時: 2026-10-19T16:28:58.844Z
+対象ファイル数: 353
 
 ## (root)/
-- `src/App.tsx` (194行) — exports: App
+- `src/App.tsx` (200行) — exports: App
 - `src/main.tsx` (11行) — exports: (no exports)
 
 ## components/
@@ -184,7 +184,7 @@
 - `src/pages/HouseholdBatchEntryPage/PageHeader.tsx` (55行) — exports: PageHeader
 - `src/pages/HouseholdBatchEntryPage/ProductRow.tsx` (142行) — exports: ProductRow
 - `src/pages/HouseholdBatchEntryPage/constants.ts` (28行) — exports: PRODUCT_CATEGORY_LABELS, PRODUCT_CATEGORIES
-- `src/pages/HouseholdDetailPage.tsx` (396行) — exports: HouseholdDetailPage
+- `src/pages/HouseholdDetailPage.tsx` (384行) — exports: HouseholdDetailPage
 - `src/pages/HouseholdDetailPage/CustomerEditForm.tsx` (113行) — exports: CustomerEditForm
 - `src/pages/HouseholdDetailPage/HouseholdInfoCard.tsx` (153行) — exports: HouseholdInfoCard
 - `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (269行) — exports: HouseholdTaskSection
@@ -205,11 +205,13 @@
 - `src/pages/HouseholdsPage/useHouseholdsPaneState.ts` (29行) — exports: PaneTab, useHouseholdsPaneState
 - `src/pages/LoginPage.tsx` (261行) — exports: LoginPage
 - `src/pages/MembersPage.tsx` (186行) — exports: MembersPage
+- `src/pages/NewOpportunityPage.tsx` (95行) — exports: NewOpportunityPage
+- `src/pages/NewOpportunityPage/NewOpportunityForm.tsx` (274行) — exports: NewOpportunityForm
 - `src/pages/NippouListPage.tsx` (259行) — exports: NippouListPage
 - `src/pages/NippouPage.tsx` (85行) — exports: NippouPage
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
 - `src/pages/NotificationsPage.tsx` (65行) — exports: NotificationsPage
-- `src/pages/OpportunitiesPage.tsx` (351行) — exports: OpportunitiesPage
+- `src/pages/OpportunitiesPage.tsx` (320行) — exports: OpportunitiesPage
 - `src/pages/OpportunityDetailPage.tsx` (352行) — exports: OpportunityDetailPage
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
 - `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (87行) — exports: IssuedPoliciesTab
