@@ -111,6 +111,57 @@ describe("saveRenewalSurvey — survey deep-merge", () => {
 
     expect(newMethod).toBe("visit"); // 既存 method 保持
   });
+
+  // T5-05/T5-06: policyCollect/pairMtg も deep-merge される（部分patchで兄弟フィールド非破壊）
+  it("policyCollect 部分パッチが既存 policyCollect と deep-merge される (otherFree 追加で兄弟保持)", () => {
+    const rc = makeRenewalCase({
+      survey: {
+        policyCollect: {
+          auto: "collected",
+          fire: "collecting",
+          life: "collected",
+          other: "not_collected",
+        },
+      },
+    });
+
+    const patch: Partial<RenewalSurvey> = {
+      policyCollect: { otherFree: "団体扱い自動車保険の一式" },
+    };
+
+    const mergedPc = {
+      ...rc.survey.policyCollect,
+      ...patch.policyCollect,
+    };
+
+    expect(mergedPc.auto).toBe("collected"); // 既存保持
+    expect(mergedPc.fire).toBe("collecting"); // 既存保持
+    expect(mergedPc.life).toBe("collected"); // 既存保持
+    expect(mergedPc.other).toBe("not_collected"); // 既存保持
+    expect(mergedPc.otherFree).toBe("団体扱い自動車保険の一式"); // 新規追加
+  });
+
+  it("pairMtg 部分パッチが既存 pairMtg と deep-merge される (兄弟フィールド保持)", () => {
+    const rc = makeRenewalCase({
+      survey: {
+        pairMtg: {
+          superInsuranceLoss: "in_progress",
+        },
+      },
+    });
+
+    const patch: Partial<RenewalSurvey> = {
+      pairMtg: { plannedMethod: "phone" },
+    };
+
+    const mergedPm = {
+      ...rc.survey.pairMtg,
+      ...patch.pairMtg,
+    };
+
+    expect(mergedPm.superInsuranceLoss).toBe("in_progress"); // 既存保持
+    expect(mergedPm.plannedMethod).toBe("phone"); // 新規追加
+  });
 });
 
 // ── addRenewalNote の追記・非削除テスト ──────────────────

@@ -99,6 +99,16 @@ export function PolicyCollectTab({
                 </option>
               ))}
             </select>
+            {/* その他: 自由入力（T5-06） */}
+            <input
+              type="text"
+              value={pc.otherFree ?? ""}
+              onChange={(e) =>
+                handleChange("otherFree", e.target.value || undefined)
+              }
+              placeholder="その他の内容を自由入力"
+              className="mt-2 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
           </div>
 
           {/* 生保 */}

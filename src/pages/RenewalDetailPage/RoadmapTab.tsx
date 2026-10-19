@@ -5,6 +5,7 @@ import {
   RENEWAL_AGE_BAND_OPTIONS,
   RENEWAL_CONCERN_OPTIONS,
 } from "../../utils/renewalLabels";
+import { RoadmapVersionedSection } from "./RoadmapVersionedSection";
 
 interface RoadmapTabProps {
   rc: RenewalCase;
@@ -50,7 +51,12 @@ export function RoadmapTab({ rc, onSurveyChange }: RoadmapTabProps) {
 
   return (
     <div className="space-y-4">
-      <SectionCard title="ロードマップチラシ（ヒアリング）">
+      {/* 版管理対応ロードマップ回答（T5-07 §5） */}
+      <SectionCard title="ロードマップ（版管理）">
+        <RoadmapVersionedSection rc={rc} />
+      </SectionCard>
+
+      <SectionCard title="ロードマップチラシ（ヒアリング・旧式）">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 入力日 */}
           <div>

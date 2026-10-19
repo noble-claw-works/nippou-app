@@ -93,7 +93,7 @@ export type SuperInsuranceLossStatus = "not_started" | "in_progress" | "done";
 
 export interface RenewalPairMtgSurvey {
   plannedMethod?: RenewalMethod; // 予定手続き手段
-  superInsuranceLoss?: SuperInsuranceLossStatus; // 超保険化損
+  superInsuranceLoss?: SuperInsuranceLossStatus; // 超保険化提案（旧「超保険化損」から項目名変更・値/union据え置き）
 }
 
 /** 証券回収ステータス */

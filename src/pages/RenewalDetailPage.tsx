@@ -3,10 +3,11 @@
 // アンケート入力（renewal2〜4）+ 留意事項 + タスク + 対応履歴タイムライン
 // 全幅レイアウト (DESIGN_GUIDE.md 全幅原則準拠)
 // =====================================================
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
+  ChevronRight,
   RefreshCw,
   FileText,
   Map,
@@ -58,6 +59,8 @@ export function RenewalDetailPage() {
     toggleRenewalTaskDone,
     removeRenewalTask,
     currentUserId,
+    currentRole,
+    getRenewalCases,
   } = useAppStore(
     useShallow((s) => ({
       renewalCases: s.renewalCases,
@@ -69,6 +72,8 @@ export function RenewalDetailPage() {
       toggleRenewalTaskDone: s.toggleRenewalTaskDone,
       removeRenewalTask: s.removeRenewalTask,
       currentUserId: s.currentUserId,
+      currentRole: s.currentRole,
+      getRenewalCases: s.getRenewalCases,
     })),
   );
 
@@ -102,6 +107,82 @@ export function RenewalDetailPage() {
       saveRenewalSurvey(id, patch);
     },
     [id, saveRenewalSurvey],
+  );
+
+  // ── T5-04: 横カルーセル（一覧と同じ並び・ロール別フィルタ） ──
+  // 並び順は一覧準拠（getRenewalCases: ロール別フィルタ + maturityDate 昇順）
+  const orderedIds = useMemo(
+    () =>
+      getRenewalCases({ role: currentRole, userId: currentUserId }).map(
+        (c) => c.id,
+      ),
+    [getRenewalCases, currentRole, currentUserId],
+  );
+  const currentIndex = id ? orderedIds.indexOf(id) : -1;
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < orderedIds.length - 1;
+
+  // 移動前自動保存: 各入力は onChange で即時 saveRenewalSurvey 済みのため
+  // 画面遷移時点でワーキング値は確定済み。ここでは遷移のみ行う。
+  // タブ保持: React Router の param 変更では同一コンポーネントが再利用され
+  // useState(tab) が維持されるため、明示的な引き継ぎは不要。
+  const goTo = useCallback(
+    (targetIndex: number) => {
+      if (targetIndex < 0 || targetIndex >= orderedIds.length) return;
+      const targetId = orderedIds[targetIndex];
+      if (!targetId || targetId === id) return;
+      navigate(`/renewals/${targetId}`);
+    },
+    [orderedIds, id, navigate],
+  );
+  const goPrev = useCallback(() => {
+    if (hasPrev) goTo(currentIndex - 1);
+  }, [hasPrev, goTo, currentIndex]);
+  const goNext = useCallback(() => {
+    if (hasNext) goTo(currentIndex + 1);
+  }, [hasNext, goTo, currentIndex]);
+
+  // ← → キー操作（入力要素にフォーカス中は無効）
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const t = ev.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        t?.isContentEditable
+      ) {
+        return;
+      }
+      if (ev.key === "ArrowLeft") {
+        ev.preventDefault();
+        goPrev();
+      } else if (ev.key === "ArrowRight") {
+        ev.preventDefault();
+        goNext();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [goPrev, goNext]);
+
+  // スワイプ（タッチ）
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = useCallback((ev: React.TouchEvent) => {
+    touchStartX.current = ev.touches[0]?.clientX ?? null;
+  }, []);
+  const onTouchEnd = useCallback(
+    (ev: React.TouchEvent) => {
+      if (touchStartX.current == null) return;
+      const endX = ev.changedTouches[0]?.clientX ?? touchStartX.current;
+      const dx = endX - touchStartX.current;
+      touchStartX.current = null;
+      const THRESHOLD = 60;
+      if (dx <= -THRESHOLD) goNext();
+      else if (dx >= THRESHOLD) goPrev();
+    },
+    [goNext, goPrev],
   );
 
   if (!rc) {
@@ -152,7 +233,11 @@ export function RenewalDetailPage() {
   ];
 
   return (
-    <div className="w-full min-h-full">
+    <div
+      className="w-full min-h-full"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* ── ページヘッダー ───────────────────────── */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-start gap-3">
@@ -163,6 +248,32 @@ export function RenewalDetailPage() {
           >
             <ChevronLeft className="w-5 h-5 text-gray-500" />
           </button>
+          {/* ── T5-04: 横カルーセル（前／次・件数） ── */}
+          <div className="mt-0.5 flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={goPrev}
+              disabled={!hasPrev}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="前の案件"
+              title="前の案件 (←)"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-500" />
+            </button>
+            {currentIndex >= 0 && (
+              <span className="text-xs text-gray-500 tabular-nums select-none min-w-[3.5rem] text-center">
+                {currentIndex + 1}/{orderedIds.length}件
+              </span>
+            )}
+            <button
+              onClick={goNext}
+              disabled={!hasNext}
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="次の案件"
+              title="次の案件 (→)"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            </button>
+          </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <RefreshCw className="w-4 h-4 text-blue-500 flex-shrink-0" />
@@ -283,7 +394,11 @@ export function RenewalDetailPage() {
         <div className="flex-1 min-w-0 p-6 space-y-6">
           {/* アンケートタブ */}
           {tab === "consult" && (
-            <ConsultTab rc={rc} onSurveyChange={handleSurveyChange} />
+            <ConsultTab
+              rc={rc}
+              onSurveyChange={handleSurveyChange}
+              users={users}
+            />
           )}
           {tab === "roadmap" && (
             <RoadmapTab rc={rc} onSurveyChange={handleSurveyChange} />

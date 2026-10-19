@@ -2,57 +2,62 @@
 // RenewalListPage — 更新一覧（保険契約 更新対応ワークリスト）
 //
 // 独立ページ (/renewals) として AppShell NAV から直接アクセス。
-// CustomerListPage の「更新一覧」タブは撤去済み。
-// 8列フラットテーブル: 契約者/団体名/担当者/保険会社/満期日/種目/前年保険料/手続き手段
-// 満期日昇順・60日以内強調・行クリックで /renewals/:id
+// §5 T5-02/T5-03:
+//   - 日数は renewalDays util に統一（二重表示禁止）。本日基点=主表示 /
+//     FC日基点=FC日横に併記（buildRenewalRowView で算出・入力不可列）。
+//   - 入力ビュー切替（閲覧/編集）。編集では 手続日/更改保険料/手続き手段/状況 を
+//     行内で直接入力し、行単位 debounce で自動保存（RenewalListRow が担当）。
+// 満期日昇順・60日以内強調・閲覧時は行クリックで /renewals/:id。
 // =====================================================
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { AlertTriangle, RefreshCw, Upload } from "lucide-react";
+import { AlertTriangle, RefreshCw, Upload, Eye, Pencil } from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "../store";
-import {
-  RENEWAL_METHOD_LABEL,
-  RENEWAL_PRODUCT_TYPE_LABEL,
-  RENEWAL_STATUS_LABEL,
-} from "../utils/renewalLabels";
 import { RENEWAL_NEAR_DAYS } from "../utils/filterRenewalPolicies";
-import { differenceInCalendarDays, parseISO } from "date-fns";
-import type { RenewalCase } from "../types";
+import {
+  buildRenewalRowView,
+  type RenewalListViewMode,
+} from "../utils/renewalListView";
+import { RenewalListRow } from "./RenewalListRow";
 
-function daysUntilMaturity(
-  maturityDate: string,
-  today: Date = new Date(),
-): number {
-  return differenceInCalendarDays(parseISO(maturityDate), today);
+/** 当日 yyyy-MM-dd（ローカル） */
+function todayStr(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
 }
 
-function isMaturityNear(
-  maturityDate: string,
-  today: Date = new Date(),
-): boolean {
-  const days = daysUntilMaturity(maturityDate, today);
-  return days <= RENEWAL_NEAR_DAYS;
-}
-
-const STATUS_COLOR: Record<RenewalCase["status"], string> = {
-  not_started: "bg-gray-100 text-gray-600",
-  in_progress: "bg-blue-100 text-blue-700",
-  completed: "bg-green-100 text-green-700",
-};
+const TH_CLS = "text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap";
 
 export function RenewalListPage() {
   const navigate = useNavigate();
-  const { renewalCases, users, currentRole, currentUserId, getRenewalCases } =
-    useAppStore(
-      useShallow((s) => ({
-        renewalCases: s.renewalCases,
-        users: s.users,
-        currentRole: s.currentRole,
-        currentUserId: s.currentUserId,
-        getRenewalCases: s.getRenewalCases,
-      })),
-    );
+  const {
+    renewalCases,
+    users,
+    currentRole,
+    currentUserId,
+    getRenewalCases,
+    saveRenewalSurvey,
+    changeRenewalStatus,
+    addToast,
+  } = useAppStore(
+    useShallow((s) => ({
+      renewalCases: s.renewalCases,
+      users: s.users,
+      currentRole: s.currentRole,
+      currentUserId: s.currentUserId,
+      getRenewalCases: s.getRenewalCases,
+      saveRenewalSurvey: s.saveRenewalSurvey,
+      changeRenewalStatus: s.changeRenewalStatus,
+      addToast: s.addToast,
+    })),
+  );
+
+  const [mode, setMode] = useState<RenewalListViewMode>("view");
+
+  const today = todayStr();
 
   // ロール別フィルタ・maturityDate 昇順
   const cases = useMemo(
@@ -61,13 +66,22 @@ export function RenewalListPage() {
     [renewalCases, currentRole, currentUserId],
   );
 
-  const nearCount = useMemo(
-    () => cases.filter((rc) => isMaturityNear(rc.maturityDate)).length,
-    [cases],
+  // 行表示モデル（算出列）を一括構築
+  const rows = useMemo(
+    () => cases.map((rc) => ({ rc, view: buildRenewalRowView(rc, today) })),
+    [cases, today],
   );
 
-  const getUserName = (userId: string) =>
+  const nearCount = useMemo(
+    () => rows.filter((r) => r.view.near).length,
+    [rows],
+  );
+
+  const userName = (userId: string) =>
     users.find((u) => u.id === userId)?.name ?? "—";
+
+  const onError = (message: string) =>
+    addToast({ type: "error", message });
 
   return (
     <div className="w-full px-6 py-5">
@@ -88,14 +102,43 @@ export function RenewalListPage() {
             )}
           </p>
         </div>
-        {/* M3: インポート導線 */}
-        <Link
-          to="/renewals/import"
-          className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          インポート
-        </Link>
+        <div className="flex items-center gap-2">
+          {/* 入力ビュー切替（閲覧/編集） */}
+          <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setMode("view")}
+              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
+                mode === "view"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Eye className="w-4 h-4" />
+              閲覧
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              className={`flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors ${
+                mode === "edit"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <Pencil className="w-4 h-4" />
+              編集
+            </button>
+          </div>
+          {/* M3: インポート導線 */}
+          <Link
+            to="/renewals/import"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            インポート
+          </Link>
+        </div>
       </div>
 
       {/* 凡例 */}
@@ -109,6 +152,11 @@ export function RenewalListPage() {
             <span className="inline-block w-3 h-3 rounded-full bg-red-100 border border-red-300" />
             期限切れ
           </span>
+          {mode === "edit" && (
+            <span className="text-blue-600">
+              編集モード: 変更は自動保存されます
+            </span>
+          )}
         </div>
       )}
 
@@ -122,129 +170,42 @@ export function RenewalListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="text-left px-4 py-3 text-gray-600 font-medium whitespace-nowrap">
+                <th className={`${TH_CLS} sticky left-0 z-20 bg-gray-50 px-4`}>
                   契約者
                 </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  団体名
-                </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  担当者
-                </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  保険会社
-                </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  満期日
-                </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  種目
-                </th>
+                <th className={TH_CLS}>団体名</th>
+                <th className={TH_CLS}>担当者</th>
+                <th className={TH_CLS}>保険会社</th>
+                <th className={TH_CLS}>満期日 / 残日数</th>
+                <th className={TH_CLS}>FC日 / FC基点</th>
+                <th className={TH_CLS}>種目</th>
                 <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
                   前年保険料
                 </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  手続き手段
+                <th className={TH_CLS}>手続日</th>
+                <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
+                  更改保険料
                 </th>
-                <th className="text-left px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
-                  状況
-                </th>
+                <th className={TH_CLS}>手続き手段</th>
+                <th className={TH_CLS}>状況</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {cases.map((rc) => {
-                const days = daysUntilMaturity(rc.maturityDate);
-                const near = isMaturityNear(rc.maturityDate);
-                const expired = days <= 0;
-
-                return (
-                  <tr
-                    key={rc.id}
-                    className={`hover:bg-blue-50/50 cursor-pointer transition-colors ${
-                      expired ? "bg-red-50/30" : near ? "bg-orange-50/30" : ""
-                    }`}
-                    onClick={() => navigate(`/renewals/${rc.id}`)}
-                  >
-                    {/* 契約者 */}
-                    <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                      {rc.contractorName || (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    {/* 団体名 */}
-                    <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                      {rc.groupName ? (
-                        <span>{rc.groupName}</span>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    {/* 担当者 */}
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
-                      {getUserName(rc.ownerUserId)}
-                    </td>
-                    {/* 保険会社 */}
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
-                      {rc.insurer}
-                    </td>
-                    {/* 満期日 + 残日数 */}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span
-                        className={
-                          expired
-                            ? "font-semibold text-red-600"
-                            : near
-                              ? "font-semibold text-orange-600"
-                              : "text-gray-700"
-                        }
-                      >
-                        {rc.maturityDate}
-                      </span>
-                      <span className="ml-2">
-                        {expired ? (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                            期限切れ
-                          </span>
-                        ) : near ? (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700">
-                            <AlertTriangle className="w-2.5 h-2.5" />
-                            {days}日後
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400">
-                            {days}日後
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    {/* 種目 */}
-                    <td className="px-3 py-3 text-gray-700 whitespace-nowrap">
-                      {RENEWAL_PRODUCT_TYPE_LABEL[rc.productType]}
-                    </td>
-                    {/* 前年保険料 */}
-                    <td className="px-3 py-3 text-right text-gray-700 whitespace-nowrap tabular-nums">
-                      {rc.prevYearPremium != null ? (
-                        `¥${rc.prevYearPremium.toLocaleString()}`
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </td>
-                    {/* 手続き手段 */}
-                    <td className="px-3 py-3 text-gray-600 whitespace-nowrap">
-                      {RENEWAL_METHOD_LABEL[rc.method]}
-                    </td>
-                    {/* 状況バッジ */}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[rc.status]}`}
-                      >
-                        {RENEWAL_STATUS_LABEL[rc.status]}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map(({ rc, view }) => (
+                <RenewalListRow
+                  key={rc.id}
+                  rc={rc}
+                  mode={mode}
+                  view={view}
+                  ownerName={userName(rc.ownerUserId)}
+                  onNavigate={(id) => navigate(`/renewals/${id}`)}
+                  saveSurvey={(id, patch) =>
+                    saveRenewalSurvey(id, { consult: patch })
+                  }
+                  changeStatus={changeRenewalStatus}
+                  onError={onError}
+                />
+              ))}
             </tbody>
           </table>
         </div>

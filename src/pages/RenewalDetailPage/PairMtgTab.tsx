@@ -65,7 +65,7 @@ export function PairMtgTab({ rc, onSurveyChange }: PairMtgTabProps) {
 
           {/* 超保険化損 */}
           <div>
-            <FieldLabel>超保険化損</FieldLabel>
+            <FieldLabel>超保険化提案</FieldLabel>
             <select
               value={pm.superInsuranceLoss ?? ""}
               onChange={(e) =>

@@ -120,6 +120,14 @@ export const createRenewalSlice: StateCreator<
           patch.rider !== undefined
             ? { ...rc.survey.rider, ...patch.rider }
             : rc.survey.rider,
+        pairMtg:
+          patch.pairMtg !== undefined
+            ? { ...rc.survey.pairMtg, ...patch.pairMtg }
+            : rc.survey.pairMtg,
+        policyCollect:
+          patch.policyCollect !== undefined
+            ? { ...rc.survey.policyCollect, ...patch.policyCollect }
+            : rc.survey.policyCollect,
         updatedAt: now,
       };
 
