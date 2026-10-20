@@ -50,6 +50,7 @@ export type RenewalContactResult =
 export interface RenewalContactRecord {
   id: string;
   date: string; // YYYY-MM-DD
+  time?: string; // HH:mm（省略可・後方互換）
   result: RenewalContactResult;
   memo?: string;
 }

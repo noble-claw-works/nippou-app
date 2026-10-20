@@ -119,6 +119,9 @@ function ContactReadView({ contacts }: { contacts: RenewalContactRecord[] }) {
           >
             <span className="text-gray-500 whitespace-nowrap w-28 shrink-0">
               {c.date ?? "—"}
+              {c.time && (
+                <span className="ml-1 text-gray-400">{c.time}</span>
+              )}
             </span>
             <span className="text-gray-600 whitespace-nowrap">{resultLabel}</span>
             {c.memo && (

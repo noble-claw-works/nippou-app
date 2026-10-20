@@ -57,6 +57,15 @@ export function ContactEditor({
                 className="sm:w-40 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
                 aria-label="接触日"
               />
+              <input
+                type="time"
+                value={c.time ?? ""}
+                onChange={(e) =>
+                  update(c.id, { time: e.target.value || undefined })
+                }
+                className="sm:w-32 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                aria-label="接触時刻"
+              />
               <select
                 value={c.result}
                 onChange={(e) =>
