@@ -45,10 +45,11 @@ export function TaskListPreview({
       className="bg-gray-50 border-t border-gray-100"
       onClick={(e) => e.stopPropagation()}
     >
+      {/* ④ 商品名カラム開始位置に垂緯を揃える: 1列目(pl-8=32px)分シフトして2列目開始位置に合わせる */}
       {previewPending.map((t) => (
         <div
           key={t.id}
-          className="flex items-center gap-2 px-8 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+          className="flex items-center gap-2 pl-[148px] pr-4 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
         >
           <button
             type="button"
@@ -69,7 +70,7 @@ export function TaskListPreview({
         </div>
       ))}
       {pending.length > 5 && (
-        <div className="px-8 py-1 text-xs text-gray-400">
+        <div className="pl-[148px] pr-4 py-1 text-xs text-gray-400">
           他 {pending.length - 5} 件の未完了タスク
         </div>
       )}
@@ -78,7 +79,7 @@ export function TaskListPreview({
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
-            className="flex items-center gap-1 px-8 py-1.5 text-xs text-gray-500 hover:text-gray-700 w-full text-left border-t border-gray-100"
+            className="flex items-center gap-1 pl-[148px] pr-4 py-1.5 text-xs text-gray-500 hover:text-gray-700 w-full text-left border-t border-gray-100"
           >
             <ChevronDown
               className={`w-3 h-3 transition-transform ${showDone ? "rotate-180" : ""}`}
@@ -89,7 +90,7 @@ export function TaskListPreview({
             done.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center gap-2 px-8 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+                className="flex items-center gap-2 pl-[148px] pr-4 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
               >
                 <button
                   type="button"
@@ -117,7 +118,7 @@ export function TaskListPreview({
             ))}
         </>
       )}
-      <div className="px-8 py-1.5 border-t border-gray-100">
+      <div className="pl-[148px] pr-4 py-1.5 border-t border-gray-100">
         <button
           type="button"
           onClick={onNavigate}

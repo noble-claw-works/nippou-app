@@ -1,4 +1,6 @@
-// OpportunityDetailPage.tsx — 商談案件詳細
+// OpportunityDetailPage.tsx — 商談案件詳細（3列構造: 左本文 / 中タスク / 右活動履歴）
+// ① 3列構造化: 左本文(flex-1) + 中タスク(aside w-72) + 右活動履歴(aside w-80)
+// ④ 概要/提案商品を統合: タブは「概要」のみ（提案商品を概要タブ内に移動）、タスクタブ廃止
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ChevronLeft, Trash2 } from "lucide-react";
@@ -15,7 +17,8 @@ import { ProposalsTab } from "./OpportunityDetailPage/ProposalsTab";
 import { IssuedPoliciesTab } from "./OpportunityDetailPage/IssuedPoliciesTab";
 import { ActivityTimeline } from "./OpportunityDetailPage/ActivityTimeline";
 
-type Tab = "overview" | "products" | "tasks" | "proposals" | "issued_policies";
+// ④: タスクタブを外したタブ定義
+type Tab = "overview" | "proposals" | "issued_policies";
 
 export function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -128,22 +131,12 @@ export function OpportunityDetailPage() {
   const doneTaskCount = oppTasks.filter((t) => t.done).length;
   const proposals = opp.proposals ?? [];
 
+  // ④: タブ定義（タスク・提案商品タブを除外）
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "📊 概要" },
   ];
-  if (opp.proposalProducts.length > 0)
-    TABS.push({
-      key: "products",
-      label: `📄 提案商品 (${opp.proposalProducts.length})`,
-    });
-  // タスクは常時表示（④-a 世帯同様のタブ化）
-  TABS.push({
-    key: "tasks",
-    label: `☑️ タスク (${doneTaskCount}/${oppTasks.length})`,
-  });
   if (proposals.length > 0)
     TABS.push({ key: "proposals", label: `📝 提案履歴 (${proposals.length})` });
-  // 保険商品セクション: 常時表示（④-c 世帯同様）
   TABS.push({
     key: "issued_policies",
     label: `📜 保険商品 (${issuedPolicies.length})`,
@@ -152,6 +145,7 @@ export function OpportunityDetailPage() {
 
   return (
     <div className="flex h-full min-h-0">
+      {/* ─── 左カラム: 本文 ─── */}
       <div className="flex-1 min-w-0 overflow-y-auto">
         <div className="p-4 max-w-4xl mx-auto">
           <button
@@ -228,7 +222,7 @@ export function OpportunityDetailPage() {
             )}
           </div>
 
-          {/* Tabs */}
+          {/* ④: タブ（タスク・提案商品を除外した縮小版） */}
           <div className="border-b border-gray-200 mb-4">
             <div className="flex gap-0 overflow-x-auto">
               {TABS.map((t) => (
@@ -248,40 +242,28 @@ export function OpportunityDetailPage() {
           </div>
 
           {activeTab === "overview" && (
-            <OverviewTab
-              opp={opp}
-              editingFields={editingFields}
-              fieldDraft={fieldDraft}
-              onToggleEdit={startEditFields}
-              onSaveFields={handleSaveFields}
-              onFieldDraftChange={setFieldDraft}
-              onUpdateOpportunity={(oppId, patch) =>
-                updateOpportunity(oppId, patch)
-              }
-            />
-          )}
-          {activeTab === "products" && (
-            <ProductsTab
-              opp={opp}
-              persons={persons}
-              onAdd={() => setEditProduct(null)}
-              onEdit={(pp) => setEditProduct(pp)}
-              onDelete={handleDeleteProduct}
-            />
-          )}
-          {activeTab === "tasks" && (
-            <TasksTab
-              opp={opp}
-              onToggle={(taskId, done) => toggleOppTaskDone(id!, taskId, done)}
-              onAdd={(task) =>
-                addOppTask(
-                  id!,
-                  task as Omit<Task, "id" | "createdAt" | "updatedAt">,
-                )
-              }
-              onUpdate={(taskId, patch) => updateOppTask(id!, taskId, patch)}
-              onRemove={(taskId) => removeOppTask(id!, taskId)}
-            />
+            <div className="space-y-4">
+              {/* 概要（基本情報） */}
+              <OverviewTab
+                opp={opp}
+                editingFields={editingFields}
+                fieldDraft={fieldDraft}
+                onToggleEdit={startEditFields}
+                onSaveFields={handleSaveFields}
+                onFieldDraftChange={setFieldDraft}
+                onUpdateOpportunity={(oppId, patch) =>
+                  updateOpportunity(oppId, patch)
+                }
+              />
+              {/* ④: 提案商品を概要タブ下部に統合表示 */}
+              <ProductsTab
+                opp={opp}
+                persons={persons}
+                onAdd={() => setEditProduct(null)}
+                onEdit={(pp) => setEditProduct(pp)}
+                onDelete={handleDeleteProduct}
+              />
+            </div>
           )}
           {activeTab === "proposals" && (
             <ProposalsTab
@@ -320,7 +302,23 @@ export function OpportunityDetailPage() {
             />
           )}
 
-          {/* Mobile activity timeline */}
+          {/* モバイル: タスク (lg未満) */}
+          <div className="mt-4 lg:hidden">
+            <TasksTab
+              opp={opp}
+              onToggle={(taskId, done) => toggleOppTaskDone(id!, taskId, done)}
+              onAdd={(task) =>
+                addOppTask(
+                  id!,
+                  task as Omit<Task, "id" | "createdAt" | "updatedAt">,
+                )
+              }
+              onUpdate={(taskId, patch) => updateOppTask(id!, taskId, patch)}
+              onRemove={(taskId) => removeOppTask(id!, taskId)}
+            />
+          </div>
+
+          {/* モバイル: 活動履歴 (lg未満) */}
           {relatedBlocks.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-4 mt-4 lg:hidden">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">
@@ -332,7 +330,30 @@ export function OpportunityDetailPage() {
         </div>
       </div>
 
-      {/* Right sidebar */}
+      {/* ─── ① 中央カラム: タスク (lg以上) ─── */}
+      <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-700">
+            ☑️ タスク ({doneTaskCount}/{oppTasks.length})
+          </h2>
+        </div>
+        <div className="flex-1 px-4 py-3">
+          <TasksTab
+            opp={opp}
+            onToggle={(taskId, done) => toggleOppTaskDone(id!, taskId, done)}
+            onAdd={(task) =>
+              addOppTask(
+                id!,
+                task as Omit<Task, "id" | "createdAt" | "updatedAt">,
+              )
+            }
+            onUpdate={(taskId, patch) => updateOppTask(id!, taskId, patch)}
+            onRemove={(taskId) => removeOppTask(id!, taskId)}
+          />
+        </div>
+      </aside>
+
+      {/* ─── ① 右カラム: 活動履歴 (lg以上) ─── */}
       <aside className="hidden lg:flex lg:flex-col w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0">
         <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-700">

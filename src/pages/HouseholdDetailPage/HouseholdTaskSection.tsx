@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Plus, Edit } from "lucide-react";
-import type { Customer, Task } from "../../types";
+import type { Customer, Task, User } from "../../types";
 
 interface HouseholdTaskSectionProps {
   customer: Customer;
+  /** ② 担当者名解決用ユーザーリスト（省略時は世帯担当者名をフォールバック表示） */
+  users?: User[];
   onAddTask: (
     customerId: string,
     task: Omit<Task, "id" | "createdAt" | "updatedAt">,
@@ -19,11 +21,26 @@ interface HouseholdTaskSectionProps {
 
 export function HouseholdTaskSection({
   customer,
+  users,
   onAddTask,
   onUpdateTask,
   onRemoveTask,
   onToggleDone,
 }: HouseholdTaskSectionProps) {
+  // ② 担当者名解決:
+  //   1. task.ownerId があればユーザーリストから名前解決
+  //   2. ownerId 解決不可 or 未設定の場合は世帯の primaryUserId で解決
+  //   3. それも不可なら「世帯担当者」と表示
+  function resolveAssigneeName(task: Task): string {
+    const uid = task.ownerId ?? customer.primaryUserId;
+    if (!uid) return "世帯担当者";
+    if (users) {
+      const found = users.find((u) => u.id === uid);
+      if (found) return found.name;
+    }
+    // users 未渡し or 解決失敗 → 世帯担当者 (primaryUserId) を返す
+    return uid === customer.primaryUserId ? "世帯担当者" : uid;
+  }
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<{
     title: string;
@@ -227,6 +244,10 @@ export function HouseholdTaskSection({
                       期限: {task.dueDate}
                     </span>
                   )}
+                  {/* ② 担当者名表示（task.ownerId → users → 世帯担当者 primaryUserId の順で解決） */}
+                  <span className="ml-1.5 text-xs text-indigo-500">
+                    👤 {resolveAssigneeName(task)}
+                  </span>
                   {task.done && task.doneDate && (
                     <span className="ml-1.5 text-xs text-green-600">
                       完了: {task.doneDate}

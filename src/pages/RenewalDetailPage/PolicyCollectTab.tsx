@@ -1,4 +1,5 @@
 // PolicyCollectTab — 証券回収（編集→保存ボタン式）
+// 項目9: 編集モード時は select → ラジオボタン群に変更
 import { useState } from "react";
 import type { RenewalCase, RenewalSurvey } from "../../types";
 import type { RenewalPolicyCollectSurvey } from "../../types/renewal";
@@ -30,6 +31,58 @@ function SectionCard({
       <h3 className="text-sm font-semibold text-gray-800 mb-4">{title}</h3>
       {children}
     </div>
+  );
+}
+
+/** 編集モード: ラジオボタン群 */
+function RadioGroup({
+  name,
+  value,
+  onChange,
+}: {
+  name: string;
+  value: string | undefined;
+  onChange: (val: string | undefined) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-1">
+      {/* 空選択（—） */}
+      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+        <input
+          type="radio"
+          name={name}
+          value=""
+          checked={!value}
+          onChange={() => onChange(undefined)}
+          className="w-3.5 h-3.5 accent-blue-600"
+        />
+        <span className="text-sm text-gray-500">—</span>
+      </label>
+      {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
+        <label
+          key={opt.value}
+          className="flex items-center gap-1.5 cursor-pointer select-none"
+        >
+          <input
+            type="radio"
+            name={name}
+            value={opt.value}
+            checked={value === opt.value}
+            onChange={() => onChange(opt.value)}
+            className="w-3.5 h-3.5 accent-blue-600"
+          />
+          <span className="text-sm text-gray-700">{opt.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** 表示モード: 選択済みラベルのテキスト表示（未選択は—） */
+function DisplayValue({ value }: { value: string | undefined }) {
+  const opt = RENEWAL_POLICY_COLLECT_OPTIONS.find((o) => o.value === value);
+  return (
+    <p className="text-sm text-gray-700 mt-1">{opt ? opt.label : "—"}</p>
   );
 }
 
@@ -95,66 +148,48 @@ export function PolicyCollectTab({
       </div>
 
       <SectionCard title="証券回収">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* 自動車 */}
           <div>
             <FieldLabel>自動車</FieldLabel>
-            <select
-              value={display.auto ?? ""}
-              onChange={(e) =>
-                editing && handleChange("auto", e.target.value || undefined)
-              }
-              disabled={!editing}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
-            >
-              <option value="">—</option>
-              {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            {editing ? (
+              <RadioGroup
+                name="pc-auto"
+                value={display.auto}
+                onChange={(val) => handleChange("auto", val)}
+              />
+            ) : (
+              <DisplayValue value={display.auto} />
+            )}
           </div>
 
           {/* 火災 */}
           <div>
             <FieldLabel>火災</FieldLabel>
-            <select
-              value={display.fire ?? ""}
-              onChange={(e) =>
-                editing && handleChange("fire", e.target.value || undefined)
-              }
-              disabled={!editing}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
-            >
-              <option value="">—</option>
-              {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            {editing ? (
+              <RadioGroup
+                name="pc-fire"
+                value={display.fire}
+                onChange={(val) => handleChange("fire", val)}
+              />
+            ) : (
+              <DisplayValue value={display.fire} />
+            )}
           </div>
 
           {/* その他 */}
           <div>
             <FieldLabel>その他</FieldLabel>
-            <select
-              value={display.other ?? ""}
-              onChange={(e) =>
-                editing && handleChange("other", e.target.value || undefined)
-              }
-              disabled={!editing}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
-            >
-              <option value="">—</option>
-              {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            {/* その他: 自由入力（T5-06） */}
+            {editing ? (
+              <RadioGroup
+                name="pc-other"
+                value={display.other}
+                onChange={(val) => handleChange("other", val)}
+              />
+            ) : (
+              <DisplayValue value={display.other} />
+            )}
+            {/* その他: 自由入力（T5-06）— 編集/表示両モードで維持 */}
             <input
               type="text"
               value={display.otherFree ?? ""}
@@ -170,21 +205,15 @@ export function PolicyCollectTab({
           {/* 生保 */}
           <div>
             <FieldLabel>生保</FieldLabel>
-            <select
-              value={display.life ?? ""}
-              onChange={(e) =>
-                editing && handleChange("life", e.target.value || undefined)
-              }
-              disabled={!editing}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
-            >
-              <option value="">—</option>
-              {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            {editing ? (
+              <RadioGroup
+                name="pc-life"
+                value={display.life}
+                onChange={(val) => handleChange("life", val)}
+              />
+            ) : (
+              <DisplayValue value={display.life} />
+            )}
           </div>
         </div>
       </SectionCard>

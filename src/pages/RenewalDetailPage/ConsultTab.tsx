@@ -11,7 +11,6 @@ import type { RenewalContactRecord, RenewalConsultSurvey } from "../../types/ren
 import {
   RENEWAL_METHOD_OPTIONS,
   RENEWAL_FLYER_OPTIONS,
-  RENEWAL_CONTACT_RESULT_LABEL,
 } from "../../utils/renewalLabels";
 import { ContactEditor } from "./ContactEditor";
 import {
@@ -20,10 +19,7 @@ import {
   daysAtProcedure,
   formatDayCount,
 } from "../../utils/renewalDays";
-import {
-  deriveFirstContactDate,
-  sortContactsByDate,
-} from "../../utils/renewalContacts";
+import { deriveFirstContactDate } from "../../utils/renewalContacts";
 
 interface ConsultTabProps {
   rc: RenewalCase;
@@ -101,7 +97,7 @@ function ComputedDays({
   );
 }
 
-export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: ConsultTabProps) {
+export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: ConsultTabProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const c = rc.survey.consult ?? {};
   const base = today ?? todayStr();
   const contacts = c.contacts ?? [];
@@ -153,14 +149,7 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
   const daysFcToMaturity = daysFromFirstContact(rc.maturityDate, derivedFc);
   const daysProc = daysAtProcedure(displayC.procedureDate, rc.maturityDate);
 
-  // ── 接触記録（時系列昇順・参照表示） ──────
-  const contactsAsc = sortContactsByDate(contacts);
-  const legacyContactLogs = rc.activityLog
-    .filter((l) => l.kind === "contact")
-    .slice()
-    .sort((a, b) => a.at.localeCompare(b.at));
-  const userName = (userId: string) =>
-    users?.find((u) => u.id === userId)?.name ?? userId;
+    // ⑦「接触記録（時系列）」参照リストは ContactEditor と重複するため削除済み
 
   return (
     <div className="space-y-4">
@@ -188,52 +177,7 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
           </div>
         </div>
 
-        {/* 接触記録（時系列・参照表示） */}
-        <div className="mt-4">
-          <div className="text-[11px] font-medium text-gray-500 mb-1.5">
-            接触記録（時系列）
-          </div>
-          {contactsAsc.length === 0 ? (
-            <p className="text-xs text-gray-400">
-              接触記録はまだありません
-            </p>
-          ) : (
-            <ul className="space-y-1.5">
-              {contactsAsc.map((ct) => (
-                <li
-                  key={ct.id}
-                  className="flex items-start gap-2 text-xs text-gray-600"
-                >
-                  <span className="whitespace-nowrap tabular-nums text-gray-400">
-                    {ct.date || "日付未設定"}
-                  </span>
-                  <span className="whitespace-nowrap font-medium text-gray-700">
-                    {RENEWAL_CONTACT_RESULT_LABEL[ct.result]}
-                  </span>
-                  {ct.memo && <span className="flex-1">{ct.memo}</span>}
-                </li>
-              ))}
-            </ul>
-          )}
-          {legacyContactLogs.length > 0 && (
-            <ul className="space-y-1.5 mt-2 pt-2 border-t border-gray-100">
-              {legacyContactLogs.map((log) => (
-                <li
-                  key={log.id}
-                  className="flex items-start gap-2 text-xs text-gray-400"
-                >
-                  <span className="whitespace-nowrap tabular-nums">
-                    {log.at.slice(0, 16).replace("T", " ")}
-                  </span>
-                  <span className="flex-1">{log.body}</span>
-                  <span className="whitespace-nowrap">
-                    {userName(log.byUserId)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        {/* ⑦ 「接触記録（時系列）」参照リストは ContactEditor（上段）と重複するため削除 */}
       </SectionCard>
 
       {/* ───────────── エリアB: コンサル内容（編集→保存ボタン式） ───────────── */}

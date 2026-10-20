@@ -11,7 +11,7 @@
 // =====================================================
 import { useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { AlertTriangle, RefreshCw, Upload, Eye, Pencil } from "lucide-react";
+import { AlertTriangle, RefreshCw, Upload, Eye, Pencil, Filter, X } from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "../store";
 import { RENEWAL_NEAR_DAYS } from "../utils/filterRenewalPolicies";
@@ -19,6 +19,11 @@ import {
   buildRenewalRowView,
   type RenewalListViewMode,
 } from "../utils/renewalListView";
+import {
+  RENEWAL_STATUS_OPTIONS,
+  RENEWAL_PRODUCT_TYPE_OPTIONS,
+} from "../utils/renewalLabels";
+import type { RenewalStatus, RenewalProductType } from "../types/renewal";
 import { RenewalListRow } from "./RenewalListRow";
 
 /** 当日 yyyy-MM-dd（ローカル） */
@@ -57,6 +62,26 @@ export function RenewalListPage() {
 
   const [mode, setMode] = useState<RenewalListViewMode>("view");
 
+  // ⑦ フィルター状態
+  const [filterStatus, setFilterStatus] = useState<RenewalStatus | "">("");
+  const [filterProduct, setFilterProduct] = useState<RenewalProductType | "">("");
+  const [filterOwner, setFilterOwner] = useState("");
+  const [filterNear, setFilterNear] = useState<"all" | "near" | "expired">("all");
+
+  // フィルター有効判定
+  const hasFilter =
+    filterStatus !== "" ||
+    filterProduct !== "" ||
+    filterOwner !== "" ||
+    filterNear !== "all";
+
+  const resetFilter = () => {
+    setFilterStatus("");
+    setFilterProduct("");
+    setFilterOwner("");
+    setFilterNear("all");
+  };
+
   const today = todayStr();
 
   // ロール別フィルタ・maturityDate 昇順
@@ -67,14 +92,26 @@ export function RenewalListPage() {
   );
 
   // 行表示モデル（算出列）を一括構築
-  const rows = useMemo(
+  const allRows = useMemo(
     () => cases.map((rc) => ({ rc, view: buildRenewalRowView(rc, today) })),
     [cases, today],
   );
 
+  // ⑦ フィルター適用
+  const rows = useMemo(() => {
+    return allRows.filter(({ rc, view }) => {
+      if (filterStatus && rc.status !== filterStatus) return false;
+      if (filterProduct && rc.productType !== filterProduct) return false;
+      if (filterOwner && rc.ownerUserId !== filterOwner) return false;
+      if (filterNear === "near" && !view.near) return false;
+      if (filterNear === "expired" && !view.expired) return false;
+      return true;
+    });
+  }, [allRows, filterStatus, filterProduct, filterOwner, filterNear]);
+
   const nearCount = useMemo(
-    () => rows.filter((r) => r.view.near).length,
-    [rows],
+    () => allRows.filter((r) => r.view.near).length,
+    [allRows],
   );
 
   const userName = (userId: string) =>
@@ -140,6 +177,90 @@ export function RenewalListPage() {
           </Link>
         </div>
       </div>
+
+      {/* ⑦ フィルターバー */}
+      {cases.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-3 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Filter className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-xs font-medium text-gray-600">絞り込み</span>
+            {hasFilter && (
+              <button
+                type="button"
+                onClick={resetFilter}
+                className="ml-auto flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-3 h-3" />
+                リセット
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* 期間トグル */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+              {([
+                ["all", "全て"],
+                ["near", `${RENEWAL_NEAR_DAYS}日以内`],
+                ["expired", "期限切れ"],
+              ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setFilterNear(val)}
+                  className={`px-2.5 py-1.5 font-medium transition-colors ${
+                    filterNear === val
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* 状況 */}
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as RenewalStatus | "")}
+              className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              <option value="">状況: 全て</option>
+              {RENEWAL_STATUS_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+
+            {/* 種目 */}
+            <select
+              value={filterProduct}
+              onChange={(e) => setFilterProduct(e.target.value as RenewalProductType | "")}
+              className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              <option value="">種目: 全て</option>
+              {RENEWAL_PRODUCT_TYPE_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+
+            {/* 担当者 */}
+            <select
+              value={filterOwner}
+              onChange={(e) => setFilterOwner(e.target.value)}
+              className="px-2.5 py-1.5 text-xs border border-gray-200 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            >
+              <option value="">担当者: 全て</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+          {hasFilter && (
+            <div className="mt-2 text-[11px] text-gray-400">
+              表示: {rows.length} / {allRows.length} 件
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 凡例 */}
       {cases.length > 0 && (

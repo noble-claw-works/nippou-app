@@ -174,6 +174,7 @@ export function HouseholdDetailPage() {
           <div className="lg:hidden">
             <HouseholdTaskSection
               customer={customer}
+              users={users}
               onAddTask={addHouseholdTask}
               onUpdateTask={updateHouseholdTask}
               onRemoveTask={removeHouseholdTask}
@@ -220,13 +221,55 @@ export function HouseholdDetailPage() {
           </h2>
         </div>
         <div className="flex-1 px-4 py-3">
+          {/* ⑤ 世帯タスク＋商談タスクを同列に表示 */}
           <HouseholdTaskSection
             customer={customer}
+            users={users}
             onAddTask={addHouseholdTask}
             onUpdateTask={updateHouseholdTask}
             onRemoveTask={removeHouseholdTask}
             onToggleDone={toggleHouseholdTaskDone}
           />
+          {/* ⑤ 商談タスクセクション（商談があってタスクがある場合のみ表示） */}
+          {householdOpportunities.some(
+            (o) => (o.tasks ?? []).length > 0,
+          ) && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="text-xs font-semibold text-gray-500 mb-2">
+                📋 商談タスク
+              </div>
+              {householdOpportunities
+                .filter((o) => (o.tasks ?? []).length > 0)
+                .map((o) => (
+                  <div key={o.id} className="mb-3">
+                    <div className="text-[11px] font-medium text-gray-400 mb-1 truncate">
+                      {o.title}
+                    </div>
+                    {(o.tasks ?? []).map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-1.5 text-xs py-1 pl-2 border-l-2 border-gray-100"
+                      >
+                        <span
+                          className={`flex-1 truncate ${
+                            t.done
+                              ? "line-through text-gray-300"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {t.title}
+                        </span>
+                        {t.dueDate && (
+                          <span className="text-gray-400 whitespace-nowrap">
+                            {t.dueDate}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
       </aside>
 

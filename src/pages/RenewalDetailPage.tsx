@@ -37,7 +37,7 @@ import { TasksSection } from "./RenewalDetailPage/TasksSection";
 import { RenewalTimeline } from "./RenewalDetailPage/RenewalTimeline";
 
 type Tab =
-  "consult" | "roadmap" | "rider" | "pairmtg" | "policycollect" | "tasks";
+  "consult" | "roadmap" | "rider" | "pairmtg" | "policycollect";
 
 const STATUS_COLOR: Record<RenewalCase["status"], string> = {
   not_started: "bg-gray-100 text-gray-700",
@@ -235,11 +235,6 @@ export function RenewalDetailPage() {
       label: "証券回収",
       icon: <FolderCheck className="w-4 h-4" />,
     },
-    {
-      key: "tasks",
-      label: "タスク",
-      icon: <CheckSquare className="w-4 h-4" />,
-    },
   ];
 
   return (
@@ -398,10 +393,11 @@ export function RenewalDetailPage() {
         </nav>
       </div>
 
-      {/* ── メインコンテンツ + 右サイドバー ─────── */}
+      {/* ── メインコンテンツ 3列レイアウト ─────── */}
       <div className="flex min-h-[calc(100vh-180px)]">
-        {/* 左: アンケート + 留意事項 + タスク */}
-        <div className="flex-1 min-w-0 p-6 space-y-6">
+
+        {/* ─── 左本文カラム ─── */}
+        <div className="flex-1 min-w-0 p-6 space-y-6 overflow-y-auto">
           {/* アンケートタブ */}
           {tab === "consult" && (
             <ConsultTab
@@ -425,38 +421,75 @@ export function RenewalDetailPage() {
           )}
 
           {/* 留意事項（常時表示） */}
-          {id &&
-            (tab === "consult" ||
-              tab === "roadmap" ||
-              tab === "rider" ||
-              tab === "pairmtg" ||
-              tab === "policycollect") && (
-              <NotesSection
-                rc={rc}
-                onAddNote={(body) => addRenewalNote(id, body, currentUserId)}
-              />
-            )}
-
-          {/* タスクタブ */}
-          {tab === "tasks" && id && (
-            <TasksSection
+          {id && (
+            <NotesSection
               rc={rc}
-              onAddTask={(task) => addRenewalTask(id, task)}
-              onToggleDone={(taskId, done) =>
-                toggleRenewalTaskDone(id, taskId, done)
-              }
-              onRemoveTask={(taskId) => removeRenewalTask(id, taskId)}
+              onAddNote={(body) => addRenewalNote(id, body, currentUserId)}
             />
           )}
+
+          {/* モバイル: タスク (lg未満) */}
+          {id && (
+            <div className="lg:hidden">
+              <TasksSection
+                rc={rc}
+                onAddTask={(task) => addRenewalTask(id, task)}
+                onToggleDone={(taskId, done) =>
+                  toggleRenewalTaskDone(id, taskId, done)
+                }
+                onRemoveTask={(taskId) => removeRenewalTask(id, taskId)}
+              />
+            </div>
+          )}
+
+          {/* モバイル: 対応履歴 (lg未満) */}
+          <aside className="lg:hidden border border-gray-200 bg-gray-50/50 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              対応履歴
+            </h3>
+            <RenewalTimeline logs={rc.activityLog} users={users} />
+          </aside>
         </div>
 
-        {/* 右: 対応履歴タイムライン */}
-        <aside className="hidden lg:block w-72 flex-shrink-0 border-l border-gray-200 bg-gray-50/50 p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            対応履歴
-          </h3>
-          <RenewalTimeline logs={rc.activityLog} users={users} />
+        {/* ─── 中央タスク列 (lg以上) ─── */}
+        <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0">
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-blue-500" />
+              タスク
+              {(rc.tasks ?? []).length > 0 && (
+                <span className="text-xs text-gray-400">
+                  {(rc.tasks ?? []).filter((t) => t.done).length}/{(rc.tasks ?? []).length}
+                </span>
+              )}
+            </h2>
+          </div>
+          <div className="flex-1 px-4 py-3">
+            {id && (
+              <TasksSection
+                rc={rc}
+                onAddTask={(task) => addRenewalTask(id, task)}
+                onToggleDone={(taskId, done) =>
+                  toggleRenewalTaskDone(id, taskId, done)
+                }
+                onRemoveTask={(taskId) => removeRenewalTask(id, taskId)}
+              />
+            )}
+          </div>
+        </aside>
+
+        {/* ─── 右対応履歴列 (lg以上) ─── */}
+        <aside className="hidden lg:flex lg:flex-col w-80 shrink-0 border-l border-gray-200 bg-gray-50/50 overflow-y-auto min-h-0">
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              対応履歴
+            </h3>
+          </div>
+          <div className="flex-1 px-4 py-3">
+            <RenewalTimeline logs={rc.activityLog} users={users} />
+          </div>
         </aside>
       </div>
     </div>
