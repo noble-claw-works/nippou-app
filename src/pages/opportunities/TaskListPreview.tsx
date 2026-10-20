@@ -34,11 +34,6 @@ export function TaskListPreview({
     );
   }
 
-  // 親テーブル：1列目(契約者) px-4 + pl-8 = 48px、2列目(案件名) px-4(16px) start
-  // タスク行は「1列目相当スペーサー(w-[calc(1*px)])＋案件名列起点」に揃える
-  // 1列目スペーサーは親行 td の pl-8(32px) + px-4(左16px) = 48px 相当
-  const SPACER = "w-12 shrink-0"; // 48px = 契約者列 pl-8+px-4
-
   return (
     <div
       className="bg-gray-50 border-t border-gray-100"
@@ -47,34 +42,28 @@ export function TaskListPreview({
       {previewPending.map((t) => (
         <div
           key={t.id}
-          className="flex items-center gap-0 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+          className="flex items-center gap-2 py-1.5 px-4 text-xs border-b border-gray-100 last:border-b-0"
         >
-          {/* 1列目相当スペーサー: 親行の契約者列幅に合わせる */}
-          <div className={SPACER} />
-          {/* 2列目以降: タスク内容を px-4 で案件名列に揃える */}
-          <div className="flex items-center gap-2 flex-1 px-4 pr-4">
-            <button
-              type="button"
-              aria-label={`タスク完了: ${t.title}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggle?.(t.id, true);
-              }}
-              className="w-3.5 h-3.5 rounded border border-gray-300 flex-shrink-0 hover:border-blue-400 hover:bg-blue-50 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            <span className="flex-1 text-gray-700 truncate">{t.title}</span>
-            {t.dueDate && (
-              <span className="text-gray-400 whitespace-nowrap">
-                {t.dueDate}
-              </span>
-            )}
-          </div>
+          <button
+            type="button"
+            aria-label={`タスク完了: ${t.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle?.(t.id, true);
+            }}
+            className="w-3.5 h-3.5 rounded border border-gray-300 flex-shrink-0 hover:border-blue-400 hover:bg-blue-50 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          <span className="flex-1 text-gray-700 truncate">{t.title}</span>
+          {t.dueDate && (
+            <span className="text-gray-400 whitespace-nowrap">
+              {t.dueDate}
+            </span>
+          )}
         </div>
       ))}
       {pending.length > 5 && (
-        <div className="flex items-center gap-0 py-1 text-xs text-gray-400">
-          <div className={SPACER} />
-          <div className="flex-1 px-4">他 {pending.length - 5} 件の未完了タスク</div>
+        <div className="px-4 py-1 text-xs text-gray-400">
+          他 {pending.length - 5} 件の未完了タスク
         </div>
       )}
       {done.length > 0 && (
@@ -82,66 +71,57 @@ export function TaskListPreview({
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
-            className="flex items-center gap-0 w-full text-left border-t border-gray-100"
+            className="flex items-center gap-1 w-full text-left border-t border-gray-100 px-4 py-1.5 text-xs text-gray-500 hover:text-gray-700"
           >
-            <div className={SPACER} />
-            <div className="flex items-center gap-1 flex-1 px-4 py-1.5 text-xs text-gray-500 hover:text-gray-700">
-              <ChevronDown
-                className={`w-3 h-3 transition-transform ${
-                  showDone ? "rotate-180" : ""
-                }`}
-              />
-              完了 {done.length} 件
-            </div>
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${
+                showDone ? "rotate-180" : ""
+              }`}
+            />
+            完了 {done.length} 件
           </button>
           {showDone &&
             done.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center gap-0 py-1.5 text-xs border-b border-gray-100 last:border-b-0"
+                className="flex items-center gap-2 py-1.5 px-4 text-xs border-b border-gray-100 last:border-b-0"
               >
-                <div className={SPACER} />
-                <div className="flex items-center gap-2 flex-1 px-4 pr-4">
-                  <button
-                    type="button"
-                    aria-label={`タスク未完了に戻す: ${t.title}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggle?.(t.id, false);
-                    }}
-                    className="w-3.5 h-3.5 rounded border border-blue-400 bg-blue-400 flex-shrink-0 flex items-center justify-center text-white text-[8px] hover:bg-blue-300 hover:border-blue-300 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
-                  >
-                    ✓
-                  </button>
-                  <span className="flex-1 text-gray-400 line-through truncate">
-                    {t.title}
+                <button
+                  type="button"
+                  aria-label={`タスク未完了に戻す: ${t.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggle?.(t.id, false);
+                  }}
+                  className="w-3.5 h-3.5 rounded border border-blue-400 bg-blue-400 flex-shrink-0 flex items-center justify-center text-white text-[8px] hover:bg-blue-300 hover:border-blue-300 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-400"
+                >
+                  ✓
+                </button>
+                <span className="flex-1 text-gray-400 line-through truncate">
+                  {t.title}
+                </span>
+                {(t.doneDate || t.doneBy) && (
+                  <span className="text-gray-400 text-[10px] whitespace-nowrap">
+                    {t.doneDate && <span>{t.doneDate}</span>}
+                    {t.doneBy && resolveUserName(t.doneBy) && (
+                      <span className="ml-1">
+                        {resolveUserName(t.doneBy)}
+                      </span>
+                    )}
                   </span>
-                  {(t.doneDate || t.doneBy) && (
-                    <span className="text-gray-400 text-[10px] whitespace-nowrap">
-                      {t.doneDate && <span>{t.doneDate}</span>}
-                      {t.doneBy && resolveUserName(t.doneBy) && (
-                        <span className="ml-1">
-                          {resolveUserName(t.doneBy)}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             ))}
         </>
       )}
-      <div className="flex items-center gap-0 border-t border-gray-100">
-        <div className={SPACER} />
-        <div className="flex-1 px-4 py-1.5">
-          <button
-            type="button"
-            onClick={onNavigate}
-            className="text-xs text-blue-600 hover:text-blue-700"
-          >
-            案件詳細でタスク管理 →
-          </button>
-        </div>
+      <div className="border-t border-gray-100 px-4 py-1.5">
+        <button
+          type="button"
+          onClick={onNavigate}
+          className="text-xs text-blue-600 hover:text-blue-700"
+        >
+          案件詳細でタスク管理 →
+        </button>
       </div>
     </div>
   );

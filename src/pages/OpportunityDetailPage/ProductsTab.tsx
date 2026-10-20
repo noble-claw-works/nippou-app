@@ -41,38 +41,27 @@ export function ProductsTab({
         <div className="space-y-3">
           {opp.proposalProducts.map((pp) => {
             const person = persons.find((p) => p.id === pp.insuredPersonId);
+            const productTasks = (opp.tasks ?? []).filter(
+              (t) => t.scope === "product" && t.productId === pp.id,
+            );
+
             return (
               <div
                 key={pp.id}
                 className="border border-gray-200 rounded-lg p-4"
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                        {PRODUCT_CATEGORY_LABELS[pp.productCategory] ??
-                          pp.productCategory}
-                      </span>
-                      <span className="font-medium text-gray-800">
-                        {pp.productName}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-sm text-gray-500">
-                      {pp.insurer}
-                      {person && ` / 被保険者: ${person.name}`}
-                    </div>
-                    <div className="mt-1 text-sm font-medium text-gray-700">
-                      月払: ¥{pp.monthlyPremium.toLocaleString()}
-                      {pp.faceAmount &&
-                        ` / 保険金額: ¥${pp.faceAmount.toLocaleString()}`}
-                    </div>
-                    {pp.memo && (
-                      <div className="mt-1 text-xs text-gray-400">
-                        {pp.memo}
-                      </div>
-                    )}
+                {/* カードヘッダー: 編集/削除アイコン */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                      {PRODUCT_CATEGORY_LABELS[pp.productCategory] ??
+                        pp.productCategory}
+                    </span>
+                    <span className="font-medium text-gray-800">
+                      {pp.productName}
+                    </span>
                   </div>
-                  <div className="flex gap-1 ml-2">
+                  <div className="flex gap-1 ml-2 shrink-0">
                     <button
                       onClick={() => onEdit(pp)}
                       className="p-1.5 text-gray-400 hover:text-blue-500 rounded"
@@ -87,16 +76,36 @@ export function ProductsTab({
                     </button>
                   </div>
                 </div>
-                {/* §T4-05/§T4-08: 明細ごとの反映方法3択＋商談中データ注記 */}
-                <ReflectionControl opp={opp} pp={pp} />
-                {/* 商品付帯タスク */}
-                {(() => {
-                  const productTasks = (opp.tasks ?? []).filter(
-                    (t) => t.scope === "product" && t.productId === pp.id,
-                  );
-                  if (productTasks.length === 0) return null;
-                  return (
-                    <div className="mt-3 border-t border-gray-100 pt-3">
+
+                {/* 2列レイアウト: 左=基本情報、右=付帯タスク */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 左列: 基本情報 + 反映方法 */}
+                  <div className="space-y-1.5">
+                    <div className="text-sm text-gray-500">
+                      {pp.insurer}
+                      {person && (
+                        <span> / 被保険者: {person.name}</span>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium text-gray-700">
+                      月払: ¥{pp.monthlyPremium.toLocaleString()}
+                      {pp.faceAmount && (
+                        <span className="text-gray-500 font-normal">
+                          {" "}
+                          / 保険金額: ¥{pp.faceAmount.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    {pp.memo && (
+                      <div className="text-xs text-gray-400">{pp.memo}</div>
+                    )}
+                    {/* 反映方法select */}
+                    <ReflectionControl opp={opp} pp={pp} />
+                  </div>
+
+                  {/* 右列: 商品付帯タスク */}
+                  {productTasks.length > 0 ? (
+                    <div>
                       <div className="text-xs font-medium text-gray-500 mb-1.5">
                         商品付帯タスク
                       </div>
@@ -132,13 +141,15 @@ export function ProductsTab({
                                 {task.dueDate}
                               </span>
                             )}
-
                           </div>
                         ))}
                       </div>
                     </div>
-                  );
-                })()}
+                  ) : (
+                    /* タスクなし: 右列を空白にして右側を有効活用 */
+                    <div className="hidden md:block" />
+                  )}
+                </div>
               </div>
             );
           })}

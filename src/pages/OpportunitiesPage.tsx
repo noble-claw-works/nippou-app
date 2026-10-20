@@ -10,8 +10,7 @@ import {
   type StageTabKey,
   type SortKey,
 } from "./opportunities/constants";
-import { OpportunityTableHeader } from "./opportunities/OpportunityTableHeader";
-import { OpportunityTableRow } from "./opportunities/OpportunityTableRow";
+import { OpportunityCard } from "./opportunities/OpportunityCard";
 import { useOpportunitiesFilter } from "./opportunities/useOpportunitiesFilter";
 
 export function OpportunitiesPage() {
@@ -79,6 +78,9 @@ export function OpportunitiesPage() {
       setSortAsc(true);
     }
   };
+
+  // suppress unused warning for handleSort (kept for future sort UI)
+  void handleSort;
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
@@ -189,37 +191,28 @@ export function OpportunitiesPage() {
         </div>
       )}
 
-      {/* Flat opportunity table */}
-      <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white">
-        <table className="w-full text-sm">
-          <OpportunityTableHeader
-            sortKey={sortKey}
-            sortAsc={sortAsc}
-            onSort={handleSort}
-          />
-          <tbody className="divide-y divide-gray-100">
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-10 text-center text-gray-400 text-sm">
-                  該当する案件がありません
-                </td>
-              </tr>
-            ) : (
-              filtered.map((opp: Opportunity) => (
-                <OpportunityTableRow
-                  key={opp.id}
-                  opp={opp}
-                  users={users}
-                  getContractorName={getContractorName}
-                  onNavigate={(id) => navigate(`/opportunities/${id}`)}
-                  onToggleTask={(oppId, taskId, done) =>
-                    toggleOppTaskDone(oppId, taskId, done)
-                  }
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Card list */}
+      <div className="mt-3">
+        {filtered.length === 0 ? (
+          <div className="py-10 text-center text-gray-400 text-sm">
+            該当する案件がありません
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {filtered.map((opp: Opportunity) => (
+              <OpportunityCard
+                key={opp.id}
+                opp={opp}
+                users={users}
+                getContractorName={getContractorName}
+                onNavigate={(id) => navigate(`/opportunities/${id}`)}
+                onToggleTask={(oppId, taskId, done) =>
+                  toggleOppTaskDone(oppId, taskId, done)
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
