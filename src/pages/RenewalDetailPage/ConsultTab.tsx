@@ -2,16 +2,12 @@
 // ConsultTab — renewal2 コンサル入力（実入力式コンタクト履歴版）
 //   エリアA: コンタクト履歴（実入力式テーブル: 日付/結果5種/メモ/行追加削除）
 //            FC日は contacts(talked最古) から自動判定して表示
-//   エリアB: コンサル内容 8項目（うち2項目は renewalDays util による算出・太字）
-// 設計: specs/ARCH_DOC4_DOC5_design.md §5 / §0確定事項①
-//   - 独立「ファーストコンタクト日」入力は廃止（主上指摘）
-//   - FC日=「話せた」の最古 date を自動判定（deriveFirstContactDate）
-//   - 日数=本日基点を主表示、FC日基点(自動判定値)を併記
-//   - 手続き時点日数 = 手続日 − 満期日（満期前は負値 / 空は —）
+//   エリアB: コンサル内容 8項目（編集→保存ボタン式・保存時のみ履歴1件push）
 // =====================================================
+import { useState } from "react";
 import type { RenewalCase, RenewalSurvey } from "../../types";
 import type { User } from "../../types";
-import type { RenewalContactRecord } from "../../types/renewal";
+import type { RenewalContactRecord, RenewalConsultSurvey } from "../../types/renewal";
 import {
   RENEWAL_METHOD_OPTIONS,
   RENEWAL_FLYER_OPTIONS,
@@ -32,6 +28,7 @@ import {
 interface ConsultTabProps {
   rc: RenewalCase;
   onSurveyChange: (patch: Partial<RenewalSurvey>) => void;
+  onCommit?: (logBody?: string) => void;
   /** 本日 (YYYY-MM-DD)。未指定時はシステム日付（テスト注入可能） */
   today?: string;
   /** 接触ログの担当者名解決用（省略時は userId 表示） */
@@ -104,17 +101,49 @@ function ComputedDays({
   );
 }
 
-export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps) {
+export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: ConsultTabProps) {
   const c = rc.survey.consult ?? {};
   const base = today ?? todayStr();
   const contacts = c.contacts ?? [];
 
-  const handleChange = (field: string, value: unknown) => {
-    onSurveyChange({ consult: { [field]: value } });
+  // エリアB用ドラフト（コンサル内容8項目）
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<RenewalConsultSurvey>>({});
+
+  const handleEdit = () => {
+    setDraft({
+      earlyRenewalUnavailable: c.earlyRenewalUnavailable,
+      procedureDate: c.procedureDate,
+      flyerDistribution: c.flyerDistribution,
+      renewedPremium: c.renewedPremium,
+      renewalMethod: c.renewalMethod,
+    });
+    setEditing(true);
   };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setDraft({});
+  };
+
+  const handleSave = () => {
+    onSurveyChange({ consult: draft });
+    onCommit?.("コンサル内容を保存しました");
+    setEditing(false);
+    setDraft({});
+  };
+
+  const handleDraftChange = (field: string, value: unknown) => {
+    setDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // エリアA: コンタクト履歴は即時保存
   const handleContactsChange = (next: RenewalContactRecord[]) => {
     onSurveyChange({ consult: { contacts: next } });
   };
+
+  // 表示値（編集中はdraft、非編集中はstore値）
+  const displayC = editing ? { ...c, ...draft } : c;
 
   // ── FC日（自動判定：talked最古、無ければ後方互換 firstContactDate） ──
   const derivedFc = deriveFirstContactDate(contacts, c.firstContactDate);
@@ -122,7 +151,7 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
   // ── 算出値（renewalDays util） ──────────────────
   const daysTodayToMaturity = daysFromToday(rc.maturityDate, base);
   const daysFcToMaturity = daysFromFirstContact(rc.maturityDate, derivedFc);
-  const daysProc = daysAtProcedure(c.procedureDate, rc.maturityDate);
+  const daysProc = daysAtProcedure(displayC.procedureDate, rc.maturityDate);
 
   // ── 接触記録（時系列昇順・参照表示） ──────
   const contactsAsc = sortContactsByDate(contacts);
@@ -135,7 +164,7 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
 
   return (
     <div className="space-y-4">
-      {/* ───────────── エリアA: コンタクト履歴 ───────────── */}
+      {/* ───────────── エリアA: コンタクト履歴（即時保存） ───────────── */}
       <SectionCard
         title="コンタクト履歴"
         subtitle="各接触を実入力。FC日は「話せた」の最古日から自動判定します"
@@ -207,8 +236,35 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
         </div>
       </SectionCard>
 
-      {/* ───────────── エリアB: コンサル内容（8項目） ───────────── */}
+      {/* ───────────── エリアB: コンサル内容（編集→保存ボタン式） ───────────── */}
       <SectionCard title="コンサル内容">
+        {/* 操作ボタン行 */}
+        <div className="flex justify-end gap-2 mb-4">
+          {editing ? (
+            <>
+              <button
+                onClick={handleCancel}
+                className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                保存
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={handleEdit}
+              className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              編集
+            </button>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 1. FC日（参照・自動判定値） */}
           <div>
@@ -232,18 +288,19 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
             <input
               type="checkbox"
               id="earlyRenewalUnavailable"
-              checked={c.earlyRenewalUnavailable ?? false}
+              checked={displayC.earlyRenewalUnavailable ?? false}
               onChange={(e) =>
-                handleChange(
+                editing && handleDraftChange(
                   "earlyRenewalUnavailable",
                   e.target.checked || undefined,
                 )
               }
+              disabled={!editing}
               className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-300"
             />
             <label
               htmlFor="earlyRenewalUnavailable"
-              className="text-sm text-gray-700 cursor-pointer"
+              className={`text-sm text-gray-700 ${editing ? "cursor-pointer" : "cursor-default"}`}
             >
               お客様都合 早期更新不可
             </label>
@@ -254,11 +311,12 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
             <FieldLabel>手続日</FieldLabel>
             <input
               type="date"
-              value={c.procedureDate ?? ""}
+              value={displayC.procedureDate ?? ""}
               onChange={(e) =>
-                handleChange("procedureDate", e.target.value || undefined)
+                editing && handleDraftChange("procedureDate", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
 
@@ -273,11 +331,12 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
           <div>
             <FieldLabel>チラシ配布</FieldLabel>
             <select
-              value={c.flyerDistribution ?? ""}
+              value={displayC.flyerDistribution ?? ""}
               onChange={(e) =>
-                handleChange("flyerDistribution", e.target.value || undefined)
+                editing && handleDraftChange("flyerDistribution", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_FLYER_OPTIONS.map((opt) => (
@@ -296,15 +355,16 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
             <input
               type="number"
               min={0}
-              value={c.renewedPremium ?? ""}
+              value={displayC.renewedPremium ?? ""}
               onChange={(e) =>
-                handleChange(
+                editing && handleDraftChange(
                   "renewedPremium",
                   e.target.value ? Number(e.target.value) : undefined,
                 )
               }
+              disabled={!editing}
               placeholder="例: 55000"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
 
@@ -312,11 +372,12 @@ export function ConsultTab({ rc, onSurveyChange, today, users }: ConsultTabProps
           <div>
             <FieldLabel>更新方法（手続き手段）</FieldLabel>
             <select
-              value={c.renewalMethod ?? ""}
+              value={displayC.renewalMethod ?? ""}
               onChange={(e) =>
-                handleChange("renewalMethod", e.target.value || undefined)
+                editing && handleDraftChange("renewalMethod", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_METHOD_OPTIONS.map((opt) => (

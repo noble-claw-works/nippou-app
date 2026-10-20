@@ -1,10 +1,13 @@
-// PolicyCollectTab — 証券回収
+// PolicyCollectTab — 証券回収（編集→保存ボタン式）
+import { useState } from "react";
 import type { RenewalCase, RenewalSurvey } from "../../types";
+import type { RenewalPolicyCollectSurvey } from "../../types/renewal";
 import { RENEWAL_POLICY_COLLECT_OPTIONS } from "../../utils/renewalLabels";
 
 interface PolicyCollectTabProps {
   rc: RenewalCase;
   onSurveyChange: (patch: Partial<RenewalSurvey>) => void;
+  onCommit?: (logBody?: string) => void;
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -33,26 +36,76 @@ function SectionCard({
 export function PolicyCollectTab({
   rc,
   onSurveyChange,
+  onCommit,
 }: PolicyCollectTabProps) {
   const pc = rc.survey.policyCollect ?? {};
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Partial<RenewalPolicyCollectSurvey>>({});
+
+  const handleEdit = () => {
+    setDraft({ ...pc });
+    setEditing(true);
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setDraft({});
+  };
+
+  const handleSave = () => {
+    onSurveyChange({ policyCollect: draft });
+    onCommit?.("証券回収アンケートを保存しました");
+    setEditing(false);
+    setDraft({});
+  };
 
   const handleChange = (field: string, value: unknown) => {
-    onSurveyChange({ policyCollect: { [field]: value } });
+    setDraft((prev) => ({ ...prev, [field]: value }));
   };
+
+  const display = editing ? { ...pc, ...draft } : pc;
 
   return (
     <div className="space-y-4">
+      {/* 操作ボタン行 */}
+      <div className="flex justify-end gap-2">
+        {editing ? (
+          <>
+            <button
+              onClick={handleCancel}
+              className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-1.5 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            >
+              保存
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={handleEdit}
+            className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+          >
+            編集
+          </button>
+        )}
+      </div>
+
       <SectionCard title="証券回収">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 自動車 */}
           <div>
             <FieldLabel>自動車</FieldLabel>
             <select
-              value={pc.auto ?? ""}
+              value={display.auto ?? ""}
               onChange={(e) =>
-                handleChange("auto", e.target.value || undefined)
+                editing && handleChange("auto", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
@@ -67,11 +120,12 @@ export function PolicyCollectTab({
           <div>
             <FieldLabel>火災</FieldLabel>
             <select
-              value={pc.fire ?? ""}
+              value={display.fire ?? ""}
               onChange={(e) =>
-                handleChange("fire", e.target.value || undefined)
+                editing && handleChange("fire", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
@@ -86,11 +140,12 @@ export function PolicyCollectTab({
           <div>
             <FieldLabel>その他</FieldLabel>
             <select
-              value={pc.other ?? ""}
+              value={display.other ?? ""}
               onChange={(e) =>
-                handleChange("other", e.target.value || undefined)
+                editing && handleChange("other", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (
@@ -102,12 +157,13 @@ export function PolicyCollectTab({
             {/* その他: 自由入力（T5-06） */}
             <input
               type="text"
-              value={pc.otherFree ?? ""}
+              value={display.otherFree ?? ""}
               onChange={(e) =>
-                handleChange("otherFree", e.target.value || undefined)
+                editing && handleChange("otherFree", e.target.value || undefined)
               }
+              disabled={!editing}
               placeholder="その他の内容を自由入力"
-              className="mt-2 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="mt-2 w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             />
           </div>
 
@@ -115,11 +171,12 @@ export function PolicyCollectTab({
           <div>
             <FieldLabel>生保</FieldLabel>
             <select
-              value={pc.life ?? ""}
+              value={display.life ?? ""}
               onChange={(e) =>
-                handleChange("life", e.target.value || undefined)
+                editing && handleChange("life", e.target.value || undefined)
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+              disabled={!editing}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:bg-gray-50 disabled:text-gray-500"
             >
               <option value="">—</option>
               {RENEWAL_POLICY_COLLECT_OPTIONS.map((opt) => (

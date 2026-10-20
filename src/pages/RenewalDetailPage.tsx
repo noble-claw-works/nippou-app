@@ -53,6 +53,7 @@ export function RenewalDetailPage() {
     renewalCases,
     users,
     saveRenewalSurvey,
+    commitRenewalSurvey,
     addRenewalNote,
     changeRenewalStatus,
     addRenewalTask,
@@ -66,6 +67,7 @@ export function RenewalDetailPage() {
       renewalCases: s.renewalCases,
       users: s.users,
       saveRenewalSurvey: s.saveRenewalSurvey,
+      commitRenewalSurvey: s.commitRenewalSurvey,
       addRenewalNote: s.addRenewalNote,
       changeRenewalStatus: s.changeRenewalStatus,
       addRenewalTask: s.addRenewalTask,
@@ -107,6 +109,14 @@ export function RenewalDetailPage() {
       saveRenewalSurvey(id, patch);
     },
     [id, saveRenewalSurvey],
+  );
+
+  const handleSurveyCommit = useCallback(
+    (logBody?: string) => {
+      if (!id) return;
+      commitRenewalSurvey(id, logBody);
+    },
+    [id, commitRenewalSurvey],
   );
 
   // ── T5-04: 横カルーセル（一覧と同じ並び・ロール別フィルタ） ──
@@ -397,20 +407,21 @@ export function RenewalDetailPage() {
             <ConsultTab
               rc={rc}
               onSurveyChange={handleSurveyChange}
+              onCommit={handleSurveyCommit}
               users={users}
             />
           )}
           {tab === "roadmap" && (
-            <RoadmapTab rc={rc} onSurveyChange={handleSurveyChange} />
+            <RoadmapTab rc={rc} onSurveyChange={handleSurveyChange} onCommit={handleSurveyCommit} />
           )}
           {tab === "rider" && (
-            <RiderTab rc={rc} onSurveyChange={handleSurveyChange} />
+            <RiderTab rc={rc} onSurveyChange={handleSurveyChange} onCommit={handleSurveyCommit} />
           )}
           {tab === "pairmtg" && (
-            <PairMtgTab rc={rc} onSurveyChange={handleSurveyChange} />
+            <PairMtgTab rc={rc} onSurveyChange={handleSurveyChange} onCommit={handleSurveyCommit} />
           )}
           {tab === "policycollect" && (
-            <PolicyCollectTab rc={rc} onSurveyChange={handleSurveyChange} />
+            <PolicyCollectTab rc={rc} onSurveyChange={handleSurveyChange} onCommit={handleSurveyCommit} />
           )}
 
           {/* 留意事項（常時表示） */}

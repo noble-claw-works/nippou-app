@@ -170,13 +170,16 @@ export function HouseholdDetailPage() {
             onDeletePolicy={(id) => setDeletePolicyId(id)}
           />
 
-          <HouseholdTaskSection
-            customer={customer}
-            onAddTask={addHouseholdTask}
-            onUpdateTask={updateHouseholdTask}
-            onRemoveTask={removeHouseholdTask}
-            onToggleDone={toggleHouseholdTaskDone}
-          />
+          {/* モバイル: タスク (lg未満) */}
+          <div className="lg:hidden">
+            <HouseholdTaskSection
+              customer={customer}
+              onAddTask={addHouseholdTask}
+              onUpdateTask={updateHouseholdTask}
+              onRemoveTask={removeHouseholdTask}
+              onToggleDone={toggleHouseholdTaskDone}
+            />
+          </div>
 
           {/* モバイル: タイムライン (lg未満) */}
           <section
@@ -208,6 +211,24 @@ export function HouseholdDetailPage() {
           </section>
         </div>
       </div>
+
+      {/* ─── 中間カラム: タスク (lg以上) ─── */}
+      <aside className="hidden lg:flex lg:flex-col w-72 shrink-0 border-l border-gray-200 bg-white overflow-y-auto min-h-0">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3">
+          <h2 className="text-sm font-semibold text-gray-700">
+            ☑️ タスク ({(customer.tasks ?? []).filter((t) => t.done).length}/{(customer.tasks ?? []).length})
+          </h2>
+        </div>
+        <div className="flex-1 px-4 py-3">
+          <HouseholdTaskSection
+            customer={customer}
+            onAddTask={addHouseholdTask}
+            onUpdateTask={updateHouseholdTask}
+            onRemoveTask={removeHouseholdTask}
+            onToggleDone={toggleHouseholdTaskDone}
+          />
+        </div>
+      </aside>
 
       {/* ─── 右カラム: タイムライン (lg以上) ─── */}
       <aside

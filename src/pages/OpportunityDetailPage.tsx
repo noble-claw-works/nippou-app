@@ -136,17 +136,18 @@ export function OpportunityDetailPage() {
       key: "products",
       label: `📄 提案商品 (${opp.proposalProducts.length})`,
     });
+  // タスクは常時表示（④-a 世帯同様のタブ化）
   TABS.push({
     key: "tasks",
     label: `☑️ タスク (${doneTaskCount}/${oppTasks.length})`,
   });
   if (proposals.length > 0)
     TABS.push({ key: "proposals", label: `📝 提案履歴 (${proposals.length})` });
-  if (issuedPolicies.length > 0)
-    TABS.push({
-      key: "issued_policies",
-      label: `📜 契約発行 (${issuedPolicies.length})`,
-    });
+  // 保険商品セクション: 常時表示（④-c 世帯同様）
+  TABS.push({
+    key: "issued_policies",
+    label: `📜 保険商品 (${issuedPolicies.length})`,
+  });
   const activeTab: Tab = TABS.some((t) => t.key === tab) ? tab : "overview";
 
   return (
@@ -249,7 +250,6 @@ export function OpportunityDetailPage() {
           {activeTab === "overview" && (
             <OverviewTab
               opp={opp}
-              users={users}
               editingFields={editingFields}
               fieldDraft={fieldDraft}
               onToggleEdit={startEditFields}

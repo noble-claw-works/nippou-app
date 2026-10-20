@@ -1,11 +1,9 @@
 import { Edit2 } from "lucide-react";
-import type { Opportunity, User } from "../../types";
-import { STAGE_META } from "../../components/opportunity/StageBadge";
+import type { Opportunity } from "../../types";
 import { LOST_REASON_LABELS } from "./constants";
 
 interface OverviewTabProps {
   opp: Opportunity;
-  users: User[];
   editingFields: boolean;
   fieldDraft: Record<string, string>;
   onToggleEdit: () => void;
@@ -16,7 +14,6 @@ interface OverviewTabProps {
 
 export function OverviewTab({
   opp,
-  users,
   editingFields,
   fieldDraft,
   onToggleEdit,
@@ -168,39 +165,7 @@ export function OverviewTab({
         </div>
       </div>
 
-      {/* ステージ変更履歴 */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="font-semibold text-gray-800 mb-3">ステージ変更履歴</h2>
-        <div className="space-y-2">
-          {[...opp.stageHistory].reverse().map((h, i) => {
-            const meta = STAGE_META[h.stage];
-            const changer = users.find((u) => u.id === h.changedByUserId);
-            return (
-              <div key={i} className="flex items-start gap-3 text-sm">
-                <span className="text-lg leading-none mt-0.5">
-                  {meta.emoji}
-                </span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-gray-800">
-                      {meta.label}
-                    </span>
-                    <span className="text-gray-400">
-                      {h.changedAt.slice(0, 10)}
-                    </span>
-                    {changer && (
-                      <span className="text-gray-400">{changer.name}</span>
-                    )}
-                  </div>
-                  {h.note && (
-                    <div className="text-gray-500 mt-0.5">{h.note}</div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* ステージ変更履歴は活動履歴(ActivityTimeline)で確認可能なため削除 */}
     </div>
   );
 }

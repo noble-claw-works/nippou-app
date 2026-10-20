@@ -52,6 +52,7 @@ export const createRenewalSlice: StateCreator<
     | "getRenewalCases"
     | "getRenewalCaseById"
     | "saveRenewalSurvey"
+    | "commitRenewalSurvey"
     | "addRenewalNote"
     | "addRenewalLog"
     | "changeRenewalStatus"
@@ -96,9 +97,9 @@ export const createRenewalSlice: StateCreator<
     return get().renewalCases.find((rc) => rc.id === id);
   },
 
+  // フィールド変更ごとの中間保存（activityLog push なし）
   saveRenewalSurvey: (id, patch) => {
     const state = get();
-    const userId = state.currentUserId;
     const now = new Date().toISOString();
 
     const updated = state.renewalCases.map((rc) => {
@@ -138,9 +139,29 @@ export const createRenewalSlice: StateCreator<
         ...rc,
         method: newMethod,
         survey: mergedSurvey,
+        // ← activityLog push なし（commitRenewalSurvey が担う）
+        updatedAt: now,
+      };
+    });
+
+    set({ renewalCases: updated });
+    persist(updated);
+  },
+
+  // 「保存」ボタン確定時に1回だけ activityLog push
+  commitRenewalSurvey: (id, logBody) => {
+    const state = get();
+    const userId = state.currentUserId;
+    const now = new Date().toISOString();
+    const body = logBody ?? "アンケートを保存しました";
+
+    const updated = state.renewalCases.map((rc) => {
+      if (rc.id !== id) return rc;
+      return {
+        ...rc,
         activityLog: [
           ...rc.activityLog,
-          makeLog("survey_saved", "アンケートを保存しました", userId),
+          makeLog("survey_saved", body, userId),
         ],
         updatedAt: now,
       };

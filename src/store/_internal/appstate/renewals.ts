@@ -39,6 +39,8 @@ export interface AppStateRenewalsSlice {
   getRenewalCases: (opts?: { role?: string; userId?: string }) => RenewalCase[];
   getRenewalCaseById: (id: string) => RenewalCase | undefined;
   saveRenewalSurvey: (id: string, patch: Partial<RenewalSurvey>) => void;
+  /** 「保存」ボタン確定時に1回だけ activityLog へ push する */
+  commitRenewalSurvey: (id: string, logBody?: string) => void;
   addRenewalNote: (id: string, body: string, userId?: string) => void;
   addRenewalLog: (
     id: string,
