@@ -655,3 +655,11 @@ HouseholdDetailPage
 - **2026-10-20 94aed33 ②**: **商談一覧 タスク行 — スペーサー方式インデント整列** — `TaskListPreview.tsx` の展開タスク行インデントを `pl-[148px]` 固定値から **スペーサー div（`w-12 shrink-0` = 48px）＋`px-4` 内側余白** の構成に変更。親テーブルの契約者列幅（`pl-8+px-4 = 48px`）と案件名列の開始位置を正確に揃える。完了件数行・完了トグルボタンも同一スペーサー方式に統一。
 - **2026-10-20 94aed33 ③**: **「商品付帯タスク」を TasksTab → ProductsTab（提案商品カード）内へ移動** — `TasksTab.tsx` から `scope=product` タスクの「商品付帯タスク」セクションを削除。`ProductsTab.tsx` 内の各提案商品カードへ移動し、`scope === "product" && productId === pp.id` で絞り込み表示。チェックボックス toggle は `onToggleTask` prop 経由で `toggleOppTaskDone` を呼び出す。優先度バッジ（高/中/低）と期日も表示。
 - **2026-10-20 94aed33 ④**: **世帯詳細「商談タスク」 — クリックで商談詳細へ遷移** — `HouseholdDetailPage.tsx` の中央タスク列の商談タスクブロックで、商談見出し（`<div>`）を `<button>` に変更し `navigate(\`/opportunities/${o.id}\`)` を設定。タスク行（`<div>`）にも `onClick` で同じ商談詳細へ遷移するよう変更。スタイルは `text-blue-500 hover:text-blue-700 cursor-pointer`（見出し）/ `hover:bg-gray-50 cursor-pointer`（タスク行）。
+
+
+### 工程H 追補③（2026-10-20 commit 8186ad7 / UI改修 第2バッチ）
+
+- **2026-10-20 8186ad7 Ⓐ**: **タスク優先度（高/中/低）UI の全画面廃止** — 実運用で刻々変動し無意味・都度変更が手間との顧客フィードバックにより、タスク関連画面の優先度 `<select>` 入力欄と優先度バッジ表示をすべて撤去。対象: `TaskRow.tsx`・`TasksTab.tsx`・`ProductsTab.tsx`・`HouseholdTaskSection.tsx`・`TaskListPreview.tsx`・`RenewalDetailPage/TasksSection.tsx`（`PRIORITY_LABEL`/`PRIORITY_CLASS`/`PRIORITY_COLOR` 定数・`Priority` 型参照を UI から除去）。型 `Task.priority` 自体は後方互換のため存置し、新規作成時は内部的に `"medium"` を既定セット。TodoCard（個人TODO）・admin（タスクテンプレート）・SettingsPage の優先度は別機能のため対象外（存置）。
+- **2026-10-20 8186ad7 Ⓑ**: **商談一覧の世帯別表示を廃止しフラット化** — 多くは1世帯=1商談のため世帯グルーピングは無意味との指摘により、`OpportunitiesPage.tsx` を全面書換。世帯別/商品別の表示切替UI・世帯アコーディオンのネスト構造を削除し、`OpportunityTableHeader`+`OpportunityTableRow` を流用した「1商談=1行」のフラットテーブル（商談＋商品表示）に変更。ステージタブ・カテゴリフィルタ・進行中フィルタ・`useOpportunitiesFilter` フックは維持。
+- **2026-10-20 8186ad7 Ⓒ**: **コンサル入力 コンタクト履歴を「編集ボタンでモード切替」化** — `RenewalDetailPage/ConsultTab.tsx` エリアA。既定は表示のみ（`ContactReadView`）、「編集」ボタンで編集モード（`ContactEditor`：input/select/行追加・削除）へ切替、「保存」で `onSurveyChange` を呼び表示モードへ復帰、「キャンセル」でドラフト破棄。※「編集不可」ではなく編集ボタンでのモード切替が顧客指示。
+- **2026-10-20 8186ad7 Ⓓ**: **FC日 重複注記ブロック削除** — `ConsultTab.tsx` エリアA（コンタクト履歴直下）の「ファーストコンタクト日(自動判定): 〇〇 / 満期まで(FC基点): N日」薄グレー注記枠を削除。ヘッダー表示およびエリアBの FC日入力・FC基点日数表示は存置（重複解消のみ）。
