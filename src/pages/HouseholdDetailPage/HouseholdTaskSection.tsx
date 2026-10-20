@@ -47,7 +47,8 @@ export function HouseholdTaskSection({
     dueDate: string;
     priority: Task["priority"];
     memo: string;
-  }>({ title: "", dueDate: "", priority: "medium", memo: "" });
+    ownerId: string;
+  }>({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: customer.primaryUserId ?? "" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<Task>>({});
 
@@ -105,6 +106,22 @@ export function HouseholdTaskSection({
               <option value="low">低</option>
             </select>
           </div>
+          {users && users.length > 0 && (
+            <select
+              value={draft.ownerId}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, ownerId: e.target.value }))
+              }
+              className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
+            >
+              <option value="">担当者を選択</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setAdding(false)}
@@ -123,13 +140,14 @@ export function HouseholdTaskSection({
                   scope: "household",
                   householdId: customer.id,
                   dueDate: draft.dueDate || undefined,
-                  ownerId: customer.primaryUserId,
+                  ownerId: draft.ownerId || customer.primaryUserId,
                 });
                 setDraft({
                   title: "",
                   dueDate: "",
                   priority: "medium",
                   memo: "",
+                  ownerId: customer.primaryUserId ?? "",
                 });
                 setAdding(false);
               }}
@@ -190,6 +208,22 @@ export function HouseholdTaskSection({
                       <option value="low">低</option>
                     </select>
                   </div>
+                  {users && users.length > 0 && (
+                    <select
+                      value={editDraft.ownerId ?? ""}
+                      onChange={(e) =>
+                        setEditDraft((d) => ({ ...d, ownerId: e.target.value || undefined }))
+                      }
+                      className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
+                    >
+                      <option value="">担当者を選択</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => {

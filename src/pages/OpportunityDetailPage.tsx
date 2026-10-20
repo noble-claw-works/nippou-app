@@ -262,6 +262,9 @@ export function OpportunityDetailPage() {
                 onAdd={() => setEditProduct(null)}
                 onEdit={(pp) => setEditProduct(pp)}
                 onDelete={handleDeleteProduct}
+                onToggleTask={(taskId, done) =>
+                  toggleOppTaskDone(id!, taskId, done)
+                }
               />
             </div>
           )}
@@ -306,6 +309,7 @@ export function OpportunityDetailPage() {
           <div className="mt-4 lg:hidden">
             <TasksTab
               opp={opp}
+              users={users}
               onToggle={(taskId, done) => toggleOppTaskDone(id!, taskId, done)}
               onAdd={(task) =>
                 addOppTask(
@@ -340,6 +344,7 @@ export function OpportunityDetailPage() {
         <div className="flex-1 px-4 py-3">
           <TasksTab
             opp={opp}
+            users={users}
             onToggle={(taskId, done) => toggleOppTaskDone(id!, taskId, done)}
             onAdd={(task) =>
               addOppTask(

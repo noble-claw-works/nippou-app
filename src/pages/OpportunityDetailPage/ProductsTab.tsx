@@ -1,7 +1,19 @@
-import { Plus, Edit2, Trash2 } from "lucide-react";
-import type { Opportunity, Person, ProposalProduct } from "../../types";
+import { Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
+import type { Opportunity, Person, ProposalProduct, Task } from "../../types";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { ReflectionControl } from "../../components/policy/ReflectionControl";
+
+const PRIORITY_LABEL: Record<Task["priority"], string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
+};
+
+const PRIORITY_CLASS: Record<Task["priority"], string> = {
+  high: "text-red-500",
+  medium: "text-yellow-500",
+  low: "text-green-500",
+};
 
 interface ProductsTabProps {
   opp: Opportunity;
@@ -9,6 +21,7 @@ interface ProductsTabProps {
   onAdd: () => void;
   onEdit: (product: ProposalProduct) => void;
   onDelete: (productId: string) => void;
+  onToggleTask?: (taskId: string, done: boolean) => void;
 }
 
 export function ProductsTab({
@@ -17,6 +30,7 @@ export function ProductsTab({
   onAdd,
   onEdit,
   onDelete,
+  onToggleTask,
 }: ProductsTabProps) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -87,6 +101,64 @@ export function ProductsTab({
                 </div>
                 {/* §T4-05/§T4-08: 明細ごとの反映方法3択＋商談中データ注記 */}
                 <ReflectionControl opp={opp} pp={pp} />
+                {/* 商品付帯タスク */}
+                {(() => {
+                  const productTasks = (opp.tasks ?? []).filter(
+                    (t) => t.scope === "product" && t.productId === pp.id,
+                  );
+                  if (productTasks.length === 0) return null;
+                  return (
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      <div className="text-xs font-medium text-gray-500 mb-1.5">
+                        商品付帯タスク
+                      </div>
+                      <div className="space-y-1">
+                        {productTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <button
+                              onClick={() =>
+                                onToggleTask?.(task.id, !task.done)
+                              }
+                              className="shrink-0 text-gray-400 hover:text-blue-500"
+                            >
+                              {task.done ? (
+                                <CheckSquare className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Square className="w-4 h-4" />
+                              )}
+                            </button>
+                            <span
+                              className={`flex-1 ${
+                                task.done
+                                  ? "line-through text-gray-400"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {task.title}
+                            </span>
+                            {task.dueDate && (
+                              <span className="text-xs text-gray-400">
+                                {task.dueDate}
+                              </span>
+                            )}
+                            {task.priority && (
+                              <span
+                                className={`text-xs ${
+                                  PRIORITY_CLASS[task.priority]
+                                }`}
+                              >
+                                [{PRIORITY_LABEL[task.priority]}]
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

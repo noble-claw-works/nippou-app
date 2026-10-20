@@ -242,13 +242,18 @@ export function HouseholdDetailPage() {
                 .filter((o) => (o.tasks ?? []).length > 0)
                 .map((o) => (
                   <div key={o.id} className="mb-3">
-                    <div className="text-[11px] font-medium text-gray-400 mb-1 truncate">
-                      {o.title}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/opportunities/${o.id}`)}
+                      className="text-[11px] font-medium text-blue-500 hover:text-blue-700 mb-1 truncate w-full text-left cursor-pointer"
+                    >
+                      {o.title} →
+                    </button>
                     {(o.tasks ?? []).map((t) => (
                       <div
                         key={t.id}
-                        className="flex items-center gap-1.5 text-xs py-1 pl-2 border-l-2 border-gray-100"
+                        onClick={() => navigate(`/opportunities/${o.id}`)}
+                        className="flex items-center gap-1.5 text-xs py-1 pl-2 border-l-2 border-gray-100 cursor-pointer hover:bg-gray-50 rounded-r"
                       >
                         <span
                           className={`flex-1 truncate ${

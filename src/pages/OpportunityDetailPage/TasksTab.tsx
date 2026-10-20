@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import type { Opportunity, Task } from "../../types";
+import type { Opportunity, Task, User } from "../../types";
 import { TaskRow } from "./TaskRow";
 
 interface TasksTabProps {
   opp: Opportunity;
+  users?: User[];
   onToggle: (taskId: string, done: boolean) => void;
   onAdd: (task: Omit<Task, "id" | "createdAt" | "updatedAt">) => void;
   onUpdate: (taskId: string, patch: Partial<Task>) => void;
@@ -13,6 +14,7 @@ interface TasksTabProps {
 
 export function TasksTab({
   opp,
+  users,
   onToggle,
   onAdd,
   onUpdate,
@@ -24,7 +26,8 @@ export function TasksTab({
     dueDate: string;
     priority: Task["priority"];
     memo: string;
-  }>({ title: "", dueDate: "", priority: "medium", memo: "" });
+    ownerId: string;
+  }>({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: opp.ownerId ?? "" });
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEditDraft, setTaskEditDraft] = useState<Partial<Task>>({});
 
@@ -41,9 +44,9 @@ export function TasksTab({
       scope: "opportunity",
       dueDate: taskDraft.dueDate || undefined,
       memo: taskDraft.memo || undefined,
-      ownerId: opp.ownerId,
+      ownerId: taskDraft.ownerId || opp.ownerId,
     });
-    setTaskDraft({ title: "", dueDate: "", priority: "medium", memo: "" });
+    setTaskDraft({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: opp.ownerId ?? "" });
     setAddingTask(false);
   };
 
@@ -128,6 +131,22 @@ export function TasksTab({
               <option value="low">低</option>
             </select>
           </div>
+          {users && users.length > 0 && (
+            <select
+              value={taskDraft.ownerId}
+              onChange={(e) =>
+                setTaskDraft((d) => ({ ...d, ownerId: e.target.value }))
+              }
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+            >
+              <option value="">担当者を選択</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             type="text"
             placeholder="メモ（任意）"
@@ -154,48 +173,20 @@ export function TasksTab({
         </div>
       )}
 
-      {oppTasks.length === 0 && !addingTask ? (
-        <p className="text-sm text-gray-400 text-center py-4">
-          タスクがありません。「タスク追加」から自由に追加できます。
-        </p>
-      ) : (
-        <div className="space-y-1">
-          {oppTasks.filter((t) => t.scope === "opportunity").length > 0 && (
-            <>
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-2 pb-1 border-b border-gray-100">
-                案件共通タスク
-              </div>
-              {oppTasks
-                .filter((t) => t.scope === "opportunity")
-                .map((task) => (
-                  <TaskRow key={task.id} task={task} {...taskRowCommon} />
-                ))}
-            </>
-          )}
-          {oppTasks.filter((t) => t.scope === "product").length > 0 && (
-            <>
-              <div className="text-xs font-medium text-gray-500 uppercase tracking-wide pt-4 pb-1 border-b border-gray-100">
-                商品付帯タスク
-              </div>
-              {oppTasks
-                .filter((t) => t.scope === "product")
-                .map((task) => {
-                  const product = opp.proposalProducts.find(
-                    (p) => p.id === task.productId,
-                  );
-                  return (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      productName={product?.productName}
-                      {...taskRowCommon}
-                    />
-                  );
-                })}
-            </>
-          )}
-        </div>
-      )}
+      {(() => {
+        const oppScopeTasks = oppTasks.filter((t) => t.scope === "opportunity");
+        return oppScopeTasks.length === 0 && !addingTask ? (
+          <p className="text-sm text-gray-400 text-center py-4">
+            タスクがありません。「タスク追加」から自由に追加できます。
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {oppScopeTasks.map((task) => (
+              <TaskRow key={task.id} task={task} {...taskRowCommon} />
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
