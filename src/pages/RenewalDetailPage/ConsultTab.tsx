@@ -1,7 +1,6 @@
 // =====================================================
 // ConsultTab — renewal2 コンサル入力（実入力式コンタクト履歴版）
-//   エリアA: コンタクト履歴（実入力式テーブル: 日付/結果5種/メモ/行追加削除）
-//            FC日は contacts(talked最古) から自動判定して表示
+//   エリアA: コンタクト履歴（編集ボタンでモード切替: 表示↔編集）
 //   エリアB: コンサル内容 8項目（編集→保存ボタン式・保存時のみ履歴1件push）
 // =====================================================
 import { useState } from "react";
@@ -20,6 +19,7 @@ import {
   formatDayCount,
 } from "../../utils/renewalDays";
 import { deriveFirstContactDate } from "../../utils/renewalContacts";
+import { RENEWAL_CONTACT_RESULT_OPTIONS } from "../../utils/renewalLabels";
 
 interface ConsultTabProps {
   rc: RenewalCase;
@@ -97,10 +97,64 @@ function ComputedDays({
   );
 }
 
+/** コンタクト履歴の表示モード（読み取り専用） */
+function ContactReadView({ contacts }: { contacts: RenewalContactRecord[] }) {
+  if (contacts.length === 0) {
+    return (
+      <p className="text-xs text-gray-400">
+        接触記録はまだありません。「編集」から入力できます。
+      </p>
+    );
+  }
+  return (
+    <div className="space-y-1.5">
+      {contacts.map((c) => {
+        const resultLabel =
+          RENEWAL_CONTACT_RESULT_OPTIONS.find((o) => o.value === c.result)
+            ?.label ?? c.result;
+        return (
+          <div
+            key={c.id}
+            className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-gray-700"
+          >
+            <span className="text-gray-500 whitespace-nowrap w-28 shrink-0">
+              {c.date ?? "—"}
+            </span>
+            <span className="text-gray-600 whitespace-nowrap">{resultLabel}</span>
+            {c.memo && (
+              <span className="text-gray-500 text-xs">{c.memo}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: ConsultTabProps) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const c = rc.survey.consult ?? {};
   const base = today ?? todayStr();
   const contacts = c.contacts ?? [];
+
+  // エリアA: コンタクト履歴の編集モード
+  const [contactEditing, setContactEditing] = useState(false);
+  const [contactDraft, setContactDraft] = useState<RenewalContactRecord[]>([]);
+
+  const handleContactEditStart = () => {
+    setContactDraft([...contacts]);
+    setContactEditing(true);
+  };
+
+  const handleContactCancel = () => {
+    setContactEditing(false);
+    setContactDraft([]);
+  };
+
+  const handleContactSave = () => {
+    onSurveyChange({ consult: { contacts: contactDraft } });
+    setContactEditing(false);
+    setContactDraft([]);
+  };
 
   // エリアB用ドラフト（コンサル内容8項目）
   const [editing, setEditing] = useState(false);
@@ -133,11 +187,6 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
     setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
-  // エリアA: コンタクト履歴は即時保存
-  const handleContactsChange = (next: RenewalContactRecord[]) => {
-    onSurveyChange({ consult: { contacts: next } });
-  };
-
   // 表示値（編集中はdraft、非編集中はstore値）
   const displayC = editing ? { ...c, ...draft } : c;
 
@@ -149,35 +198,58 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
   const daysFcToMaturity = daysFromFirstContact(rc.maturityDate, derivedFc);
   const daysProc = daysAtProcedure(displayC.procedureDate, rc.maturityDate);
 
-    // ⑦「接触記録（時系列）」参照リストは ContactEditor と重複するため削除済み
-
   return (
     <div className="space-y-4">
-      {/* ───────────── エリアA: コンタクト履歴（即時保存） ───────────── */}
+      {/* ───────────── エリアA: コンタクト履歴（編集モード切替） ───────────── */}
       <SectionCard
         title="コンタクト履歴"
         subtitle="各接触を実入力。FC日は「話せた」の最古日から自動判定します"
       >
-        {/* 実入力テーブル */}
-        <ContactEditor contacts={contacts} onChange={handleContactsChange} />
-
-        {/* FC日の自動判定＋FC基点日数 */}
-        <div className="mt-4 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
-          <div className="text-[11px] text-gray-500">
-            ファーストコンタクト日（自動判定）：
-            <span className="font-medium text-gray-800">
-              {derivedFc || "未接触"}
-            </span>
+        {/* セクションヘッダー：編集/保存・キャンセルボタン */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-[11px] font-medium text-gray-500">
+            コンタクト履歴（実入力）
           </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">
-            満期まで(FC基点)：
-            <span className="font-medium text-gray-700 tabular-nums">
-              {formatDayCount(daysFcToMaturity)}
-            </span>
+          <div className="flex gap-2">
+            {contactEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleContactCancel}
+                  className="px-3 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleContactSave}
+                  className="px-3 py-1 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  保存
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={handleContactEditStart}
+                className="px-3 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50"
+              >
+                編集
+              </button>
+            )}
           </div>
         </div>
 
-        {/* ⑦ 「接触記録（時系列）」参照リストは ContactEditor（上段）と重複するため削除 */}
+        {/* 表示モード / 編集モード */}
+        {contactEditing ? (
+          <ContactEditor
+            contacts={contactDraft}
+            onChange={setContactDraft}
+          />
+        ) : (
+          <ContactReadView contacts={contacts} />
+        )}
+        {/* 修正D: FC日注記ブロックを削除（ヘッダー側に同情報があるため） */}
       </SectionCard>
 
       {/* ───────────── エリアB: コンサル内容（編集→保存ボタン式） ───────────── */}
@@ -331,6 +403,15 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
               ))}
             </select>
           </div>
+        </div>
+
+        {/* FC基点の日数表示（エリアBの下部に参照用として残す） */}
+        <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ComputedDays
+            label="満期まで(FC基点)"
+            note="ファーストコンタクト日から満期日まで"
+            value={daysFcToMaturity}
+          />
         </div>
       </SectionCard>
     </div>

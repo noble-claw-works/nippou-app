@@ -648,3 +648,10 @@ HouseholdDetailPage
 - **2026-10-20 e4664a4 ⑦**: **ConsultTab 重複ブロック削除** — `RenewalDetailPage/ConsultTab.tsx` に存在した「接触記録（時系列）」セクションの重複ブロックを削除。1箇所のみ表示に統一。
 - **2026-10-20 e4664a4 ⑧**: **RenewalDetailPage 3列化** — 損保更新詳細ページを「左：本文（可変幅）／中：タスクaside w-72／右：対応履歴列 w-80」の3列構造に変更。「タスク」タブを廃止し中央列へ移動。lg未満は `lg:hidden` で中央・右列を折り畳み。
 - **2026-10-20 e4664a4 ⑨**: **PolicyCollectTab 状態選択 ラジオボタン化** — 証券回収タブの状態選択UIを「編集時はラジオボタン選択・非編集時はラベル表示」に変更。既存の「編集→保存」ボタン式フローは維持。`PolicyCollectTab.tsx` の `isEditing` フラグで表示を切り替え。
+
+### 工程H 追補②（2026-10-20 commit 94aed33）
+
+- **2026-10-20 94aed33 ①**: **タスク追加フォーム — 担当者 select 追加** — `TasksTab.tsx`（商談詳細）と `HouseholdTaskSection.tsx`（世帯詳細）のタスク追加フォームおよびインライン編集フォームに担当者選択 `<select>` を追加。`users` props を受け取り `ownerId` を選択可能にした。未選択時は商談/世帯の `ownerId`（`primaryUserId`）を自動セット。
+- **2026-10-20 94aed33 ②**: **商談一覧 タスク行 — スペーサー方式インデント整列** — `TaskListPreview.tsx` の展開タスク行インデントを `pl-[148px]` 固定値から **スペーサー div（`w-12 shrink-0` = 48px）＋`px-4` 内側余白** の構成に変更。親テーブルの契約者列幅（`pl-8+px-4 = 48px`）と案件名列の開始位置を正確に揃える。完了件数行・完了トグルボタンも同一スペーサー方式に統一。
+- **2026-10-20 94aed33 ③**: **「商品付帯タスク」を TasksTab → ProductsTab（提案商品カード）内へ移動** — `TasksTab.tsx` から `scope=product` タスクの「商品付帯タスク」セクションを削除。`ProductsTab.tsx` 内の各提案商品カードへ移動し、`scope === "product" && productId === pp.id` で絞り込み表示。チェックボックス toggle は `onToggleTask` prop 経由で `toggleOppTaskDone` を呼び出す。優先度バッジ（高/中/低）と期日も表示。
+- **2026-10-20 94aed33 ④**: **世帯詳細「商談タスク」 — クリックで商談詳細へ遷移** — `HouseholdDetailPage.tsx` の中央タスク列の商談タスクブロックで、商談見出し（`<div>`）を `<button>` に変更し `navigate(\`/opportunities/${o.id}\`)` を設定。タスク行（`<div>`）にも `onClick` で同じ商談詳細へ遷移するよう変更。スタイルは `text-blue-500 hover:text-blue-700 cursor-pointer`（見出し）/ `hover:bg-gray-50 cursor-pointer`（タスク行）。

@@ -301,3 +301,59 @@ interface Props {
 - 商談行の展開（accordion）に連動してインデント付きで表示
 
 
+
+---
+
+## 工程H追補②改修ノート — TasksTab / ProductsTab / TaskListPreview (2026-10-20 94aed33)
+
+### TasksTab — タスク追加フォームに担当者 select 追加
+
+**ファイル**: `src/pages/OpportunityDetailPage/TasksTab.tsx`（192行）
+
+**変更**:
+- `TasksTabProps` に `users?: User[]` を追加
+- `taskDraft` の初期値に `ownerId: opp.ownerId ?? ""` を追加
+- タスク追加フォーム内に `<select>` を追加（`users` が非空のときのみ表示）
+- `onAdd` 時の `ownerId` は `taskDraft.ownerId || opp.ownerId` を使用
+
+```typescript
+interface TasksTabProps {
+  opp: Opportunity;
+  users?: User[];          // ← 追加
+  onToggle: ...;
+  onAdd: ...;
+  onUpdate: ...;
+  onDelete: ...;
+}
+```
+
+---
+
+### ProductsTab — 商品付帯タスクを提案商品カード内へ移動
+
+**ファイル**: `src/pages/OpportunityDetailPage/ProductsTab.tsx`（174行）
+
+**変更**:
+- `ProductsTabProps` に `onToggleTask?: (taskId: string, done: boolean) => void` を追加
+- 各提案商品カード末尾に「商品付帯タスク」ブロックを追加
+- フィルタ条件: `t.scope === "product" && t.productId === pp.id`
+- チェックボックスで `done` トグル（`onToggleTask` 経由）
+- 優先度バッジ（`PRIORITY_LABEL` / `PRIORITY_CLASS`）・期日を表示
+
+**TasksTab からの削除**: `scope === "product"` タスクの「商品付帯タスク」セクションを `TasksTab.tsx` から削除。`TasksTab` は `scope === "opportunity"` タスクのみ表示する。
+
+---
+
+### TaskListPreview — スペーサー方式インデント整列
+
+**ファイル**: `src/pages/opportunities/TaskListPreview.tsx`（157行）
+
+**変更**: 前回 e4664a4 で `pl-[148px]` 固定値を設定していたインデントを、スペーサー div 方式に変更。
+
+| 要素 | 実装 |
+|---|---|
+| スペーサー | `<div className="w-12 shrink-0" />` (= 48px、親テーブル契約者列幅に対応) |
+| タスク内容 | `<div className="flex items-center gap-2 flex-1 px-4 pr-4">` |
+
+- 未完了タスク行・完了件数トグル行・完了タスク行の全3種を統一方式に変更
+- 親テーブルの契約者列（`pl-8+px-4 = 48px`）と案件名列起点を正確に整列

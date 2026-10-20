@@ -45,10 +45,9 @@ export function HouseholdTaskSection({
   const [draft, setDraft] = useState<{
     title: string;
     dueDate: string;
-    priority: Task["priority"];
     memo: string;
     ownerId: string;
-  }>({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: customer.primaryUserId ?? "" });
+  }>({ title: "", dueDate: "", memo: "", ownerId: customer.primaryUserId ?? "" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<Task>>({});
 
@@ -82,30 +81,14 @@ export function HouseholdTaskSection({
             className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
             autoFocus
           />
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={draft.dueDate}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, dueDate: e.target.value }))
-              }
-              className="flex-1 border border-gray-300 rounded px-2.5 py-1.5 text-sm"
-            />
-            <select
-              value={draft.priority}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  priority: e.target.value as Task["priority"],
-                }))
-              }
-              className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-            >
-              <option value="high">高</option>
-              <option value="medium">中</option>
-              <option value="low">低</option>
-            </select>
-          </div>
+          <input
+            type="date"
+            value={draft.dueDate}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, dueDate: e.target.value }))
+            }
+            className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
+          />
           {users && users.length > 0 && (
             <select
               value={draft.ownerId}
@@ -135,7 +118,7 @@ export function HouseholdTaskSection({
                 onAddTask(customer.id, {
                   title: draft.title.trim(),
                   done: false,
-                  priority: draft.priority,
+                  priority: "medium",
                   rolledOver: false,
                   scope: "household",
                   householdId: customer.id,
@@ -145,7 +128,6 @@ export function HouseholdTaskSection({
                 setDraft({
                   title: "",
                   dueDate: "",
-                  priority: "medium",
                   memo: "",
                   ownerId: customer.primaryUserId ?? "",
                 });
@@ -181,33 +163,17 @@ export function HouseholdTaskSection({
                     className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
                     autoFocus
                   />
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={editDraft.dueDate ?? ""}
-                      onChange={(e) =>
-                        setEditDraft((d) => ({
-                          ...d,
-                          dueDate: e.target.value || undefined,
-                        }))
-                      }
-                      className="flex-1 border border-gray-300 rounded px-2.5 py-1.5 text-sm"
-                    />
-                    <select
-                      value={editDraft.priority ?? "medium"}
-                      onChange={(e) =>
-                        setEditDraft((d) => ({
-                          ...d,
-                          priority: e.target.value as Task["priority"],
-                        }))
-                      }
-                      className="border border-gray-300 rounded px-2 py-1.5 text-sm"
-                    >
-                      <option value="high">高</option>
-                      <option value="medium">中</option>
-                      <option value="low">低</option>
-                    </select>
-                  </div>
+                  <input
+                    type="date"
+                    value={editDraft.dueDate ?? ""}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({
+                        ...d,
+                        dueDate: e.target.value || undefined,
+                      }))
+                    }
+                    className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
+                  />
                   {users && users.length > 0 && (
                     <select
                       value={editDraft.ownerId ?? ""}
@@ -295,7 +261,6 @@ export function HouseholdTaskSection({
                       setEditDraft({
                         title: task.title,
                         dueDate: task.dueDate,
-                        priority: task.priority,
                       });
                     }}
                     className="p-1.5 text-gray-400 hover:text-blue-500 rounded"

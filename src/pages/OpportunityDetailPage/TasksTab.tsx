@@ -24,10 +24,9 @@ export function TasksTab({
   const [taskDraft, setTaskDraft] = useState<{
     title: string;
     dueDate: string;
-    priority: Task["priority"];
     memo: string;
     ownerId: string;
-  }>({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: opp.ownerId ?? "" });
+  }>({ title: "", dueDate: "", memo: "", ownerId: opp.ownerId ?? "" });
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [taskEditDraft, setTaskEditDraft] = useState<Partial<Task>>({});
 
@@ -39,14 +38,14 @@ export function TasksTab({
     onAdd({
       title: taskDraft.title.trim(),
       done: false,
-      priority: taskDraft.priority,
+      priority: "medium",
       rolledOver: false,
       scope: "opportunity",
       dueDate: taskDraft.dueDate || undefined,
       memo: taskDraft.memo || undefined,
       ownerId: taskDraft.ownerId || opp.ownerId,
     });
-    setTaskDraft({ title: "", dueDate: "", priority: "medium", memo: "", ownerId: opp.ownerId ?? "" });
+    setTaskDraft({ title: "", dueDate: "", memo: "", ownerId: opp.ownerId ?? "" });
     setAddingTask(false);
   };
 
@@ -65,7 +64,6 @@ export function TasksTab({
       setTaskEditDraft({
         title: t.title,
         dueDate: t.dueDate,
-        priority: t.priority,
         memo: t.memo,
       });
     },
@@ -107,30 +105,14 @@ export function TasksTab({
             className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 outline-none"
             autoFocus
           />
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={taskDraft.dueDate}
-              onChange={(e) =>
-                setTaskDraft((d) => ({ ...d, dueDate: e.target.value }))
-              }
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
-            />
-            <select
-              value={taskDraft.priority}
-              onChange={(e) =>
-                setTaskDraft((d) => ({
-                  ...d,
-                  priority: e.target.value as Task["priority"],
-                }))
-              }
-              className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-            >
-              <option value="high">高</option>
-              <option value="medium">中</option>
-              <option value="low">低</option>
-            </select>
-          </div>
+          <input
+            type="date"
+            value={taskDraft.dueDate}
+            onChange={(e) =>
+              setTaskDraft((d) => ({ ...d, dueDate: e.target.value }))
+            }
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+          />
           {users && users.length > 0 && (
             <select
               value={taskDraft.ownerId}

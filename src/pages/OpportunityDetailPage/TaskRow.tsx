@@ -1,17 +1,6 @@
 import { Edit2, Trash2 } from "lucide-react";
 import type { Task } from "../../types";
 
-const PRIORITY_LABEL: Record<Task["priority"], string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
-};
-const PRIORITY_CLASS: Record<Task["priority"], string> = {
-  high: "text-red-500",
-  medium: "text-yellow-600",
-  low: "text-gray-400",
-};
-
 interface TaskRowProps {
   task: Task;
   productName?: string;
@@ -62,22 +51,8 @@ export function TaskRow({
                 dueDate: e.target.value || undefined,
               })
             }
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+            className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
           />
-          <select
-            value={taskEditDraft.priority ?? "medium"}
-            onChange={(e) =>
-              onEditDraftChange({
-                ...taskEditDraft,
-                priority: e.target.value as Task["priority"],
-              })
-            }
-            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
-          >
-            <option value="high">高</option>
-            <option value="medium">中</option>
-            <option value="low">低</option>
-          </select>
         </div>
         <input
           type="text"
@@ -143,11 +118,7 @@ export function TaskRow({
             完了: {task.doneDate}
           </span>
         )}
-        <span
-          className={`ml-1.5 text-xs ${PRIORITY_CLASS[task.priority ?? "medium"]}`}
-        >
-          [{PRIORITY_LABEL[task.priority ?? "medium"]}]
-        </span>
+
       </span>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button

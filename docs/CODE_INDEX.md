@@ -3,18 +3,18 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-20T03:54:50.407Z
-対象ファイル数: 353
+生成日時: 2026-10-20T05:04:29.507Z
+対象ファイル数: 354
 
 ## (root)/
-- `src/App.tsx` (200行) — exports: App
+- `src/App.tsx` (203行) — exports: App
 - `src/main.tsx` (11行) — exports: (no exports)
 
 ## components/
 - `src/components/admin/TeamEditModal.tsx` (163行) — exports: TeamEditModal
 - `src/components/admin/TeamsTab.tsx` (153行) — exports: TeamsTab
 - `src/components/admin/UserEditModal.tsx` (124行) — exports: UserEditModal
-- `src/components/admin/UsersTab.tsx` (209行) — exports: UsersTab
+- `src/components/admin/UsersTab.tsx` (220行) — exports: UsersTab
 - `src/components/calendar/CalendarViews.tsx` (271行) — exports: SubNavProps, SubNav, WeekViewProps, WeekView, DayViewProps, DayView, ListViewProps, ListView
 - `src/components/dashboard/BulkConfirmPanel.tsx` (129行) — exports: BulkConfirmPanel
 - `src/components/dashboard/SubmissionStatsTable.tsx` (126行) — exports: SubmissionStatsTable
@@ -184,10 +184,10 @@
 - `src/pages/HouseholdBatchEntryPage/PageHeader.tsx` (55行) — exports: PageHeader
 - `src/pages/HouseholdBatchEntryPage/ProductRow.tsx` (142行) — exports: ProductRow
 - `src/pages/HouseholdBatchEntryPage/constants.ts` (28行) — exports: PRODUCT_CATEGORY_LABELS, PRODUCT_CATEGORIES
-- `src/pages/HouseholdDetailPage.tsx` (448行) — exports: HouseholdDetailPage
+- `src/pages/HouseholdDetailPage.tsx` (453行) — exports: HouseholdDetailPage
 - `src/pages/HouseholdDetailPage/CustomerEditForm.tsx` (113行) — exports: CustomerEditForm
 - `src/pages/HouseholdDetailPage/HouseholdInfoCard.tsx` (153行) — exports: HouseholdInfoCard
-- `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (290行) — exports: HouseholdTaskSection
+- `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (324行) — exports: HouseholdTaskSection
 - `src/pages/HouseholdDetailPage/HouseholdTimelineBody.tsx` (293行) — exports: TimelineEntry, UnifiedTimelineEntry, HouseholdTimelineBody
 - `src/pages/HouseholdDetailPage/InteractionAddForm.tsx` (229行) — exports: InteractionAddForm
 - `src/pages/HouseholdDetailPage/OpportunitiesSection.tsx` (110行) — exports: OpportunitiesSection
@@ -204,6 +204,7 @@
 - `src/pages/HouseholdsPage/ProductFormFields.tsx` (148行) — exports: PolicyFormState, ProductFormFields
 - `src/pages/HouseholdsPage/useHouseholdsPaneState.ts` (29行) — exports: PaneTab, useHouseholdsPaneState
 - `src/pages/LoginPage.tsx` (261行) — exports: LoginPage
+- `src/pages/MemberDetailPage.tsx` (518行) — exports: MemberDetailPage, Eye
 - `src/pages/MembersPage.tsx` (186行) — exports: MembersPage
 - `src/pages/NewOpportunityPage.tsx` (95行) — exports: NewOpportunityPage
 - `src/pages/NewOpportunityPage/NewOpportunityForm.tsx` (274行) — exports: NewOpportunityForm
@@ -212,14 +213,14 @@
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
 - `src/pages/NotificationsPage.tsx` (65行) — exports: NotificationsPage
 - `src/pages/OpportunitiesPage.tsx` (320行) — exports: OpportunitiesPage
-- `src/pages/OpportunityDetailPage.tsx` (373行) — exports: OpportunityDetailPage
+- `src/pages/OpportunityDetailPage.tsx` (378行) — exports: OpportunityDetailPage
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
 - `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (109行) — exports: IssuedPoliciesTab
 - `src/pages/OpportunityDetailPage/OverviewTab.tsx` (172行) — exports: OverviewTab
-- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (103行) — exports: ProductsTab
+- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (175行) — exports: ProductsTab
 - `src/pages/OpportunityDetailPage/ProposalsTab.tsx` (258行) — exports: ProposalsTab
-- `src/pages/OpportunityDetailPage/TaskRow.tsx` (173行) — exports: TaskRow
-- `src/pages/OpportunityDetailPage/TasksTab.tsx` (202行) — exports: TasksTab
+- `src/pages/OpportunityDetailPage/TaskRow.tsx` (144行) — exports: TaskRow
+- `src/pages/OpportunityDetailPage/TasksTab.tsx` (175行) — exports: TasksTab
 - `src/pages/OpportunityDetailPage/constants.ts` (26行) — exports: PRODUCT_CATEGORY_LABELS, LOST_REASON_LABELS
 - `src/pages/OpportunityReportPage.tsx` (188行) — exports: OpportunityReportPage
 - `src/pages/PoliciesPage.tsx` (277行) — exports: PoliciesPage
@@ -275,7 +276,7 @@
 - `src/pages/opportunities/OpportunityTableRow.tsx` (81行) — exports: OpportunityTableRow
 - `src/pages/opportunities/ProductView.tsx` (88行) — exports: ProductGroup, ProductView
 - `src/pages/opportunities/SortIcon.tsx` (20行) — exports: SortIcon
-- `src/pages/opportunities/TaskListPreview.tsx` (133行) — exports: TaskListPreview
+- `src/pages/opportunities/TaskListPreview.tsx` (158行) — exports: TaskListPreview
 - `src/pages/opportunities/TaskProgressBadge.tsx` (26行) — exports: TaskProgressBadge
 - `src/pages/opportunities/constants.ts` (38行) — exports: StageTabKey, StageTab, STAGE_TABS, ViewMode, SortKey, PRODUCT_CATEGORY_LABELS
 - `src/pages/opportunities/productHelpers.ts` (33行) — exports: buildProductGroups

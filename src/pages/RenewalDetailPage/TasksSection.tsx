@@ -10,20 +10,6 @@ interface TasksSectionProps {
   onRemoveTask: (taskId: string) => void;
 }
 
-type Priority = Task["priority"];
-
-const PRIORITY_LABEL: Record<Priority, string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
-};
-
-const PRIORITY_COLOR: Record<Priority, string> = {
-  high: "text-red-600",
-  medium: "text-amber-600",
-  low: "text-gray-400",
-};
-
 export function TasksSection({
   rc,
   onAddTask,
@@ -34,8 +20,7 @@ export function TasksSection({
   const [draft, setDraft] = useState<{
     title: string;
     dueDate: string;
-    priority: Priority;
-  }>({ title: "", dueDate: "", priority: "medium" });
+  }>({ title: "", dueDate: "" });
 
   const tasks = rc.tasks ?? [];
   const doneCount = tasks.filter((t) => t.done).length;
@@ -45,13 +30,13 @@ export function TasksSection({
     onAddTask({
       title: draft.title.trim(),
       done: false,
-      priority: draft.priority,
+      priority: "medium",
       rolledOver: false,
       scope: "renewal" as const,
       dueDate: draft.dueDate || undefined,
       ownerId: rc.ownerUserId,
     });
-    setDraft({ title: "", dueDate: "", priority: "medium" });
+    setDraft({ title: "", dueDate: "" });
     setAdding(false);
   };
 
@@ -87,30 +72,14 @@ export function TasksSection({
             autoFocus
             className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
           />
-          <div className="flex gap-2">
-            <input
-              type="date"
-              value={draft.dueDate}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, dueDate: e.target.value }))
-              }
-              className="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
-            <select
-              value={draft.priority}
-              onChange={(e) =>
-                setDraft((d) => ({
-                  ...d,
-                  priority: e.target.value as Priority,
-                }))
-              }
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-            >
-              <option value="high">高優先</option>
-              <option value="medium">中優先</option>
-              <option value="low">低優先</option>
-            </select>
-          </div>
+          <input
+            type="date"
+            value={draft.dueDate}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, dueDate: e.target.value }))
+            }
+            className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
           <div className="flex gap-2">
             <button
               onClick={handleAdd}
@@ -122,7 +91,7 @@ export function TasksSection({
             <button
               onClick={() => {
                 setAdding(false);
-                setDraft({ title: "", dueDate: "", priority: "medium" });
+                setDraft({ title: "", dueDate: "" });
               }}
               className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50"
             >
@@ -170,13 +139,6 @@ export function TasksSection({
                   </span>
                 )}
               </div>
-
-              {/* 優先度バッジ */}
-              <span
-                className={`text-[10px] font-semibold flex-shrink-0 ${PRIORITY_COLOR[task.priority ?? "medium"]}`}
-              >
-                {PRIORITY_LABEL[task.priority ?? "medium"]}
-              </span>
 
               {/* 削除ボタン */}
               <button

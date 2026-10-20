@@ -1,19 +1,7 @@
 import { Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
-import type { Opportunity, Person, ProposalProduct, Task } from "../../types";
+import type { Opportunity, Person, ProposalProduct } from "../../types";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { ReflectionControl } from "../../components/policy/ReflectionControl";
-
-const PRIORITY_LABEL: Record<Task["priority"], string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
-};
-
-const PRIORITY_CLASS: Record<Task["priority"], string> = {
-  high: "text-red-500",
-  medium: "text-yellow-500",
-  low: "text-green-500",
-};
 
 interface ProductsTabProps {
   opp: Opportunity;
@@ -144,15 +132,7 @@ export function ProductsTab({
                                 {task.dueDate}
                               </span>
                             )}
-                            {task.priority && (
-                              <span
-                                className={`text-xs ${
-                                  PRIORITY_CLASS[task.priority]
-                                }`}
-                              >
-                                [{PRIORITY_LABEL[task.priority]}]
-                              </span>
-                            )}
+
                           </div>
                         ))}
                       </div>

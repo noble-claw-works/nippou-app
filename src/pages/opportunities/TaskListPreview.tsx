@@ -3,12 +3,6 @@ import { ChevronDown } from "lucide-react";
 import type { Task } from "../../types";
 import type { User } from "../../types";
 
-const PRIORITY_LABEL: Record<Task["priority"], string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
-};
-
 interface TaskListPreviewProps {
   tasks: Task[];
   users?: User[];
@@ -74,9 +68,6 @@ export function TaskListPreview({
                 {t.dueDate}
               </span>
             )}
-            <span className="text-gray-400 text-[10px]">
-              {PRIORITY_LABEL[t.priority]}
-            </span>
           </div>
         </div>
       ))}

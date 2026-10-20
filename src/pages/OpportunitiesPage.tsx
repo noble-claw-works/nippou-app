@@ -4,25 +4,14 @@ import { Plus, Filter } from "lucide-react";
 import { useShallow } from "zustand/shallow";
 import { useAppStore } from "../store";
 import type { ProductCategory, Opportunity } from "../types";
-import { StageBadge } from "../components/opportunity/StageBadge";
-import { HouseholdAccordion } from "../components/ui/HouseholdAccordion";
-import {
-  effectiveStage,
-  effectiveExpectedCloseDate,
-  isRagged,
-  householdActiveOpps,
-  representativeOpp,
-} from "../utils/opportunityStage";
 import {
   STAGE_TABS,
   PRODUCT_CATEGORY_LABELS,
   type StageTabKey,
   type SortKey,
-  type ViewMode,
 } from "./opportunities/constants";
 import { OpportunityTableHeader } from "./opportunities/OpportunityTableHeader";
 import { OpportunityTableRow } from "./opportunities/OpportunityTableRow";
-import { ProductView } from "./opportunities/ProductView";
 import { useOpportunitiesFilter } from "./opportunities/useOpportunitiesFilter";
 
 export function OpportunitiesPage() {
@@ -55,7 +44,6 @@ export function OpportunitiesPage() {
   const [sortKey, setSortKey] = useState<SortKey>("contractor");
   const [sortAsc, setSortAsc] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("household");
 
   const isLostTab = activeTab === "lost";
 
@@ -69,8 +57,6 @@ export function OpportunitiesPage() {
 
   const {
     filtered,
-    householdGroups,
-    productGroups,
     tabCounts,
     getContractorName,
   } = useOpportunitiesFilter({
@@ -94,74 +80,6 @@ export function OpportunitiesPage() {
     }
   };
 
-  const renderHouseholdMeta = useMemo(() => {
-    return (householdId: string) => {
-      const activeOpps = householdActiveOpps(visibleOpportunities, householdId);
-      const repOpp = representativeOpp(activeOpps);
-      if (!repOpp) return null;
-      const effStage = effectiveStage(repOpp);
-      const closeDate = effectiveExpectedCloseDate(repOpp);
-      const ragged = isRagged(repOpp);
-      return (
-        <span className="flex items-center gap-1.5 ml-2 text-xs text-gray-600">
-          <StageBadge stage={effStage} size="sm" />
-          {closeDate && (
-            <span className="text-gray-500 whitespace-nowrap">{closeDate}</span>
-          )}
-          {ragged && (
-            <span
-              title="商品間で進捗/日付が揃っていません。案件詳細で内訳を確認"
-              className="text-amber-500"
-            >
-              ⚠️
-            </span>
-          )}
-        </span>
-      );
-    };
-  }, [visibleOpportunities]);
-
-  const renderHouseholdActions = useMemo(() => {
-    return (householdId: string) => {
-      const activeOpps = householdActiveOpps(visibleOpportunities, householdId);
-      const repOpp = representativeOpp(activeOpps);
-      if (!repOpp) return null;
-      return (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate(`/opportunities/${repOpp.id}/report`);
-          }}
-          className="min-h-[44px] min-w-[44px] flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors"
-        >
-          📝 報告
-        </button>
-      );
-    };
-  }, [visibleOpportunities, navigate]);
-
-  const renderTableHeader = () => (
-    <OpportunityTableHeader
-      sortKey={sortKey}
-      sortAsc={sortAsc}
-      onSort={handleSort}
-    />
-  );
-
-  const renderItem = (opp: Opportunity) => (
-    <OpportunityTableRow
-      key={opp.id}
-      opp={opp}
-      users={users}
-      getContractorName={getContractorName}
-      onNavigate={(id) => navigate(`/opportunities/${id}`)}
-      onToggleTask={(oppId, taskId, done) =>
-        toggleOppTaskDone(oppId, taskId, done)
-      }
-    />
-  );
-
   return (
     <div className="p-4 max-w-7xl mx-auto">
       {/* Header */}
@@ -174,11 +92,7 @@ export function OpportunitiesPage() {
               ? "（失注・全期間）"
               : openOnly
                 ? "（進行中のみ）"
-                : "（全件）"}{" "}
-            /{" "}
-            {viewMode === "household"
-              ? `${householdGroups.length} 世帯`
-              : `${productGroups.length} カテゴリ`}
+                : "（全件）"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -233,29 +147,9 @@ export function OpportunitiesPage() {
         </div>
       </div>
 
-      {/* View mode toggle */}
-      <div className="flex items-center justify-between mb-3 mt-2">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
-          {(["household", "product"] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setViewMode(mode)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                viewMode === mode
-                  ? "bg-white text-gray-800 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {mode === "household" ? "🏠 世帯別" : "📦 商品別"}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Filter panel */}
       {showFilters && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 mt-2 grid grid-cols-2 md:grid-cols-3 gap-3">
           <label className="flex items-center gap-2 col-span-2 md:col-span-1">
             <input
               type="checkbox"
@@ -295,25 +189,38 @@ export function OpportunitiesPage() {
         </div>
       )}
 
-      {/* Main content */}
-      {viewMode === "household" ? (
-        <HouseholdAccordion
-          groups={householdGroups}
-          allOpenDefault={false}
-          renderItem={renderItem}
-          renderTableHeader={renderTableHeader}
-          colSpan={7}
-          itemLabel="商談"
-          emptyMessage="該当する案件がありません"
-          renderHouseholdMeta={renderHouseholdMeta}
-          renderHouseholdActions={renderHouseholdActions}
-        />
-      ) : (
-        <ProductView
-          groups={productGroups}
-          getContractorName={getContractorName}
-        />
-      )}
+      {/* Flat opportunity table */}
+      <div className="mt-3 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table className="w-full text-sm">
+          <OpportunityTableHeader
+            sortKey={sortKey}
+            sortAsc={sortAsc}
+            onSort={handleSort}
+          />
+          <tbody className="divide-y divide-gray-100">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-10 text-center text-gray-400 text-sm">
+                  該当する案件がありません
+                </td>
+              </tr>
+            ) : (
+              filtered.map((opp: Opportunity) => (
+                <OpportunityTableRow
+                  key={opp.id}
+                  opp={opp}
+                  users={users}
+                  getContractorName={getContractorName}
+                  onNavigate={(id) => navigate(`/opportunities/${id}`)}
+                  onToggleTask={(oppId, taskId, done) =>
+                    toggleOppTaskDone(oppId, taskId, done)
+                  }
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -479,3 +479,43 @@ interface Props {
 - 世帯タスクと商談タスクは同一リスト内で表示（分類ヘッダで識別可能）
 - 商談タスクの `assigneeName` は商談の担当者または世帯 `picName` を引き継ぎ
 
+
+---
+
+## 工程H追補②改修ノート — HouseholdDetailPage / HouseholdTaskSection (2026-10-20 94aed33)
+
+### HouseholdTaskSection — タスク追加・編集フォームに担当者 select 追加
+
+**ファイル**: `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx`（323行）
+
+**変更**:
+- タスク追加フォームの `draft` 初期値に `ownerId: customer.primaryUserId ?? ""` を追加
+- 追加フォーム内に担当者 `<select>` を追加（`users` props が非空のときのみ表示）
+- インライン編集フォームにも同様の担当者 `<select>` を追加（`editDraft.ownerId` に連動）
+- `onAdd` 時の `ownerId` は `draft.ownerId || customer.primaryUserId` を使用
+
+```typescript
+// 追加フォーム draft 初期値
+{ title: "", dueDate: "", priority: "medium", memo: "", ownerId: customer.primaryUserId ?? "" }
+
+// 編集フォーム select
+value={editDraft.ownerId ?? ""}
+onChange={(e) => setEditDraft((d) => ({ ...d, ownerId: e.target.value || undefined }))}
+```
+
+---
+
+### HouseholdDetailPage — 商談タスク見出し・行のクリックで商談詳細へ遷移
+
+**ファイル**: `src/pages/HouseholdDetailPage.tsx`（452行）
+
+**変更**: 中央タスク列（w-72）の「商談タスク」ブロックにおける商談見出しと各タスク行にナビゲーションを追加。
+
+| 要素 | 変更前 | 変更後 |
+|---|---|---|
+| 商談見出し | `<div>` (クリック不可) | `<button type="button" onClick={() => navigate(\`/opportunities/${o.id}\`)}` |
+| タスク行 | `<div>` (クリック不可) | `onClick={() => navigate(\`/opportunities/${o.id}\`)}` 追加 |
+
+**スタイル変更**:
+- 見出し: `text-[11px] font-medium text-gray-400` → `text-[11px] font-medium text-blue-500 hover:text-blue-700 cursor-pointer`（矢印 `→` を末尾に追加）
+- タスク行: `border-l-2 border-gray-100` + `cursor-pointer hover:bg-gray-50 rounded-r` を追加
