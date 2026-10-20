@@ -7,10 +7,27 @@ const TYPE_ICON: Record<string, string> = {
 };
 
 export function NotificationsPage() {
-  const { notifications, currentUserId, markNotificationRead, markAllNotificationsRead, deleteNotification } = useAppStore();
+  const { notifications, reports, currentUserId, markNotificationRead, markAllNotificationsRead, deleteNotification } = useAppStore();
   const navigate = useNavigate();
   const userNotifs = [...notifications.filter(n => n.userId === currentUserId)].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const unreadCount = userNotifs.filter(n => !n.isRead).length;
+
+  const handleClick = (n: typeof userNotifs[number]) => {
+    markNotificationRead(n.id);
+    if (n.relatedReportId) {
+      const r = reports.find(rep => rep.id === n.relatedReportId);
+      if (r) {
+        navigate(`/reports/${r.date}?user=${r.userId}`);
+        return;
+      }
+    }
+    // リマインダー系として Today へ
+    if (n.type === 'reminder') {
+      navigate('/today');
+    } else {
+      navigate('/calendar');
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-4">
@@ -26,7 +43,7 @@ export function NotificationsPage() {
         <div className="space-y-2">
           {userNotifs.map(n => (
             <div key={n.id}
-              onClick={() => { markNotificationRead(n.id); if (n.relatedReportId) navigate('/calendar'); }}
+              onClick={() => handleClick(n)}
               className={`flex gap-3 p-4 bg-white rounded-xl border cursor-pointer hover:shadow-sm transition-all ${!n.isRead ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
               <span className="text-2xl flex-shrink-0">{TYPE_ICON[n.type]}</span>
               <div className="flex-1 min-w-0">

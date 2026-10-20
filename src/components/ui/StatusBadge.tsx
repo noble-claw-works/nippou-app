@@ -1,10 +1,10 @@
 import type { ReportStatus } from '../../types';
 
 const CONFIG: Record<ReportStatus, { label: string; className: string }> = {
-  draft:     { label: '下書き',   className: 'bg-gray-100 text-gray-600' },
-  submitted: { label: '提出済み', className: 'bg-blue-100 text-blue-700' },
-  confirmed: { label: '確認済み', className: 'bg-green-100 text-green-700' },
-  sent_back: { label: '差し戻し', className: 'bg-orange-100 text-orange-700' },
+  planning:    { label: '予定入力中', className: 'bg-indigo-100 text-indigo-700' },
+  in_progress: { label: '実績入力中', className: 'bg-amber-100 text-amber-700' },
+  submitted:   { label: '提出済み',   className: 'bg-blue-100 text-blue-700' },
+  confirmed:   { label: '承認済み',   className: 'bg-green-100 text-green-700' },
 };
 
 export function StatusBadge({ status }: { status: ReportStatus }) {
