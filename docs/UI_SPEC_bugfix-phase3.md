@@ -669,3 +669,8 @@ HouseholdDetailPage
 
 - **2026-10-20 587b060 ①**: **商談一覧を テーブル表示 → カード表示に変更** — 顧客フィードバックにより `OpportunitiesPage.tsx` の `<table>` を廃止し `flex flex-col gap-3` のカードリストへ全面置換。新規 `src/pages/opportunities/OpportunityCard.tsx` を作成。各カードに 案件名/商品カテゴリ・ステージバッジ・明細N件・月払(¥N/月)・次アクション(青バナー)・期日(`effectiveExpectedCloseDate`)を表示。顧客要望の3項目を明示表示: **担当者名**(`users.find(u=>u.id===opp.ownerId)?.name`)・**FC日**(`opp.milestones?.firstConsultDate` を案件共通のFC日として採用)・**ステージ**(ステージバッジ)。展開タスクは `TaskListPreview` をカード下部にインライン表示し `e.stopPropagation()` で詳細遷移と分離。ステージタブ(7)・カテゴリ/進行中フィルタ・`/opportunities/:id` 遷移導線は維持。`TaskListPreview.tsx` はテーブル列前提の `pl-*` 固定インデントを削除しカード内インライン対応。※`OpportunityTableRow.tsx`/`OpportunityTableHeader.tsx` は参照ゼロになったが削除は未実施(後続判断)。
 - **2026-10-20 587b060 ②**: **提案商品カードの縦長解消（内部2列化）** — `OpportunityDetailPage/ProductsTab.tsx` の各提案商品カード内部を `grid grid-cols-1 md:grid-cols-2 gap-4` で2列化。左列=保険会社名/被保険者/月払/メモ/反映方法(`ReflectionControl`)、右列=商品付帯タスク一覧(`scope==="product" && productId===pp.id`)。md未満は1列縦積みにフォールバック。編集/削除アイコン・合計月払フッタの位置は不変。
+
+
+### 工程H 追補⑤（2026-10-20 commit batch4 / コンタクト履歴に時刻追加）
+
+- **2026-10-20 ①**: **コンタクト履歴(実入力)に時刻(時間)を追加** — 顧客要望「時間も欲しい」により、`src/types/renewal.ts` の `RenewalContactRecord` に `time?: string`(形式 "HH:mm"、省略可)を追加(オプショナルのため既存データ後方互換)。`RenewalDetailPage/ContactEditor.tsx`(編集モード)の各行に日付 `<input type="date">` の直後へ `<input type="time">`(sm:w-32, aria-label「接触時刻」)を追加、空文字は undefined として保存。`RenewalDetailPage/ConsultTab.tsx` の `ContactReadView`(表示モード)は `c.time` がある場合のみ日付の後に時刻を表示(未設定の既存データは日付のみ)。FC日自動判定 `deriveFirstContactDate` は変更なし(date のみ使用、time は無視)。第2バッチの「編集ボタンでモード切替」方式は維持。

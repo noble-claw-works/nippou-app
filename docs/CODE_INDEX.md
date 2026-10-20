@@ -3,7 +3,7 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-20T05:28:14.441Z
+生成日時: 2026-10-20T05:31:10.259Z
 対象ファイル数: 355
 
 ## (root)/
@@ -227,8 +227,8 @@
 - `src/pages/PolicyDetailPage.tsx` (304行) — exports: PolicyDetailPage
 - `src/pages/ProductsPage.tsx` (129行) — exports: ProductsPage
 - `src/pages/RenewalDetailPage.tsx` (501行) — exports: RenewalDetailPage, Tab
-- `src/pages/RenewalDetailPage/ConsultTab.tsx` (420行) — exports: ConsultTab
-- `src/pages/RenewalDetailPage/ContactEditor.tsx` (108行) — exports: ContactEditor
+- `src/pages/RenewalDetailPage/ConsultTab.tsx` (423行) — exports: ConsultTab
+- `src/pages/RenewalDetailPage/ContactEditor.tsx` (117行) — exports: ContactEditor
 - `src/pages/RenewalDetailPage/NotesSection.tsx` (103行) — exports: NotesSection
 - `src/pages/RenewalDetailPage/PairMtgTab.tsx` (142行) — exports: PairMtgTab
 - `src/pages/RenewalDetailPage/PolicyCollectTab.tsx` (223行) — exports: PolicyCollectTab
@@ -342,7 +342,7 @@
 - `src/types/insurance.ts` (23行) — exports: InsuranceCompany, ProductCategoryMaster
 - `src/types/opportunity.ts` (237行) — exports: OpportunityStage, OpportunityStatus, LostReason, ProductCategory, ProposalProduct, ReflectionMode, ProposalReflection, OpportunityStageHistory, SalesChannel, ContractMilestones, DeficiencyItem, ConfidenceUnified, ProposalRound, OpportunityActivityReport, LIFE_CATEGORIES, NONLIFE_CATEGORIES, Opportunity
 - `src/types/policy.ts` (126行) — exports: PolicyStatus, PayMode, CoverageType, Coverage, Policy, PolicyValueChange, PolicyValueDelta, PolicyStatusHistory
-- `src/types/renewal.ts` (239行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalContactResult, RenewalContactRecord, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, SuperInsuranceLossStatus, RenewalPairMtgSurvey, PolicyCollectStatus, RenewalPolicyCollectSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, RenewalCase
+- `src/types/renewal.ts` (240行) — exports: RenewalStatus, RenewalMethod, RenewalProductType, RenewalContactResult, RenewalContactRecord, RenewalConsultSurvey, RenewalRoadmapSurvey, RenewalConcern, RenewalRiderSurvey, SuperInsuranceLossStatus, RenewalPairMtgSurvey, PolicyCollectStatus, RenewalPolicyCollectSurvey, RenewalSurvey, RenewalLogKind, RenewalActivityLog, RenewalNote, RenewalRoadmapItemDef, RenewalRoadmapTemplateVersion, RenewalRoadmapAnswer, RenewalRoadmapVersion, RenewalCase
 - `src/types/report.ts` (127行) — exports: Attachment, TimeBlock, Todo, CustomerVisit, Comment, ManagerCommentReply, ManagerComment, Compliment, DailyReport
 - `src/types/salesTarget.ts` (49行) — exports: TargetScope, TargetPeriodType, SalesTarget, TrackingSession
 - `src/types/system.ts` (28行) — exports: Notification, AuditLog
