@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Pencil, Eye } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { EmptyState, FormField } from '../ui/EmptyState';
 import { Modal } from '../ui/Modal';
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function UsersTab({ canEdit }: Props) {
+  const navigate = useNavigate();
   const { users, teams, addUser, updateUser, deactivateUser, addToast } = useAppStore();
   const [query, setQuery] = useState('');
   const [showInvite, setShowInvite] = useState(false);
@@ -84,24 +86,33 @@ export function UsersTab({ canEdit }: Props) {
                     上長: {managerLabel}
                   </p>
                 </div>
-                {canEdit && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditUser(user)}
-                      className="px-2.5 py-1 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1"
-                    >
-                      <Pencil className="w-3 h-3" /> 編集
-                    </button>
-                    {user.status === 'active' && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/members/${user.id}`)}
+                    className="px-2.5 py-1 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 flex items-center gap-1"
+                    title="社員詳細を見る"
+                  >
+                    <Eye className="w-3 h-3" /> 詳細
+                  </button>
+                  {canEdit && (
+                    <>
                       <button
-                        onClick={() => setDeactivateId(user.id)}
-                        className="px-2.5 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                        onClick={() => setEditUser(user)}
+                        className="px-2.5 py-1 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 flex items-center gap-1"
                       >
-                        無効化
+                        <Pencil className="w-3 h-3" /> 編集
                       </button>
-                    )}
-                  </div>
-                )}
+                      {user.status === 'active' && (
+                        <button
+                          onClick={() => setDeactivateId(user.id)}
+                          className="px-2.5 py-1 text-xs text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
+                        >
+                          無効化
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}

@@ -634,3 +634,17 @@ HouseholdDetailPage
 ### 工程H 実装履歴（2026-10-20 commit beb4e00）
 
 - **2026-10-20 beb4e00**: UI/UX改修（主上御裁可「編集→保存の保存ボタン式にして、かつ履歴に残す」）— ①損保更新5タブ（RiderTab/ConsultTab-エリアB/PairMtgTab/RoadmapTab/PolicyCollectTab）を即時保存→「編集→保存」ボタン式に統一。renewalSlice の `saveRenewalSurvey` から `activityLog` push を撤廃し、新アクション `commitRenewalSurvey`（保存確定時のみ1件 push）を `src/store/_internal/appstate/renewals.ts` に追加。ConsultTabエリアA（コンタクト履歴）の行追加/削除は即時保存を維持。②HouseholdDetailPage タスクを対応履歴の左（w-72中間カラム）に移動・3カラム化（lg未満は lg:hidden で非表示）。③HouseholdDetailPage/PoliciesSection.tsx「📜 契約 有効N件」→「📜 保険商品 有効N件」改称。④OpportunityDetailPage tasks/issued_policies を常時タブ表示・issued_policies ラベルを「保険商品」改称・IssuedPoliciesTab を世帯PoliciesSection準拠表示に統一・OverviewTabのステージ変更履歴セクション削除（活動履歴と重複のため）。
+
+### 工程H 追補（2026-10-20 commit e4664a4）
+
+> **設計ポリシー確立**: 履歴・タスクを伴う詳細ページは一貫して「詳細＋タスク＋履歴」の3列構造（左本文／中タスクaside w-72／右履歴aside w-80）を採用する。社員詳細は独自詳細ビュー無しのため対象外。
+
+- **2026-10-20 e4664a4 ①**: **OpportunityDetailPage 3列化** — 商談詳細ページを「左：本文（可変幅）／中：タスクaside w-72／右：活動履歴aside w-80」の3列構造に変更。`lg:flex lg:gap-4` でラップ、lg未満は縦積み。
+- **2026-10-20 e4664a4 ②**: **OpportunityDetailPage タブ統合** — 「概要」と「提案商品」タブを統合し、別タブだった「タスク」「提案商品」タブを廃止。タスクは中央asideへ、提案商品は概要タブ内に組み込み。
+- **2026-10-20 e4664a4 ③**: **商談一覧 展開タスク行インデント** — `TaskListPreview.tsx` の展開タスク行に `pl-[148px]` を付与し、保険商品名カラムと縦揃えのインデント表示を実現。
+- **2026-10-20 e4664a4 ④**: **HouseholdDetailPage / HouseholdTaskSection 担当者名表示** — 世帯タスクセクションに担当者名を表示（既定値は世帯担当者）。`HouseholdTaskSection.tsx` に `assigneeName` props を追加し、未指定時は世帯の `picName` を fallback 表示。
+- **2026-10-20 e4664a4 ⑤**: **HouseholdDetailPage 中央タスク列に商談タスクも表示** — 世帯詳細中央のタスク列（w-72）に世帯タスクだけでなく商談タスクも集約表示。`HouseholdDetailPage.tsx` で各商談の tasks を flatten して `HouseholdTaskSection` に渡す。
+- **2026-10-20 e4664a4 ⑥**: **RenewalListPage フィルタ機能追加** — 損保更新一覧にフィルタUIを追加。期間フィルタ（60日以内／期限切れ／全て）＋属性フィルタ（状況／種目／担当者）の組み合わせで絞り込み可能。フィルタ状態は `useState` で管理しクライアントサイドでフィルタリング。
+- **2026-10-20 e4664a4 ⑦**: **ConsultTab 重複ブロック削除** — `RenewalDetailPage/ConsultTab.tsx` に存在した「接触記録（時系列）」セクションの重複ブロックを削除。1箇所のみ表示に統一。
+- **2026-10-20 e4664a4 ⑧**: **RenewalDetailPage 3列化** — 損保更新詳細ページを「左：本文（可変幅）／中：タスクaside w-72／右：対応履歴列 w-80」の3列構造に変更。「タスク」タブを廃止し中央列へ移動。lg未満は `lg:hidden` で中央・右列を折り畳み。
+- **2026-10-20 e4664a4 ⑨**: **PolicyCollectTab 状態選択 ラジオボタン化** — 証券回収タブの状態選択UIを「編集時はラジオボタン選択・非編集時はラベル表示」に変更。既存の「編集→保存」ボタン式フローは維持。`PolicyCollectTab.tsx` の `isEditing` フラグで表示を切り替え。

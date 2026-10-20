@@ -3,7 +3,7 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-20T02:24:11.412Z
+生成日時: 2026-10-20T03:54:50.407Z
 対象ファイル数: 353
 
 ## (root)/
@@ -184,10 +184,10 @@
 - `src/pages/HouseholdBatchEntryPage/PageHeader.tsx` (55行) — exports: PageHeader
 - `src/pages/HouseholdBatchEntryPage/ProductRow.tsx` (142行) — exports: ProductRow
 - `src/pages/HouseholdBatchEntryPage/constants.ts` (28行) — exports: PRODUCT_CATEGORY_LABELS, PRODUCT_CATEGORIES
-- `src/pages/HouseholdDetailPage.tsx` (405行) — exports: HouseholdDetailPage
+- `src/pages/HouseholdDetailPage.tsx` (448行) — exports: HouseholdDetailPage
 - `src/pages/HouseholdDetailPage/CustomerEditForm.tsx` (113行) — exports: CustomerEditForm
 - `src/pages/HouseholdDetailPage/HouseholdInfoCard.tsx` (153行) — exports: HouseholdInfoCard
-- `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (269行) — exports: HouseholdTaskSection
+- `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx` (290行) — exports: HouseholdTaskSection
 - `src/pages/HouseholdDetailPage/HouseholdTimelineBody.tsx` (293行) — exports: TimelineEntry, UnifiedTimelineEntry, HouseholdTimelineBody
 - `src/pages/HouseholdDetailPage/InteractionAddForm.tsx` (229行) — exports: InteractionAddForm
 - `src/pages/HouseholdDetailPage/OpportunitiesSection.tsx` (110行) — exports: OpportunitiesSection
@@ -212,7 +212,7 @@
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
 - `src/pages/NotificationsPage.tsx` (65行) — exports: NotificationsPage
 - `src/pages/OpportunitiesPage.tsx` (320行) — exports: OpportunitiesPage
-- `src/pages/OpportunityDetailPage.tsx` (352行) — exports: OpportunityDetailPage
+- `src/pages/OpportunityDetailPage.tsx` (373行) — exports: OpportunityDetailPage
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
 - `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (109行) — exports: IssuedPoliciesTab
 - `src/pages/OpportunityDetailPage/OverviewTab.tsx` (172行) — exports: OverviewTab
@@ -225,19 +225,19 @@
 - `src/pages/PoliciesPage.tsx` (277行) — exports: PoliciesPage
 - `src/pages/PolicyDetailPage.tsx` (304行) — exports: PolicyDetailPage
 - `src/pages/ProductsPage.tsx` (129行) — exports: ProductsPage
-- `src/pages/RenewalDetailPage.tsx` (468行) — exports: RenewalDetailPage, Tab
-- `src/pages/RenewalDetailPage/ConsultTab.tsx` (395行) — exports: ConsultTab
+- `src/pages/RenewalDetailPage.tsx` (501行) — exports: RenewalDetailPage, Tab
+- `src/pages/RenewalDetailPage/ConsultTab.tsx` (339行) — exports: ConsultTab
 - `src/pages/RenewalDetailPage/ContactEditor.tsx` (108行) — exports: ContactEditor
 - `src/pages/RenewalDetailPage/NotesSection.tsx` (103行) — exports: NotesSection
 - `src/pages/RenewalDetailPage/PairMtgTab.tsx` (142行) — exports: PairMtgTab
-- `src/pages/RenewalDetailPage/PolicyCollectTab.tsx` (194行) — exports: PolicyCollectTab
+- `src/pages/RenewalDetailPage/PolicyCollectTab.tsx` (223行) — exports: PolicyCollectTab
 - `src/pages/RenewalDetailPage/RenewalTimeline.tsx` (78行) — exports: RenewalTimeline
 - `src/pages/RenewalDetailPage/RiderTab.tsx` (197行) — exports: RiderTab
 - `src/pages/RenewalDetailPage/RoadmapTab.tsx` (225行) — exports: RoadmapTab
 - `src/pages/RenewalDetailPage/RoadmapVersionedSection.tsx` (228行) — exports: RoadmapVersionedSection
 - `src/pages/RenewalDetailPage/TasksSection.tsx` (196行) — exports: TasksSection
 - `src/pages/RenewalImportPage.tsx` (321行) — exports: RenewalImportPage
-- `src/pages/RenewalListPage.tsx` (216行) — exports: RenewalListPage
+- `src/pages/RenewalListPage.tsx` (337行) — exports: RenewalListPage
 - `src/pages/RenewalListRow.tsx` (346行) — exports: RenewalListRowProps, RenewalListRow
 - `src/pages/ReportAdminPage.tsx` (191行) — exports: ReportAdminPage
 - `src/pages/ReportDetailPage.tsx` (353行) — exports: ReportDetailPage
@@ -275,7 +275,7 @@
 - `src/pages/opportunities/OpportunityTableRow.tsx` (81行) — exports: OpportunityTableRow
 - `src/pages/opportunities/ProductView.tsx` (88行) — exports: ProductGroup, ProductView
 - `src/pages/opportunities/SortIcon.tsx` (20行) — exports: SortIcon
-- `src/pages/opportunities/TaskListPreview.tsx` (132行) — exports: TaskListPreview
+- `src/pages/opportunities/TaskListPreview.tsx` (133行) — exports: TaskListPreview
 - `src/pages/opportunities/TaskProgressBadge.tsx` (26行) — exports: TaskProgressBadge
 - `src/pages/opportunities/constants.ts` (38行) — exports: StageTabKey, StageTab, STAGE_TABS, ViewMode, SortKey, PRODUCT_CATEGORY_LABELS
 - `src/pages/opportunities/productHelpers.ts` (33行) — exports: buildProductGroups

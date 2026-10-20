@@ -454,3 +454,28 @@ interface Props {
 
 ---
 
+## 工程H追補改修ノート — HouseholdDetailPage / HouseholdTaskSection (2026-10-20 e4664a4)
+
+### HouseholdTaskSection — 担当者名表示
+
+**ファイル**: `src/pages/HouseholdDetailPage/HouseholdTaskSection.tsx`
+
+**変更**: タスク列に担当者名を表示。
+
+| props | 型 | 備考 |
+|---|---|---|
+| `assigneeName` | `string \| undefined` | 未指定時は `household.picName` を fallback 表示 |
+
+- `HouseholdDetailPage.tsx` から世帯の `picName` を `assigneeName` に渡す
+- タスク行に担当者名を `text-xs text-gray-500` 等で副次的に表示
+
+### HouseholdDetailPage — 中央タスク列に商談タスクも集約表示
+
+**ファイル**: `src/pages/HouseholdDetailPage.tsx`
+
+**変更**: 前图beb4e00で導入した3列レイアウトの中央タスク列（w-72）に、世帯タスクに加えて商談タスクも集約表示する。
+
+- 各商談の `tasks` 配列を取得して flatten して `HouseholdTaskSection` に渡す
+- 世帯タスクと商談タスクは同一リスト内で表示（分類ヘッダで識別可能）
+- 商談タスクの `assigneeName` は商談の担当者または世帯 `picName` を引き継ぎ
+

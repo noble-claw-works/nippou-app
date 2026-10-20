@@ -259,3 +259,45 @@ interface Props {
 - **ステージ変更履歴セクション削除**: 活動履歴タブと内容が重複するため削除。
 - ステージ変更自体（`changeOpportunityStage()` / `StageSelector`）は引き続き有効。
 
+---
+
+## 工程H追補改修ノート — OpportunityDetailPage / TaskListPreview (2026-10-20 e4664a4)
+
+### OpportunityDetailPage — 3列レイアウト化
+
+**変更**: ページレイアウトを2段構成（本文 + タブ群）から「詳細＋タスク＋履歴」3列構造に変更。
+
+| 列 | 役割 | 幅 |
+|---|---|---|
+| 左 | 本文（基本情報・提案商品・概要） | 可変（`flex-1`） |
+| 中 | タスクaside | `w-72` (固定) |
+| 右 | 活動履歴aside | `w-80` (固定) |
+
+- `lg:flex lg:gap-4` でラップ; lg未満（モバイル）は縦積み
+- 中・右列は `<aside>` 要素で意味的に区分
+
+### OpportunityDetailPage — タブ統合
+
+**廃止タブ**: `tasks`（タスク）、`products`（提案商品）
+
+**統合先**:
+- タスク → 中央aside（常時表示）
+- 提案商品 → `overview`（概要）タブ内に組み込み
+
+**残存タブ構成（e4664a4時点）**:
+
+| タブキー | ラベル | 備考 |
+|---|---|---|
+| `overview` | 概要 | 提案商品セクションを含む |
+| `activities` | 活動履歴 | 変更なし |
+| `issued_policies` | 📜 保険商品 (N) | 前回beb4e00で常時表示化済み |
+
+### TaskListPreview — 展開タスク行インデント
+
+**ファイル**: `src/pages/opportunities/TaskListPreview.tsx`（または `src/components/TaskListPreview.tsx`）
+
+**変更**: 商談一覧の展開タスク行に `pl-[148px]` を付与。
+- 保険商品名カラム（左端から約148px）と縦揃えになるよう調整
+- 商談行の展開（accordion）に連動してインデント付きで表示
+
+

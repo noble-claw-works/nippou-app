@@ -35,6 +35,7 @@ import { CustomerListPage } from "./pages/CustomerListPage";
 import { RenewalListPage } from "./pages/RenewalListPage";
 import { RenewalDetailPage } from "./pages/RenewalDetailPage";
 import { RenewalImportPage } from "./pages/RenewalImportPage";
+import { MemberDetailPage } from "./pages/MemberDetailPage";
 import { useAppStore } from "./store";
 
 /** 認証ガード: 未ログインなら /login へリダイレクト */
@@ -155,6 +156,8 @@ function AppLayout() {
         <Route path="/renewals" element={<RenewalListPage />} />
         <Route path="/renewals/import" element={<RenewalImportPage />} />
         <Route path="/renewals/:id" element={<RenewalDetailPage />} />
+        {/* 社員詳細 */}
+        <Route path="/members/:userId" element={<MemberDetailPage />} />
         {/* Opportunity routes (Phase 2) */}
         <Route path="/opportunities" element={<OpportunitiesPage />} />
         <Route path="/opportunities/new" element={<NewOpportunityPage />} />
