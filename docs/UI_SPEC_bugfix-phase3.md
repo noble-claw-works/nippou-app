@@ -283,18 +283,22 @@ AdminPage
 - 「失注」ボタン (`stage: 'lost'`へ変更、ステージが終端でない時に表示)
 - 「削除」ボタン
 
-#### 4 タブ構成
+#### タブ構成（工程H改修後）
 
-| タブ | こと | 内容 |
-|---|---|---|
-| `overview` | 概要 | 案件基本情報 / 世帯リンク / 対象世帯員 / ステージ履歴 / メモ・タグ |
-| `products` | 提案商品 | ProposalProduct 一覧 + 追加・編集・削除 (`ProposalProductEditModal`使用) |
-| `activities` | 活動履歴 | 案件に紐付いた TimeBlock 一覧（日付・時刻・タイプ・メモ） |
-| `todos` | TODO | 案件に紐付いた Todo 一覧（日付・テキスト・ステータス） |
+| タブキー | ラベル | 内容 | 常時表示 |
+|---|---|---|---|
+| `overview` | 概要 | 案件基本情報 / 世帯リンク / 対象世帯員 / メモ・タグ | ✓ |
+| `products` | 提案商品 | ProposalProduct 一覧 + 追加・編集・削除 (`ProposalProductEditModal`使用) | ✓ |
+| `activities` | 活動履歴 | 案件に紐付いた TimeBlock 一覧（日付・時刻・タイプ・メモ） | ✓ |
+| `tasks` | ☑️ タスク (N) | 案件に紐付いた Todo 一覧（工程H: 常時タブ表示化） | ✓ |
+| `issued_policies` | 📜 保険商品 (N) | 発行済み Policy 一覧（工程H: 常時タブ表示・ラベル改称）| ✓ |
+
+> ⚠️ 工程H以前は `todos` キー・「TODO」ラベルだったが、`tasks` キー・常時タブ表示に変更。`issued_policies` は「契約発行」→「保険商品」に改称し常時表示。
 
 **ステージ変更 (overview タブ)**:
 - 「ステージを変更」ボタンで `StageSelector` をインライン展開
 - `StageSelector` でステージ選択 → 「ステージを更新」ボタンで `changeOpportunityStage()` 呼び出し
+- ~~ステージ変更履歴セクション~~ → 工程H で削除（活動履歴タブと重複のため）
 
 ---
 
@@ -543,3 +547,90 @@ HouseholdDetailPage
 
 - **2026-10-14 6a374fe 指示書②**: PCサイドバー折りたたみ実装。`src/components/layout/Sidebar.tsx`（89行）新規作成、`src/components/layout/AppShell.tsx`（316行）変更。展開(w-56)⇔レール(w-16)トグル。localStorage key `nippou.sidebar.collapsed` で永続化。レール時はナビアイコンに Tooltip 表示。モバイルドロワーは既存流用。
 - **2026-10-14 6a374fe 指示書③**: 顧客一覧タブ再編（3タブ→4タブ）＋商談アコーディオン初期折りたたみ。新規: `src/pages/customerListTabs.ts`（29行）・`src/pages/MembersPage.tsx`（185行）・`src/pages/HouseholdDetailPage/PoliciesSection.tsx`（117行）。変更: CustomerListPage / ProductsPage / PoliciesPage / OpportunitiesPage / PersonsPane / PoliciesPane / HouseholdDetailPage / ia-restructure.test.ts。タブ構成: カルテ(旧商品・表示専用) / 世帯(入力集約) / 構成員(新設MembersPage・横断表示専用) / 保険商品(旧契約・表示専用)。保険商品の行編集/削除導線を世帯詳細に移設。後方互換URL: `?tab=products`→カルテ、`?tab=policies`→保険商品。商談一覧アコーディオンを初期折りたたみに変更。DoD: tsc=0, lint=0, test 78files/1312tests 緑, build OK, 全ファイル≤400行。
+
+---
+
+## 工程H UI/UX改修（主上御裁可 2026-10-20 commit beb4e00）
+
+### ① 損保更新5タブ — 即時保存→「編集→保存」ボタン式に統一
+
+**対象タブ**: `RiderTab` / `ConsultTab`（エリアB のみ）/ `PairMtgTab` / `RoadmapTab` / `PolicyCollectTab`
+
+#### 保存方式の変更
+
+| 項目 | 変更前 | 変更後 |
+|---|---|---|
+| 編集UX | 入力のたびに即時保存 | 「編集」ボタンで編集モード開始 → 「保存」ボタンで確定 |
+| 対応履歴への push | `saveRenewalSurvey` 呼び出しのたびに `activityLog` へ push | 保存確定時（`commitRenewalSurvey`）に 1件だけ push（複数項目変更でも集約1件）|
+
+#### store 変更（`src/store/_internal/appstate/renewals.ts`）
+
+- `saveRenewalSurvey(id, patch)`: フォームの一時書き込み用として残存。`activityLog` push は撤廃。
+- `commitRenewalSurvey(id, logBody?)`: **新規追加**。保存ボタン押下時にのみ呼び出し、`activityLog` に確定ログを1件 push する。
+
+#### 例外（変更なし）
+
+- **`ConsultTab` エリアA（コンタクト履歴）**: 行追加・削除は引き続き即時保存を維持。
+
+---
+
+### ② HouseholdDetailPage — タスクを中間カラムへ移動、3カラム化
+
+**ファイル**: `src/pages/HouseholdDetailPage.tsx`
+
+#### レイアウト変更
+
+```
+【変更前】
+  左: 世帯員・商談等メインコンテンツ
+  右: 対応履歴（既存）
+
+【変更後（lg以上）】
+  左: 世帯員・商談等メインコンテンツ
+  中(w-72): タスク（移動）
+  右: 対応履歴
+```
+
+- `lg` 未満（スマホ・タブレット）では従来通り `lg:hidden` でタスクカラムを非表示。
+- 対応履歴は右カラムに引き続き表示。タスクは `w-72` の中間カラムとして `border-l` 区切りで配置。
+
+---
+
+### ③ HouseholdDetailPage/PoliciesSection — ラベル改称
+
+**ファイル**: `src/pages/HouseholdDetailPage/PoliciesSection.tsx`
+
+| 変更前 | 変更後 |
+|---|---|
+| 📜 契約 有効N件 | 📜 保険商品 有効N件 |
+
+---
+
+### ④ OpportunityDetailPage — タブ常時表示・ラベル改称・OverviewTab整理
+
+**ファイル**: `src/pages/OpportunityDetailPage.tsx`
+
+#### タブ常時表示
+
+- `tasks` タブ（☑️ タスク）と `issued_policies` タブ（📜 保険商品）を世帯詳細と同様に**常時タブバーに表示**。
+- 従来は条件付き表示（issued_policies は受注後のみ等）だったが、タブ自体は常時表示しコンテンツで空状態を案内する。
+
+#### ラベル改称
+
+| タブキー | 変更前 | 変更後 |
+|---|---|---|
+| `issued_policies` | 📜 契約発行 | 📜 保険商品 (N) |
+
+#### IssuedPoliciesTab 表示仕様
+
+- `HouseholdDetailPage/PoliciesSection.tsx` 準拠の表示形式に統一（PolicyStatusBadge + 商品名 + 保険会社 + 月払）。
+
+#### OverviewTab 変更
+
+- **ステージ変更履歴セクション削除**: 活動履歴タブと内容が重複するため、`OverviewTab` 内のステージ変更履歴セクションを削除。
+
+---
+
+### 工程H 実装履歴（2026-10-20 commit beb4e00）
+
+- **2026-10-20 beb4e00**: UI/UX改修（主上御裁可「編集→保存の保存ボタン式にして、かつ履歴に残す」）— ①損保更新5タブ（RiderTab/ConsultTab-エリアB/PairMtgTab/RoadmapTab/PolicyCollectTab）を即時保存→「編集→保存」ボタン式に統一。renewalSlice の `saveRenewalSurvey` から `activityLog` push を撤廃し、新アクション `commitRenewalSurvey`（保存確定時のみ1件 push）を `src/store/_internal/appstate/renewals.ts` に追加。ConsultTabエリアA（コンタクト履歴）の行追加/削除は即時保存を維持。②HouseholdDetailPage タスクを対応履歴の左（w-72中間カラム）に移動・3カラム化（lg未満は lg:hidden で非表示）。③HouseholdDetailPage/PoliciesSection.tsx「📜 契約 有効N件」→「📜 保険商品 有効N件」改称。④OpportunityDetailPage tasks/issued_policies を常時タブ表示・issued_policies ラベルを「保険商品」改称・IssuedPoliciesTab を世帯PoliciesSection準拠表示に統一・OverviewTabのステージ変更履歴セクション削除（活動履歴と重複のため）。

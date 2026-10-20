@@ -237,3 +237,25 @@ interface Props {
 
 ---
 
+## 工程H改修ノート — OpportunityDetailPage (2026-10-20 beb4e00)
+
+### タブ構成変更
+
+| タブキー | ラベル（変更前→変更後） | 常時表示 |
+|---|---|---|
+| `overview` | 概要（変更なし） | ✓ |
+| `products` | 提案商品（変更なし） | ✓ |
+| `activities` | 活動履歴（変更なし） | ✓ |
+| `tasks` | `todos`/"TODO" → **`tasks`/"☑️ タスク (N)"**（常時タブ表示化） | ✓ |
+| `issued_policies` | `issued_policies`/"契約発行" → **"📜 保険商品 (N)"**（常時タブ表示化） | ✓ |
+
+### IssuedPoliciesTab 表示仕様
+
+- `HouseholdDetailPage/PoliciesSection.tsx` 準拠の表示形式に統一。
+- 各行: PolicyStatusBadge + 商品名 + 保険会社 + 月払額。
+
+### OverviewTab 変更
+
+- **ステージ変更履歴セクション削除**: 活動履歴タブと内容が重複するため削除。
+- ステージ変更自体（`changeOpportunityStage()` / `StageSelector`）は引き続き有効。
+
