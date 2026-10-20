@@ -3,8 +3,8 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-20T05:13:42.511Z
-対象ファイル数: 354
+生成日時: 2026-10-20T05:28:14.441Z
+対象ファイル数: 355
 
 ## (root)/
 - `src/App.tsx` (203行) — exports: App
@@ -212,12 +212,12 @@
 - `src/pages/NippouPage.tsx` (85行) — exports: NippouPage
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
 - `src/pages/NotificationsPage.tsx` (65行) — exports: NotificationsPage
-- `src/pages/OpportunitiesPage.tsx` (227行) — exports: OpportunitiesPage
+- `src/pages/OpportunitiesPage.tsx` (220行) — exports: OpportunitiesPage
 - `src/pages/OpportunityDetailPage.tsx` (378行) — exports: OpportunityDetailPage
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
 - `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (109行) — exports: IssuedPoliciesTab
 - `src/pages/OpportunityDetailPage/OverviewTab.tsx` (172行) — exports: OverviewTab
-- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (155行) — exports: ProductsTab
+- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (166行) — exports: ProductsTab
 - `src/pages/OpportunityDetailPage/ProposalsTab.tsx` (258行) — exports: ProposalsTab
 - `src/pages/OpportunityDetailPage/TaskRow.tsx` (144行) — exports: TaskRow
 - `src/pages/OpportunityDetailPage/TasksTab.tsx` (175行) — exports: TasksTab
@@ -272,11 +272,12 @@
 - `src/pages/customers/CustomerForm.tsx` (154行) — exports: CustomerForm
 - `src/pages/customers/constants.ts` (14行) — exports: TYPE_LABELS, SortKey
 - `src/pages/customers/helpers.ts` (62行) — exports: buildHistoryCountMap, sortCustomers, filterCustomers
+- `src/pages/opportunities/OpportunityCard.tsx` (203行) — exports: OpportunityCard
 - `src/pages/opportunities/OpportunityTableHeader.tsx` (55行) — exports: OpportunityTableHeader
 - `src/pages/opportunities/OpportunityTableRow.tsx` (81行) — exports: OpportunityTableRow
 - `src/pages/opportunities/ProductView.tsx` (88行) — exports: ProductGroup, ProductView
 - `src/pages/opportunities/SortIcon.tsx` (20行) — exports: SortIcon
-- `src/pages/opportunities/TaskListPreview.tsx` (149行) — exports: TaskListPreview
+- `src/pages/opportunities/TaskListPreview.tsx` (129行) — exports: TaskListPreview
 - `src/pages/opportunities/TaskProgressBadge.tsx` (26行) — exports: TaskProgressBadge
 - `src/pages/opportunities/constants.ts` (38行) — exports: StageTabKey, StageTab, STAGE_TABS, ViewMode, SortKey, PRODUCT_CATEGORY_LABELS
 - `src/pages/opportunities/productHelpers.ts` (33行) — exports: buildProductGroups
