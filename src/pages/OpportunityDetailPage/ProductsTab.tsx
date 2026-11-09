@@ -2,6 +2,7 @@ import { Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
 import type { Opportunity, Person, ProposalProduct } from "../../types";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { ReflectionControl } from "../../components/policy/ReflectionControl";
+import { formatMonthlyTotal } from "../NewOpportunityPage/newOpportunityDraft";
 
 interface ProductsTabProps {
   opp: Opportunity;
@@ -155,7 +156,7 @@ export function ProductsTab({
           })}
           {opp.totalMonthlyPremium && (
             <div className="border-t pt-3 text-sm font-medium text-gray-700 text-right">
-              合計月払: ¥{opp.totalMonthlyPremium.toLocaleString()} / 月
+              {formatMonthlyTotal(opp.totalMonthlyPremium)}
             </div>
           )}
         </div>

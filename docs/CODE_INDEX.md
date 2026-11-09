@@ -3,8 +3,8 @@
 > このファイルは `npm run index` で自動生成される。編集は生成元コードを変えてから再生成すること。
 > 用途: AIがwhole-repoを読まずに、機能→ファイルを特定するための索引。
 
-生成日時: 2026-10-20T05:31:10.259Z
-対象ファイル数: 355
+生成日時: 2026-11-09T13:31:20.249Z
+対象ファイル数: 369
 
 ## (root)/
 - `src/App.tsx` (203行) — exports: App
@@ -21,16 +21,20 @@
 - `src/components/dashboard/SummaryReportPanel.tsx` (209行) — exports: SummaryReportPanel
 - `src/components/dashboard/TodoProgressPanel.tsx` (155行) — exports: TodoProgressPanel
 - `src/components/household/PersonEditModal.tsx` (162行) — exports: PersonEditModal
+- `src/components/household/PersonInlineAddForm.tsx` (143行) — exports: PersonInlineAddForm
 - `src/components/household/QuickHouseholdModal.tsx` (261行) — exports: QuickHouseholdModalProps, QuickHouseholdModal
 - `src/components/layout/AppShell.tsx` (317行) — exports: AppShell
 - `src/components/layout/Sidebar.tsx` (90行) — exports: NavItem, Sidebar
 - `src/components/notifications/NotificationBell.tsx` (62行) — exports: NotificationBell
 - `src/components/opportunity/OpportunityCombobox.tsx` (160行) — exports: OpportunityCombobox
-- `src/components/opportunity/ProposalProductEditModal.tsx` (211行) — exports: ProposalProductEditModal
+- `src/components/opportunity/ProposalProductEditModal.tsx` (90行) — exports: ProposalProductEditModal
+- `src/components/opportunity/ProposalProductFormFields.tsx` (140行) — exports: ProposalProductFormFields
+- `src/components/opportunity/ProposalProductInlineForm.tsx` (82行) — exports: ProposalProductInlineForm
 - `src/components/opportunity/ProposalProductListEditor.tsx` (116行) — exports: ProposalProductListEditor
 - `src/components/opportunity/QuickOpportunityModal.tsx` (276行) — exports: QuickOpportunityModal
 - `src/components/opportunity/StageBadge.tsx` (31行) — exports: StageBadge
 - `src/components/opportunity/StageSelector.tsx` (151行) — exports: StageSelector
+- `src/components/opportunity/proposalProductMeta.ts` (56行) — exports: PRODUCT_CATEGORY_LABELS, COMMON_INSURERS, newProposalProductId, emptyProposalProduct, ProposalProductDraft, ProposalProductErrors, validateProposalProduct
 - `src/components/opportunity/stageMeta.ts` (55行) — exports: StageMeta, STAGE_META
 - `src/components/policy/CoverageEditModal.tsx` (203行) — exports: CoverageEditModal
 - `src/components/policy/CoverageMatrix.tsx` (127行) — exports: CoverageMatrix
@@ -198,7 +202,7 @@
 - `src/pages/HouseholdsPage.tsx` (14行) — exports: HouseholdsPage
 - `src/pages/HouseholdsPage/HouseholdListFull.tsx` (600行) — exports: HouseholdListFull
 - `src/pages/HouseholdsPage/HouseholdListPane.tsx` (452行) — exports: HouseholdListPane
-- `src/pages/HouseholdsPage/PersonsPane.tsx` (287行) — exports: PersonsPane
+- `src/pages/HouseholdsPage/PersonsPane.tsx` (173行) — exports: PersonsPane
 - `src/pages/HouseholdsPage/PoliciesPane.tsx` (321行) — exports: PoliciesPane
 - `src/pages/HouseholdsPage/PolicyCardInlineEdit.tsx` (67行) — exports: PolicyCardInlineEdit
 - `src/pages/HouseholdsPage/ProductFormFields.tsx` (148行) — exports: PolicyFormState, ProductFormFields
@@ -206,8 +210,17 @@
 - `src/pages/LoginPage.tsx` (261行) — exports: LoginPage
 - `src/pages/MemberDetailPage.tsx` (518行) — exports: MemberDetailPage, Eye
 - `src/pages/MembersPage.tsx` (186行) — exports: MembersPage
-- `src/pages/NewOpportunityPage.tsx` (95行) — exports: NewOpportunityPage
-- `src/pages/NewOpportunityPage/NewOpportunityForm.tsx` (274行) — exports: NewOpportunityForm
+- `src/pages/NewOpportunityPage.tsx` (147行) — exports: NewOpportunityPage
+- `src/pages/NewOpportunityPage/HouseholdMembersBlock.tsx` (82行) — exports: HouseholdMembersBlock
+- `src/pages/NewOpportunityPage/HouseholdPickPane.tsx` (102行) — exports: HouseholdPickPane
+- `src/pages/NewOpportunityPage/HouseholdRow.tsx` (41行) — exports: HouseholdRow
+- `src/pages/NewOpportunityPage/OpportunityDraftPane.tsx` (154行) — exports: OpportunityDraftPane
+- `src/pages/NewOpportunityPage/PaneShell.tsx` (43行) — exports: PaneShell
+- `src/pages/NewOpportunityPage/ProposalProductsPane.tsx` (130行) — exports: ProposalProductsPane
+- `src/pages/NewOpportunityPage/QuickHouseholdInlineForm.tsx` (111行) — exports: QuickHouseholdInlineForm
+- `src/pages/NewOpportunityPage/newOpportunityDraft.ts` (96行) — exports: INITIAL_STAGES, OpportunityDraft, AddOpportunityInput, makeInitialDraft, resolveDefaultOwnerId, isDraftDirty, validateDraft, buildOpportunityInput, sumMonthlyPremium, formatMonthlyTotal, toggleIn
+- `src/pages/NewOpportunityPage/useHouseholdSelection.ts` (97行) — exports: SelectionState, SelectionAction, resolveInitialHouseholdId, nextSelection, useHouseholdSelection
+- `src/pages/NewOpportunityPage/useNewOpportunityDraft.ts` (26行) — exports: useNewOpportunityDraft
 - `src/pages/NippouListPage.tsx` (259行) — exports: NippouListPage
 - `src/pages/NippouPage.tsx` (85行) — exports: NippouPage
 - `src/pages/NotFoundPage.tsx` (27行) — exports: NotFoundPage
@@ -217,7 +230,7 @@
 - `src/pages/OpportunityDetailPage/ActivityTimeline.tsx` (70行) — exports: ActivityTimeline
 - `src/pages/OpportunityDetailPage/IssuedPoliciesTab.tsx` (109行) — exports: IssuedPoliciesTab
 - `src/pages/OpportunityDetailPage/OverviewTab.tsx` (172行) — exports: OverviewTab
-- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (166行) — exports: ProductsTab
+- `src/pages/OpportunityDetailPage/ProductsTab.tsx` (167行) — exports: ProductsTab
 - `src/pages/OpportunityDetailPage/ProposalsTab.tsx` (258行) — exports: ProposalsTab
 - `src/pages/OpportunityDetailPage/TaskRow.tsx` (144行) — exports: TaskRow
 - `src/pages/OpportunityDetailPage/TasksTab.tsx` (175行) — exports: TasksTab
@@ -353,6 +366,7 @@
 ## utils/
 - `src/utils/batchEntryNavigation.ts` (30行) — exports: canActivateBatchEntry, resolveBackUrl
 - `src/utils/channelUtils.ts` (83行) — exports: getChannelPath, getChannelChildren, getChannelDisplayName, isLeafChannel
+- `src/utils/createHouseholdWithHead.ts` (45行) — exports: CreateHouseholdDeps, CreateHouseholdInput, createHouseholdWithHead
 - `src/utils/customerAttachment.ts` (58行) — exports: AttachmentCheckState, hasCustomerAttachment, canDeleteCustomer
 - `src/utils/customerSearch.ts` (158行) — exports: normalizeForSearch, CustomerSearchScore, searchCustomers, getCustomerLabel, getCustomerLabelById
 - `src/utils/filterRenewalPolicies.ts` (60行) — exports: RENEWAL_NEAR_DAYS, filterRenewalPolicies, daysUntilRenewal, isRenewalNear
