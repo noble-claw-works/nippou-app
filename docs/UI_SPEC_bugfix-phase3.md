@@ -246,7 +246,7 @@ AdminPage
 - **案件一覧テーブル**: 装餁 / 案件名 / ステージ / 対象世帯員 / 検討カテゴリ / 合計月払 / 次アクション / 期日
 - **フィルター**: ステージ / 担当者 / 進行中のみ表示 (openOnly) / カテゴリ
 - **ソート**: ステージ順 / 見込みクローズ日近順 / 合計月払鞏順 / 更新時刻降順（各列ヘッダクリックで昇降切り替え）
-- **新規作成**: 「+ 新規案件」ボタン → `QuickOpportunityModal` を開く
+- **新規作成**: 「+ 新規案件」ボタン → `/opportunities/new`（3ペイン画面。詳細は UI_SPEC_pages.md「NewOpportunityPage」）へ遷移
 
 #### テーブル列
 
@@ -339,7 +339,7 @@ AdminPage
 - `getOpportunitiesByHousehold(householdId)` で当該世帯の全案件を取得
 - 案件カード列: 案件名 / StageBadge / 合計月払 / 次アクション / 期日
 - 各カードの「詳細 →」ボタンで `/opportunities/:id` へ遷移
-- 「+ 新規案件」ボタンで `QuickOpportunityModal` を開く
+- 「+ 新規案件」ボタンで `/opportunities/new`（3ペイン画面）へ遷移
 
 ---
 

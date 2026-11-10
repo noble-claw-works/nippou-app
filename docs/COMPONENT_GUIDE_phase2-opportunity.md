@@ -357,3 +357,33 @@ interface TasksTabProps {
 
 - 未完了タスク行・完了件数トグル行・完了タスク行の全3種を統一方式に変更
 - 親テーブルの契約者列（`pl-8+px-4 = 48px`）と案件名列起点を正確に整列
+
+---
+
+## 新規案件作成の3ペイン化ノート (2026-11-08 e12af1a)
+
+詳細な画面仕様は `UI_SPEC_pages.md` の「NewOpportunityPage」。ここでは部品と共通化のみ記す。
+
+### 新規・変更コンポーネント
+
+| ファイル | 役割 |
+|---|---|
+| `src/pages/NewOpportunityPage.tsx` | 3 ペインのページ本体（旧 `NewOpportunityForm.tsx` は削除） |
+| `src/pages/NewOpportunityPage/PaneShell.tsx` | Props `{ no: 1\|2\|3; title; headingId?; disabled?; disabledHint?; children }`。番号丸＋見出し。`disabled` で `opacity-50 pointer-events-none`＋`aria-disabled`＋案内文。スマホはカード化 |
+| `HouseholdPickPane` / `HouseholdRow` / `QuickHouseholdInlineForm` / `HouseholdMembersBlock` | ①世帯ペイン。`HouseholdMembersBlock` は `autoOpenAdd` で新規世帯直後に追加フォームを開く |
+| `OpportunityDraftPane` | ②案件ペイン。Props `{ householdId, draft, onChange, error }` |
+| `ProposalProductsPane` | ③提案商品ペイン。Props `{ householdId, products, onChange }` |
+| `newOpportunityDraft.ts` | 下書き型 `OpportunityDraft` と純関数（`makeInitialDraft` / `resolveDefaultOwnerId` / `isDraftDirty` / `validateDraft` / `buildOpportunityInput` / `sumMonthlyPremium` / `formatMonthlyTotal` / `toggleIn`、`INITIAL_STAGES`） |
+| `useNewOpportunityDraft.ts` | `useState` の薄い包み（`draft/update/reset/isDirty/error/setError`） |
+| `useHouseholdSelection.ts` | 世帯選択と切替確認（`requestSelect/confirmSwitch/cancelSwitch/selectCreated`、`pendingId`、`justCreatedId`）。`resolveInitialHouseholdId` も export |
+
+### 共通部品の切り出し（既存画面の見た目は不変）
+
+- `src/components/household/PersonInlineAddForm.tsx`: 世帯員(構成員)インライン追加フォーム。`PersonsPane`（世帯一覧②）から中身を変えずに切り出し、新規案件①でも共用。Props `{ householdId, title?='構成員を追加', defaultRelation?='spouse', onDone, onCancel? }`。入力は名前・続柄・年収
+- `src/components/opportunity/proposalProductMeta.ts`: `PRODUCT_CATEGORY_LABELS`（10 カテゴリ）/ `COMMON_INSURERS` / `newProposalProductId()`（`pp_{時刻}_{乱数}`）/ `emptyProposalProduct()`。.tsx から関数を export すると react-refresh の lint に掛かるため .ts に分離
+- `ProposalProductFormFields.tsx`: 提案商品フォーム本体と `validateProposalProduct`（「商品名は必須です」「保険会社は必須です」「月払額を入力してください」）。`datalistId` を props にして、モーダルとインラインが同時に DOM にあっても id が衝突しない（モーダルは `insurers-list`）
+- `ProposalProductInlineForm.tsx`: Props `{ mode: 'add'|'edit'; initial?; householdId; onSave; onCancel }`。add は新規 id、edit は `initial.id` を維持
+- `ProposalProductEditModal`: 上記 FormFields を使う形に整理（Props・フォーム構成・振る舞いは上の節のとおり不変）。`ProposalProductListEditor` は据え置き
+- `QuickOpportunityModal` は日報 BlockModal 用として残存（新規案件の導線では使わない）
+- `OpportunityDetailPage/ProductsTab`: 合計表示を `formatMonthlyTotal` に変更（「合計月払 ¥… / 月」）
+

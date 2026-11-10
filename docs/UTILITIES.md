@@ -342,3 +342,22 @@ src/__tests__/customerSearch.test.ts
 - **2026-06-06 cea9756**: `src/utils/orgChart.ts` 新規作成 — `getManagersOf` / `getSubordinatesOf` を追加。`src/__tests__/orgChart.test.ts` 追加
 - **2026-06-04 db741db**: `src/utils/todoReadOnly.ts` 新規作成 — `isTodoReadOnly` / `getTodoReadOnlyReason` を追加
 - **2026-06-04 8ccb832**: `src/utils/customerAttachment.ts` 新規作成 — `hasCustomerAttachment` / `canDeleteCustomer` を追加
+
+## createHouseholdWithHead (`src/utils/createHouseholdWithHead.ts`) — 2026-11-08 e12af1a
+
+**役割**: 新規世帯と世帯主を 1 回で登録する。新規案件作成①ペインの「新規世帯を登録」から使う。
+
+```typescript
+createHouseholdWithHead(
+  deps: { addCustomer; addPerson; updateCustomer },   // ストア関数を引数で受ける(テストで store をそのまま渡せる)
+  input: { name: string; type: CustomerType; primaryUserId: string },
+): string | null   // 世帯 id。名前が空白のみ・例外時は null
+```
+
+- 手順: `addCustomer`（`area: ''`, `status: 'active'`, tags/memo 空）→ `addPerson(householdId, { name, relation: 'head', memo: '' })` → `updateCustomer(householdId, { headPersonId })`
+- `area` は未入力（`''`）で作る。データの形は `QuickHouseholdModal`（日報 BlockModal 用・未変更）と同一
+
+## newOpportunityDraft / proposalProductMeta
+
+新規案件作成の下書き純関数は `src/pages/NewOpportunityPage/newOpportunityDraft.ts`、提案商品の表示ラベル・id 採番は `src/components/opportunity/proposalProductMeta.ts`。一覧は `COMPONENT_GUIDE_phase2-opportunity.md` の「新規案件作成の3ペイン化ノート」を参照。
+

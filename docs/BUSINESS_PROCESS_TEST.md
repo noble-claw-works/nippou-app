@@ -196,8 +196,8 @@
 | 2 | 「🛡️ 保障マトリクス」セクションを確認 | CoverageMatrix が表示される。行=Person、列=保障種別（death/medical_hospital/cancer/disability/nursing/savings）でマトリクスが表示される |
 | 3 | 世帯主の「death（死亡）」列が `-`（保障なし）であることを確認 | そのセルに `-` が表示される |
 | 4 | 赤警告バナーが自動表示されることを確認（世帯主に死亡保障がない場合） | 「世帯主に死亡保障がありません」等の赤警告バナーが表示される |
-| 5 | `/opportunities` に移動し「+ 新規案件」ボタンをクリック → QuickOpportunityModal を開く | モーダルが表示される |
-| 6 | 世帯を選択・タイトル（例: 「田中家 死亡保障」）・ステージ（approach）を入力して作成 | 新規 Opportunity が作成される（status=open, stage=approach） |
+| 5 | `/opportunities` に移動し「+ 新規案件」ボタンをクリック → `/opportunities/new` へ遷移 | 3ペイン画面（①世帯 ②案件 ③提案商品）が表示される |
+| 6 | ①で世帯を選択・②で案件名（例: 「田中家 死亡保障」）・初期ステージ（approach）を入力し「作成する」 | 新規 Opportunity が作成される（status=open, stage=approach） |
 | 7 | 作成されたOpportunityが `/opportunities` 一覧に表示されることを確認 | 新規案件が一覧に追加される |
 
 ### 検証観点

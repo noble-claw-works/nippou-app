@@ -574,3 +574,31 @@ const sorted = [...filtered].sort((a, b) => {
 
 ---
 
+
+---
+
+### NewOpportunityPage (`src/pages/NewOpportunityPage.tsx`) — 新規案件作成の3ペイン化（11/08 指示書・e12af1a）
+
+**役割**: 新規案件(商談)作成の専用フルページ。①世帯 → ②案件 → ③提案商品 を 1 画面で横に並べる。旧 `NewOpportunityForm`（1 カラムフォーム）は廃止・削除。
+
+**ルート**（App.tsx）:
+- `/opportunities/new` … 世帯未選択で入る（「/opportunities」の「新規案件」ボタン）
+- `/households/:customerId/opportunities/new` … 世帯確定済みで入る（世帯詳細の「商談追加」）
+- `?householdId=` でも世帯指定可。選択を変えても URL は変えない。対象は active 世帯のみ（`resolveInitialHouseholdId`）
+
+**レイアウト**: 見出し「🤝 新規案件を作成」＋戻るボタン。PC(lg)は `grid-cols-[300px_420px_minmax(0,1fr)]` の 3 列固定・各ペイン独立スクロール、スマホは縦 1 列のカード（世帯選択後に②の見出しへスムーズスクロール）。下部に「キャンセル」「作成する」の固定バー（スマホ fixed / PC sticky）。
+
+| ペイン | コンポーネント | 内容 |
+|---|---|---|
+| ①世帯 | `HouseholdPickPane` / `HouseholdRow` / `QuickHouseholdInlineForm` / `HouseholdMembersBlock` | 上段(約3/5): 世帯名検索（placeholder「世帯名で検索」）＋世帯一覧（選択行は `bg-blue-50 border-l-2 border-blue-500`、区分・人数・エリア・担当を表示）＋「新規世帯を登録」インラインフォーム。下段(約2/5): 「👥 世帯員」一覧＋「+ 構成員を追加」（`PersonInlineAddForm` 共用、世帯主は 👑）。新規世帯登録直後は構成員追加フォームを自動で開く |
+| ②案件 | `OpportunityDraftPane` | 案件名*（placeholder「例: 田中家 生命保険 見直し」）／担当者*／初期ステージ（approach・fact_finding・needs_analysis・proposal）／対象者（世帯員・複数可）／検討カテゴリ（複数可）／確度（任意）／メモ（任意）。世帯未選択時は薄く表示し「← 世帯を選ぶか、新規世帯を登録してください」 |
+| ③提案商品 | `ProposalProductsPane` / `ProposalProductInlineForm` | 見出し「提案商品」＋追加ボタン。一覧は商品名・カテゴリ・保険会社・被保険者・「¥{月払} / 月」、行ごとに編集（インライン）・削除（確認なし、下書き内）。1 件以上でフッタに「{n}件」と「合計月払 ¥8,000 / 月」。世帯未選択時は「← 案件を入力すると、提案商品を追加できます」 |
+
+**新規世帯のその場登録**（`QuickHouseholdInlineForm`）: 入力は 氏名・区分(個人/法人)・主担当 の 3 項目。`createHouseholdWithHead`（`src/utils/createHouseholdWithHead.ts`）で 世帯 → 世帯主(relation: head, 名前＝世帯名) → `headPersonId` 書き戻し を行う。`area` は `''`（一覧では「エリア未設定」）。成功トースト「{名前} を登録しました（世帯主を自動登録）」、失敗は「世帯の登録に失敗しました」。登録後はその世帯を自動選択。押下中は `submitting` で二重作成防止。
+
+**世帯切替の警告**（`useHouseholdSelection`）: 入力済み（`isDraftDirty`: 案件名・対象者・カテゴリ・提案商品・確度・メモのいずれか。担当者と初期ステージは既定値のままなら数えない）の状態で別の世帯を選ぶと ConfirmDialog「世帯を切り替えますか？／入力中の案件と提案商品は消えます」（確認ラベル「切り替える」）。未入力なら確認なしで切替し、前世帯の対象者のみ外す。
+
+**作成処理**: 「作成する」は 世帯選択済み・案件名が空白でない・担当者選択済み のときのみ有効。押下時に `validateDraft`（「世帯を選択してください」「案件名は必須です」「担当者は必須です」）→ `addOpportunity(buildOpportunityInput(...))`（status=open、`needsAnalysisDone=false`、`illustrationProvided=false`、`productCategories` は 検討カテゴリ ∪ 提案商品のカテゴリ、確度は選択時のみ付与）→ `/opportunities/:id` へ遷移。キャンセル／戻るは `navigate(-1)`。
+
+**関連の見た目統一**: `/opportunities/:id` の「提案商品」タブ合計も `formatMonthlyTotal` で「合計月払 ¥… / 月」表記に統一（ProductsTab）。世帯詳細・カルテ（PersonsPane）の見た目は共通部品の切り出し後も不変。
+
