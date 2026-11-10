@@ -1,0 +1,391 @@
+# セキュリティ仕様
+
+## 概要
+
+305-hrl-nippou-app のセキュリティ要件と対策実装の記録。
+保安司家臣による監査結果 (`audit/SECURITY_AUDIT_2026-06-04.md`) に基づき、P0/P1 脆弱性を修正。
+
+---
+
+## 実施済み対策
+
+### P0: 顧客削除権限の付帯情報判定 (e54993b — 2026-06-06 本体実装, 8ccb832 はテストのみで実装欠落)
+
+> **⚠ 訂正 (d8aae47 の汚染分)**: 前回 commit `d8aae47` の docs は `8ccb832`（テストのみ）を実装済みとして記録していたが、CustomersPage.tsx/store/index.ts の本体実装は欠落していた。真の実装は `e54993b` (2026-06-06) である。
+
+#### 問題
+付帯情報（日報ブロック・TODO）が紐付いている顧客でも、権限不足のロールが削除操作を実行できる状態にあった（`8ccb832` ではユーティリティとテストのみ追加され、UI/Store への組み込みが欠落）。
+
+#### 対策
+
+**UI 層: `src/pages/CustomersPage.tsx` (e54993b)**
+- `import { canDeleteCustomer, hasCustomerAttachment } from '../utils/customerAttachment'` を追加
+- `attachmentState = { reports }` を計算して各 IIFE に渡す
+- 各顧客行の削除ボタン:
+  - `canDeleteCustomer(attachmentState, customer.id, currentRole)` を per-行で評価
+  - 削除不可の場合: `disabled` + `cursor-not-allowed` + `opacity-50` + `title` ツールチップ（「付帯情報あり: admin/executive のみ削除可」）
+  - 削除可の場合: `text-red-700 border-red-300 hover:bg-red-50`
+  - `aria-disabled` を付与（アクセシビリティ対応）
+- 編集モーダル内「危険ゾーン」の削除ボタンも同様: `modalHasAttach` / `modalCanDelete` で個別判定
+
+**ストア層: `src/store/index.ts` (`deleteCustomer`) (e54993b)**
+- 付帯情報あり + `currentRole` が admin/executive 以外 → `console.warn('[security] deleteCustomer blocked: 付帯情報あり customer は admin/executive のみ削除可')` を出力して no-op で終了
+- UI 層とストア層の **二層防御** により、不正な直接呼び出しも阻止
+
+**判定ユーティリティ: `src/utils/customerAttachment.ts` (8ccb832 で新規作成)**
+- `hasCustomerAttachment(state, customerId): boolean`
+  - `reports[].blocks[].customerId` または `reports[].todos[].customerId` に一致すれば `true`
+- `canDeleteCustomer(state, customerId, currentRole): boolean`
+  - 未ログイン (currentRole=undefined): 常に `false`
+  - 付帯情報なし: ログイン中の任意ロール → `true`
+  - 付帯情報あり: `admin` / `executive` のみ → `true`、それ以外 → `false`
+
+#### 付帯情報の判定基準 (明文化)
+
+「付帯情報」と診断される情報とされない情報を明確に定義する。
+
+| 情報種別 | 付帯情報として判定 | 理由 |
+|---|---|---|
+| `reports[].blocks[].customerId` への参照 | ✅ **含む** | 日報の活動履歴に直接紐づくため、削除すると履歴が毀れる |
+| `reports[].todos[].customerId` への参照 | ✅ **含む** | 日報の TODO 履歴に直接紐づくため、削除すると履歴が毀れる |
+| `customer.nextAppointment` | ❌ **含まない** | 顧客レコード自体のフィールドであり、日報履歴への参照ではない |
+| `customer.lastContactDate` | ❌ **含まない** | 同上 |
+| `customer.tags` | ❌ **含まない** | 同上 |
+| `customer.memo` | ❌ **含まない** | 同上 |
+
+> **判定の根拠**: 「過去の活動履歴に紐づく顧客は誤削除すると履歴が毀れる」が判定の根拠。`nextAppointment` など顧客レコード自体のフィールドは顧客削除により同時に削除されるのみであり、別レコードへの参照を持たないため履歴破壊のリスクはない。
+
+#### seed データにおける付帯情報あり顧客の確定リスト
+
+| 顧客 ID | 顧客名 | 付帯情報の種別 |
+|---|---|---|
+| c1 | KOORO GILSON | `reports[].blocks[].customerId` への参照あり |
+| c3 | 暁和化学ゴム | `reports[].blocks[].customerId` への参照あり |
+| c7 | テクノ精工 | `reports[].todos[].customerId` への参照あり |
+
+> **注意**: `nextAppointment` が設定されている暁和化学ゴム (c3) が **別途** 付帯情報ありに判定されるのは、`blocks[].customerId` への参照があるからである。`nextAppointment` フィールド自体は判定対象外。
+
+#### テスト
+- `src/__tests__/customerAttachment.test.ts` — 14 テスト（`hasCustomerAttachment` 5件 + `canDeleteCustomer` 9件、8ccb832 で追加）
+- `e2e/customer-delete-role.spec.ts` — 5 テスト (e54993b で追加、E2E レベルで権限制御を検証)
+
+---
+
+### P1: ログイン失敗回数の localStorage 永続化 (e54993b — 2026-06-06 本体実装, f2cd145 はテストのみで実装欠落)
+
+> **⚠ 訂正 (d8aae47 の汚染分)**: 前回 commit `d8aae47` の docs は `f2cd145`（テストのみ）を実装済みとして記録していたが、LoginPage.tsx への localStorage 永続化・ロックバナー・カウントダウンの実装は欠落していた。真の実装は `e54993b` (2026-06-06) である。
+
+#### 問題
+ログイン失敗カウンタが `useState` のメモリのみで管理されていたため、ページリロードでリセットされ、ブルートフォース攻撃対策が無効化されていた（`f2cd145` ではユーティリティとテストのみ追加され、LoginPage.tsx への組み込みが欠落）。
+
+#### 対策
+
+**`src/pages/LoginPage.tsx` (e54993b)**
+
+| タイミング | 処理 |
+|---|---|
+| マウント時 | `useState` 初期値で `parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10)` を読み込み。`Number.isNaN` なら `0` にフォールバック |
+| マウント時 | `lockUntil` の初期値で `parseInt(localStorage.getItem('nippou_login_lock_until') ?? '0', 10)` を読み込み |
+| ログイン失敗時 | `failCount + 1` を `localStorage.setItem('nippou_login_fails', ...)` に同期 |
+| 5 回失敗時 | `Date.now() + 30 * 60 * 1000` を `lockUntil` state と `localStorage.setItem('nippou_login_lock_until', ...)` に保存 |
+| ログイン成功時 | `setFailCount(0)` / `setLockUntil(0)` + `localStorage.removeItem` で両キーをクリア |
+
+**ロック状態判定**:
+```ts
+const isLocked = failCount >= 5 || lockUntil > now;
+// now は useEffect で毎秒更新（カウントダウン表示用）
+```
+
+**NaN ガード** (破損データ対策):
+```ts
+const v = parseInt(localStorage.getItem('nippou_login_fails') ?? '0', 10);
+const failCount = Number.isNaN(v) ? 0 : v;
+```
+
+**ロックバナー (UI)**:
+- `isLocked` 中は▼の赤バナーを表示 (`role="alert"`, `bg-red-50 border border-red-300`)
+- ロック解除までの残り時間を分単位でカウントダウン表示 (`Math.ceil((lockUntil - now) / 60000) 分後にロック解除`)
+- `useEffect` で `lockUntil > 0` の間、`setInterval(1000)` で `now` を毎秒更新
+
+**ボタン制御**:
+- `<button type="submit" disabled={loading || isLocked}>` — ロック中はボタン disabled
+- ボタンラベル: `loading ? '認証中...' : isLocked ? 'ロック中' : 'ログイン'`
+- `handleLogin` 冠頭で `if (isLocked) return;` ガード
+
+#### localStorage キー
+| キー | 値 | 用途 |
+|---|---|---|
+| `nippou_login_fails` | 数値文字列 | 連続失敗回数 (0〜) |
+| `nippou_login_lock_until` | Unix ミリ秒文字列 | ロック解除時刻 (0 = ロックなし)。`Date.now() > lockUntil` で自動解除 |
+
+#### テスト
+- `src/__tests__/loginLockout.test.ts` — 13 テスト（初期値読み込み・NaN ガード・失敗時書き込み・成功時クリア・ロック状態判定）
+- `e2e/login-lockout.spec.ts` — 4 テスト (e54993b で追加、E2E レベルでロック展開を検証)
+
+---
+
+### P1: Netlify デプロイスクリプトの Site ID を環境変数化 (0326621 — 2026-06-04)
+
+#### 問題
+`scripts/netlify-deploy.sh` に Netlify Site ID (GUID) がハードコードされており、リポジトリに機密情報が含まれていた。
+
+#### 対策
+
+**`scripts/netlify-deploy.sh`**
+```sh
+# 変更前
+SITE_ID="53453b52-8d02-43b5-860b-0bee67040bc8"
+
+# 変更後
+SITE_ID="${NETLIFY_SITE_ID:-}"
+if [ -z "$SITE_ID" ]; then
+  echo "ERROR: NETLIFY_SITE_ID is not set" >&2
+  echo "  Export it before running: export NETLIFY_SITE_ID=<your-site-id>" >&2
+  exit 1
+fi
+```
+
+- 未設定時は stderr にエラーメッセージを出力し `exit 1`
+- CI/CD 環境では環境変数 `NETLIFY_SITE_ID` を設定して実行すること
+
+---
+
+### BUG-B 残存修正: TODO 編集の二層防御拡張 (db741db — 2026-06-04)
+
+#### 問題
+`ae0ce12` (BUG-B [P0]) で提出済み/承認済み日報由来の TODO 保護は実装済みだったが、**期限切れ TODO**（`dueDate < today`）が Today 画面から変更可能なまま残っていた。
+
+#### 対策
+
+**共通判定ユーティリティ: `src/utils/todoReadOnly.ts`**
+
+TODO 読み取り専用判定を 1 ただ所に集約。UI 層・ store 層の両方で利用。
+
+| 読み取り専用条件 | 詳細 |
+|---|---|
+| `reportStatus ∈ ['submitted', 'confirmed']` | 提出済み/承認済み日報由来の TODO |
+| `todo.dueDate < today` | 期限切れ TODO (YYYY-MM-DD 文字列比較) |
+
+**UI 層: `src/components/today/SidePanelCards.tsx`**
+- 各 TODO 行で `isTodoReadOnly(todo, report.status, todayStr)` を呼び出し per-todo で判定
+- `isBtnDisabled = isReadOnly || todoReadOnly` によりチェックボックス・削除ボタンを無効化
+
+**store 層: `src/store/index.ts`**
+- `toggleTodo` / `updateTodo` / `deleteTodo` 内のガードを `isTodoReadOnly` を使う形に更新
+- status が `planning` / `in_progress` な TODO でも期限切れの場合は no-op
+- `console.warn('[store] toggleTodo blocked: todo is read-only', { reportId, todoId, status, dueDate })` を出力しデバッグ容易化
+
+#### 二層防御の構成
+
+```
+リクエスト
+  └→ UI 層: isBtnDisabled=true → ボタン disabled (操作を防ぐ)
+  └→ store 層: isTodoReadOnly → true なら no-op (万が一 UI を迭貧しても防ぐ)
+```
+
+#### テスト
+- `src/__tests__/todoReadOnly.test.ts` — 23 テスト（`isTodoReadOnly` / `getTodoReadOnlyReason` 全エッジケース）
+- `src/__tests__/todoCardReadOnly.test.tsx` — +4 テスト（overdue シナリオ: チェックボックス disabled / ハンドラ無効 / バッジ表示）
+
+---
+
+---
+
+### E-9: ロール切替永続化バグ (a5eb23c — 2026-06-06)
+
+#### 検出経緯
+鸞鳳殳（ux-tester）検証で発覚。デモモードのヘッダーロール切替メニューでロールを切り替えても、ページリロード後に初期値 (`'general'`) に戻るバグが確認された。E-7（NotFoundPage）・ E-8（顧客削除永続化）と同様のバグカテゴリー。
+
+#### 問題
+- `currentRole` / `currentUserId` は Zustand store のインメモリ状態で管理されていたため、ページリロード時に `_initialUser?.role ?? 'general'` で初期化されロール切替が無効化されていた。
+
+#### 修正 (a5eb23c)
+`src/store/auth.ts` に E-8 (`deletedCustomers.ts`) と同様のヘルパー関数を追加：
+
+```typescript
+export const ROLE_SWITCH_STORAGE_KEY = 'nippou.currentRole.v1';
+export const USER_SWITCH_STORAGE_KEY  = 'nippou.currentUserId.v1';
+
+export function loadRoleSwitch(): { role: Role; userId: string } | null
+export function persistRoleSwitch(role: Role | null, userId: string | null): void
+```
+
+`src/store/index.ts` の変更点：
+- store 初期化時に `loadRoleSwitch()` を呼び出し、切替記録があれば auth セッションのロールより優先
+- `setRole(role)` 内で `persistRoleSwitch(role, userId)` を呼び出し、即座に localStorage 保存
+- `login()` / `loginAsUser()` 内で `persistRoleSwitch(null, null)` を呼び出しログイン時に切替記録をクリア
+- `logout()` / `resetAll()` 内でも同様にクリア
+
+#### テスト
+- `src/__tests__/roleSwitch.test.ts` — 14 テスト（`loadRoleSwitch` / `persistRoleSwitch` / `setRole` での保存 / `login`・`logout`・`resetAll` でのクリア）
+
+---
+
+## P0 検証手順 (staging 環境)
+
+### リセット手順
+
+1. **Settings ページからリセット** (UI 操作)
+   - `/settings` に移動
+   - 「データを初期状態にリセット」ボタンをクリック
+
+2. **ブラウザコンソールからリセット** (DevTools 操作)
+   ```js
+   localStorage.clear();
+   location.reload();
+   ```
+
+> ⚠ E-8 修正後、削除済み顧客 ID は `nippou_deleted_customers` キーで localStorage に永続化される。`resetAll` または `localStorage.clear()` でクリアされるまで顧客は復元しない。
+
+### 一般社員 (袈田 祈司) での検証手順
+
+1. staging を開く (`https://<staging-url>/login`)
+2. 「役割で選んでログイン」から「袈田 祈司 (general)」を選択
+3. `/customers` に移動
+
+**期待動作**:
+
+| 顧客 | 判定 | 展示 | 削除ボタン |
+|---|---|---|---|
+| c1 (KOORO GILSON) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c3 (暁和化学ゴム) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c7 (テクノ精工) | 付帯情報あり | 🔗 付帯情報あり バッジ表示 | disabled + tooltip 表示 |
+| c2, c4, c5, c6, c8, c9, c10… | 付帯情報なし | バッジなし | enabled (削除可能) |
+
+**tooltip テキスト**: 「付帯情報あり: admin/executive のみ削除可」
+
+**追加確認事項**:
+- 削除ボタンを `dispatchEvent('click')` で発火しても「完全に削除しますか」ダイアログが開かないこと
+- `pointer-events-none` クラスが附いていることを DevTools で確認
+
+---
+
+## Phase 2: Opportunity 参照・編集権限
+
+**コミット**: `97cabc9`
+
+`Opportunity`（商談案件）は必ず `householdId` で `Household` に紐付く。参照・編集権限はロールによって制御される。
+
+### Opportunity 権限マトリクス
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| 一覧履歴 (`getOpportunitiesByHousehold`) | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 |
+| `/opportunities` ページ閲覧 | ✅ 自分担当のみ | ✅ 全件 | ✅ 全社 | ✅ 全社 |
+| 案件作成 (`addOpportunity`) | ✅ | ✅ | ✅ | ✅ |
+| 案件更新 (`updateOpportunity`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+| ステージ変更 (`changeOpportunityStage`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+| 案件削除 (`deleteOpportunity`) | ✅ 形式上全件 | ✅ | ✅ | ✅ |
+
+> **注意**: 現フェーズでは Store 層に権限制御を実装していない。UI 層のアクセス制御（general には自分担当案件のみ表示）は `OpportunitiesPage` 内で実施される。将来フェーズで Store 層での完全な二層防御を導入予定。
+
+### Opportunity データの機微性
+
+Opportunity には利益情報（`totalMonthlyPremium`）・顧客の健康情報参照（被保険者 `insuredPersonId`）を含む提案商品情報が含まれる。
+
+- **LocalStorage 保存**: `SECURITY.md` の基本方针（暗号化なし）を踏襲。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+
+---
+
+## Phase 3: Policy 参照・編集権限
+
+**コミット**: `97cf2b1` (2026-06-09)
+
+`Policy`（保険契約）は必ず `householdId` で `Household` に紐付く。契約者・被保険者はその Household に所属する `Person` である。参照・編集権限はロールと `ownerId` により制御される。
+
+### Policy 権限マトリクス
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| Policy 一覧取得 (`PoliciesPage`) | ✅ 自分担当のみ | ✅ 同チーム全件 | ✅ 全社 | ✅ 全社 |
+| Policy 詳細閲覧 (`PolicyDetailPage`) | ✅ 自分担当 | ✅ | ✅ | ✅ |
+| Policy 追加 (`addPolicy`) | ✅ | ✅ | ✅ | ✅ |
+| Policy 編集 (`updatePolicy`) | ✅ 自担当 (`ownerId`) | ✅ | ✅ | ✅ |
+| Policy 削除 (`deletePolicy`) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| Coverage 追加・編集・削除 | ✅ 自担当 | ✅ | ✅ | ✅ |
+| `issuePoliciesFromOpportunity` (契約発行) | ✅ | ✅ | ✅ | ✅ |
+| `activatePolicy` (証券番号入力・有効化) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| `changePolicyStatus` (解約・払済・満期) | ✅ 自担当 | ✅ | ✅ | ✅ |
+| Dashboard 契約ステータス分布・保険会社別パネル | ❌ | ❌ | ✅ | ✅ |
+
+> **注意**: Policy 編集・報命が general 形式上全件実行可能な默定実装だが、UI 層で `canEdit = currentRole === 'admin' || policy.ownerId === currentUserId` で編集ボタンを制御。将来フェーズで Store 層二層防衛を導入予定。
+
+### Policy データの機微性
+
+Policy には以下の機微情報が含まれる。
+
+| フィールド | 機微分類 | 備考 |
+|---|---|---|
+| `policyNumber` (証券番号) | 高 | 保険契約を特定する主要 ID |
+| `monthlyPremium` (月払保険料) | 高 | 个人財務情報 |
+| `cashValue` (解約返戻金) | 高 | 資産情報 |
+| `insuredPersonIds` (被保険者) | 中 | 個人問連結 |
+| `sourceOpportunityId` | 中 | Opportunity→Policy 系譜（営業機密）|
+
+- **LocalStorage 保存**: `nippou.policies.v1` / `nippou.policyHistory.v1`。暗号化なし。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+
+---
+
+## Phase 1: Person データの参照権限
+
+### Person データと世帯の担当者制
+
+`Person`（世帯員）データへのアクセス権限は、所属する `Household`（世帯）の担当者制と同一である。
+
+**原則**: Person は Household に従属する。Household にアクセスできるユーザーは、その Household に属するすべての Person を参照・編集・削除できる。
+
+| 操作 | general | manager | executive | admin |
+|---|---|---|---|---|
+| Person 一覧取得 (`getPersonsByHousehold`) | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 | ✅ 全世帯 |
+| Person 追加 (`addPerson`) | ✅ | ✅ | ✅ | ✅ |
+| Person 編集 (`updatePerson`) | ✅ | ✅ | ✅ | ✅ |
+| Person 削除 (`deletePerson`) | ✅ | ✅ | ✅ | ✅ |
+
+> **注意**: 現フェーズでは担当者絞り込みは実装しない。将来フェーズで `primaryUserId` による参照制限を導入予定。
+
+### Person データの機微性
+
+Person データには生年月日・健康情報（`healthNotes`）・喫煙有無（`smoker`）など個人情報が含まれる。
+
+- **LocalStorage 保存**: `SECURITY.md` の基本方針（暗号化なし）を踏襲。デモ環境前提。
+- **将来対応**: 本番環境導入時はサーバーサイドへの移行と暗号化が必要。
+- **表示制限**: 現時点では healthNotes 等を全ロールで閲覧可能とするが、将来的に担当者のみ閲覧に制限する予定。
+
+---
+
+## ## セキュリティ原則
+
+### 二層防御 (Defense in Depth)
+権限制御は **UI 層** と **ストア層** の両方で実施する。UI バグや直接呼び出しによる迂回を防ぐ。
+
+### ロール階層
+| ロール | 顧客削除 (付帯情報あり) | 顧客削除 (付帯情報なし) |
+|---|---|---|
+| general | ✗ | ✓ |
+| manager | ✗ | ✓ |
+| executive | ✓ | ✓ |
+| admin | ✓ | ✓ |
+
+各ロールの典型的な利用シナリオ・画面アクセス権限の詳細は `docs/USER_GUIDE.md` を参照。
+
+### 認証・セッション (AUTH-1〜5)
+詳細は `docs/DATA_MODEL.md` の「認証・セッション」セクション、および `docs/UI_SPEC.md` の「App.tsx (認証ガード)」セクションを参照。
+
+---
+
+## 改修履歴
+
+- **2026-06-09 97cf2b1**: Phase 3 保険契約管理 — Policy 参照・編集権限マトリクス追加。general は自担当のみ閲覧・編集、manager はチーム全件、executive/admin は全社閲覧。契約発行 (QuickPolicyIssue) は全ロール可。証券番号/月払/解約返戻金等の機微情報取扱方針を明記
+- **2026-06-09 97cabc9**: Phase 2 商談案件管理 — Opportunity 参照・編集権限マトリクス追加。general は `/opportunities` ページで自分担当のみ表示、manager は全件、executive / admin は全社閲覧。商務筆資速報の機微性と将来の Store 層二層防御導入予定を明記
+- **2026-06-09 6db6e91**: Phase 1 世帯モデル基盤 — `Person` データの参照権限節追加。Person は Household と同一担当者制（全ロールで参照可）。healthNotes 等の機微情報の取扱い方針を明記
+- **2026-06-06 a5eb23c**: E-9 ロール切替永続化バグ修正 — 鸞鳳殳検証で発覚。`src/store/auth.ts` に `ROLE_SWITCH_STORAGE_KEY` / `USER_SWITCH_STORAGE_KEY` / `loadRoleSwitch` / `persistRoleSwitch` を追加。store 初期化時に `loadRoleSwitch` を優先、`setRole` で `persistRoleSwitch` 呢出、`login`/`logout`/`resetAll` でクリア。テスト 14 件 (`roleSwitch.test.ts`) 追加
+- **2026-06-06 (P0検証強化)**: seed に付帯情報あり顧客を複数化 (c1+c3+c7)(ブロック参照 c3, TODO 参照 c7)。`Todo` 型に `customerId` フィールド追加、`customerAttachment.ts` の型キャストを正規化。`CustomersPage.tsx` に付帯情報ありバッジ (🔗) を追加。`docs/SECURITY.md` に付帯情報判定基準・確定リスト・ P0 検証手順を明記
+- **2026-06-06 0450936**: E-8 真の原因修正 — Zustand store 非永続化を根本修正。`src/store/deletedCustomers.ts` 新規作成・削除済み顧客 ID を localStorage 永続化、store 初期化時に seed data からフィルタアウト。`resetAll` 時に localStorage クリア
+- **2026-06-06 e54993b**: P0/P1 本体実装 — CustomersPage.tsx に per-customer 削除権限制御 (canDeleteCustomer + hasCustomerAttachment 適用、disabled + title ツールチップ、編集モーダル危険ゾーンも同様)、LoginPage.tsx に localStorage 永続化・ロックバナー・カウントダウン・ボタン disabled を実装。store/index.ts deleteCustomer に二層防御追加。前回 d8aae47 の汚染 docs を訂正
+- **2026-06-04 db741db**: BUG-B 残存修正 — TODO 編集の二層防御を期限切れ (dueDate < today) まで拡張。`src/utils/todoReadOnly.ts` を新規作成し UI 層・ store 層両方に展開
+- **2026-06-04 8ccb832**: P0 — 顧客削除権限の付帯情報判定ユーティリティ (`customerAttachment.ts`) と単体テストを新規作成（UI/Store への組み込みは e54993b で完成）
+- **2026-06-04 f2cd145**: P1 — ログインロックアウトのユーティリティとテストを新規作成（LoginPage.tsx への組み込みは e54993b で完成）
+- **2026-06-04 0326621**: P1 — netlify-deploy.sh の Site ID をハードコードから環境変数に変更
+- **2026-06-03 319e32c**: AUTH-1〜5 — ログイン認証・セッション失効・パスワード変更・認証ガードを実装
