@@ -1,4 +1,5 @@
 import { ChannelSelect } from "./ChannelSelect";
+import { DateInput } from "../../components/common/DateInput";
 
 interface HouseholdHeaderSectionProps {
   personOptions: Array<{ id: string; name: string }>;
@@ -53,8 +54,7 @@ export function HouseholdHeaderSection({
           <label className="block text-xs font-medium text-gray-700 mb-1">
             商談日（既定）
           </label>
-          <input
-            type="date"
+          <DateInput
             value={headerDate}
             onChange={(e) => onDateChange(e.target.value)}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

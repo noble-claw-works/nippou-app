@@ -135,7 +135,7 @@ describe('T10 S1 共通部品の描画', () => {
     for (const label of ['カテゴリ', '商品名', '保険会社', '被保険者', '月払', '保険金額', 'メモ']) {
       expect(screen.getAllByText(new RegExp(label)).length).toBeGreaterThan(0);
     }
-    for (const msg of ['商品名は必須です', '保険会社は必須です', '月払額を入力してください']) {
+    for (const msg of ['商品名は必須です', '保険会社は必須です', '0より大きい金額を入力してください']) {
       expect(screen.getByText(msg)).toBeTruthy();
     }
   });

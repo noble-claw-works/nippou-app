@@ -3,6 +3,10 @@ import { Link } from "react-router-dom";
 import { Plus, Layers } from "lucide-react";
 import type { Opportunity } from "../../types";
 import { StageBadge } from "../../components/opportunity/StageBadge";
+import {
+  isNextActionOverdue,
+  OVERDUE_CLASS,
+} from "../../utils/nextActionOverdue";
 
 interface OpportunitiesSectionProps {
   opportunities: Opportunity[];
@@ -89,7 +93,12 @@ export function OpportunitiesSection({
                   )}
                 </div>
                 {opp.nextAction && (
-                  <div className="text-xs text-gray-500 mt-0.5 truncate">
+                  <div
+                    className={`text-xs mt-0.5 truncate ${isNextActionOverdue(opp.nextActionDate) ? OVERDUE_CLASS : "text-gray-500"}`}
+                    data-overdue={
+                      isNextActionOverdue(opp.nextActionDate) || undefined
+                    }
+                  >
                     次: {opp.nextAction}
                     {opp.nextActionDate ? ` (${opp.nextActionDate})` : ""}
                   </div>

@@ -4,6 +4,10 @@ import type { Opportunity, User } from "../../types";
 import { tabOf, TAB_META, effectiveExpectedCloseDate } from "../../utils/opportunityStage";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { TaskListPreview } from "./TaskListPreview";
+import {
+  isNextActionOverdue,
+  OVERDUE_CLASS,
+} from "../../utils/nextActionOverdue";
 
 interface OpportunityCardProps {
   opp: Opportunity;
@@ -138,7 +142,16 @@ export function OpportunityCard({
             <span className="text-blue-500 font-medium">次: </span>
             {nextAction ?? ""}
             {nextActionDate && (
-              <span className="text-gray-400 ml-1">({nextActionDate})</span>
+              <span
+                className={
+                  isNextActionOverdue(nextActionDate)
+                    ? `${OVERDUE_CLASS} ml-1`
+                    : "text-gray-400 ml-1"
+                }
+                data-overdue={isNextActionOverdue(nextActionDate) || undefined}
+              >
+                ({nextActionDate})
+              </span>
             )}
           </div>
         )}

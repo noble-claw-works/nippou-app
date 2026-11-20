@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import type { Opportunity, OpportunityStage, LostReason } from '../../types';
-import { STAGE_META } from './StageBadge';
-import { useAppStore } from '../../store';
+import { useState } from "react";
+import type { Opportunity, OpportunityStage, LostReason } from "../../types";
+import { STAGE_META } from "./StageBadge";
+import { useAppStore } from "../../store";
+import { recordStageChangeActivity } from "../../utils/stageChangeActivity";
 
 // =====================================================
 // StageSelector — ステージ変更プルダウン
@@ -47,9 +48,24 @@ export function StageSelector({ opportunity, onClose, compact = false }: Props) 
       return;
     }
     setSaving(true);
-    changeOpportunityStage(opportunity.id, selectedStage, note || undefined);
-    if (selectedStage === 'lost') {
-      updateOpportunity(opportunity.id, { lostReason, lostReasonDetail: lostReasonDetail || undefined });
+    const memo = note || undefined;
+    const prev = {
+      id: opportunity.id,
+      title: opportunity.title,
+      stage: opportunity.stage,
+    };
+    changeOpportunityStage(opportunity.id, selectedStage, memo);
+    recordStageChangeActivity(
+      useAppStore.getState(),
+      prev,
+      selectedStage,
+      memo,
+    );
+    if (selectedStage === "lost") {
+      updateOpportunity(opportunity.id, {
+        lostReason,
+        lostReasonDetail: lostReasonDetail || undefined,
+      });
     }
     setSaving(false);
     onClose?.();

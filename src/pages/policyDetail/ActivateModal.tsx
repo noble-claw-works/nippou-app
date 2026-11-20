@@ -1,3 +1,4 @@
+import { DateInput } from "../../components/common/DateInput";
 interface ActivateModalProps {
   policyNumber: string;
   startDate: string;
@@ -35,8 +36,7 @@ export function ActivateModal({
             <label className="block text-xs font-medium text-gray-600 mb-1">
               契約日
             </label>
-            <input
-              type="date"
+            <DateInput
               value={startDate}
               onChange={(e) => onChangeStartDate(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"

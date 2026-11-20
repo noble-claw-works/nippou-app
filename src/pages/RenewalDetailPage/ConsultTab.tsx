@@ -20,6 +20,7 @@ import {
 } from "../../utils/renewalDays";
 import { deriveFirstContactDate } from "../../utils/renewalContacts";
 import { RENEWAL_CONTACT_RESULT_OPTIONS } from "../../utils/renewalLabels";
+import { DateInput } from "../../components/common/DateInput";
 
 interface ConsultTabProps {
   rc: RenewalCase;
@@ -328,8 +329,7 @@ export function ConsultTab({ rc, onSurveyChange, onCommit, today, users }: Consu
           {/* 4. 手続日 */}
           <div>
             <FieldLabel>手続日</FieldLabel>
-            <input
-              type="date"
+            <DateInput
               value={displayC.procedureDate ?? ""}
               onChange={(e) =>
                 editing && handleDraftChange("procedureDate", e.target.value || undefined)

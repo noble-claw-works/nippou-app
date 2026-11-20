@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
-import type { HouseholdType } from '../../types';
-import { useAppStore } from '../../store';
-import { PREFECTURES } from '../../data/prefectures';
-import { ChannelSelect } from '../../pages/HouseholdBatchEntryPage/ChannelSelect';
+import { useState } from "react";
+import { X } from "lucide-react";
+import type { HouseholdType } from "../../types";
+import { useAppStore } from "../../store";
+import { PREFECTURES } from "../../data/prefectures";
+import { parseAnnualIncome } from "../../utils/annualIncome";
+import { ChannelSelect } from "../../pages/HouseholdBatchEntryPage/ChannelSelect";
 
 // =====================================================
 // QuickHouseholdModal — 日報から呼べる世帯クイック作成モーダル
@@ -29,8 +30,10 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
   const [city, setCity] = useState('');
   const [primaryUserId, setPrimaryUserId] = useState(currentUserId);
   const [channelId, setChannelId] = useState<string | undefined>(undefined);
-  const [repName, setRepName] = useState('');
-  const [memo, setMemo] = useState('');
+  const [repName, setRepName] = useState("");
+  const [income, setIncome] = useState("");
+  const [incomeError, setIncomeError] = useState("");
+  const [memo, setMemo] = useState("");
 
   // バリデーションエラー
   const [nameError, setNameError] = useState('');
@@ -53,6 +56,9 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
       setCityError('市区町村を入力してください');
       ok = false;
     }
+    const inc = parseAnnualIncome(income);
+    setIncomeError(inc.error ?? "");
+    if (inc.error) ok = false;
     return ok;
   };
 
@@ -74,11 +80,13 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
       ...(channelId ? { channelId } : {}),
     });
 
-    if (repName.trim()) {
+    const incomeValue = parseAnnualIncome(income).value;
+    if (repName.trim() || incomeValue !== undefined) {
       const head = addPerson(newCustomer.id, {
-        name: repName.trim(),
-        relation: 'head',
-        memo: '',
+        name: repName.trim() || name.trim(),
+        relation: "head",
+        memo: "",
+        ...(incomeValue !== undefined ? { annualIncome: incomeValue } : {}),
       });
       updateCustomer(newCustomer.id, { headPersonId: head.id });
     }
@@ -213,6 +221,27 @@ export function QuickHouseholdModal({ onCreated, onClose }: QuickHouseholdModalP
               value={repName}
               onChange={e => setRepName(e.target.value)}
             />
+          </div>
+
+          {/* 世帯主年収 — 任意 (B6) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              世帯主年収（万円）{" "}
+              <span className="text-gray-400 text-xs">(任意)</span>
+            </label>
+            <input
+              type="number"
+              min={0}
+              className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="例: 500"
+              value={income}
+              onChange={(e) => setIncome(e.target.value)}
+            />
+            {incomeError && (
+              <p role="alert" className="text-xs text-red-500 mt-1">
+                {incomeError}
+              </p>
+            )}
           </div>
 
           {/* メモ — 任意 */}

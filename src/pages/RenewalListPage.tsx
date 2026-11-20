@@ -307,8 +307,8 @@ export function RenewalListPage() {
                 <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
                   更改保険料
                 </th>
-                <th className={TH_CLS}>手続き手段</th>
-                <th className={TH_CLS}>状況</th>
+                <th className={`${TH_CLS} min-w-[10rem]`}>手続き手段</th>
+                <th className={`${TH_CLS} min-w-[9rem]`}>状況</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

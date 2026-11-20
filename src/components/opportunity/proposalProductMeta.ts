@@ -48,8 +48,9 @@ export type ProposalProductErrors = Partial<Record<'productName' | 'insurer' | '
 /** 必須 3 項目の検証。エラーが無ければ空オブジェクトを返す */
 export function validateProposalProduct(form: ProposalProductDraft): ProposalProductErrors {
   const e: ProposalProductErrors = {};
-  if (!form.productName.trim()) e.productName = '商品名は必須です';
-  if (!form.insurer.trim()) e.insurer = '保険会社は必須です';
-  if (form.monthlyPremium <= 0) e.monthlyPremium = '月払額を入力してください';
+  if (!form.productName.trim()) e.productName = "商品名は必須です";
+  if (!form.insurer.trim()) e.insurer = "保険会社は必須です";
+  if (form.monthlyPremium <= 0)
+    e.monthlyPremium = "0より大きい金額を入力してください";
   return e;
 }

@@ -10,6 +10,7 @@ import { StageSelector } from '../opportunity/StageSelector';
 import { QuickOpportunityModal } from '../opportunity/QuickOpportunityModal';
 import { QuickHouseholdModal } from '../household/QuickHouseholdModal';
 import { useAppStore } from '../../store';
+import { DateInput } from '../common/DateInput';
 
 // ─── BlockModalState ──────────────────────────────────────────────────────────
 export interface BlockModalState {
@@ -289,9 +290,8 @@ export function BlockModal({
                 {/* Next appointment */}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">次回アポイント日</label>
-                  <input
-                    type="date"
-                    value={state.block.nextAppointment ?? ''}
+                  <DateInput
+                                        value={state.block.nextAppointment ?? ''}
                     onChange={e => onChange(s => ({
                       ...s,
                       block: { ...s.block, nextAppointment: e.target.value || undefined },

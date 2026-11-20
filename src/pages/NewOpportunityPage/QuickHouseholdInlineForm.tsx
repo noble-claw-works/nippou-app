@@ -1,10 +1,11 @@
 // QuickHouseholdInlineForm.tsx — ①ペイン内で新規世帯を 3 項目で登録する（11/08 指示書 A3・D1）
 // 世帯名・区分・主担当だけ。登録と同時に世帯名の世帯主 1 名を作る（createHouseholdWithHead）。
 
-import { useState } from 'react';
-import { useAppStore } from '../../store';
-import type { CustomerType } from '../../types/core';
-import { createHouseholdWithHead } from '../../utils/createHouseholdWithHead';
+import { useState } from "react";
+import { useAppStore } from "../../store";
+import type { CustomerType } from "../../types/core";
+import { createHouseholdWithHead } from "../../utils/createHouseholdWithHead";
+import { parseAnnualIncome } from "../../utils/annualIncome";
 
 interface Props {
   initialName: string;
@@ -24,13 +25,21 @@ export function QuickHouseholdInlineForm({ initialName, onCreated, onCancel }: P
   const [type, setType] = useState<CustomerType>('individual');
   const [primaryUserId, setPrimaryUserId] = useState(currentUserId);
   const [submitting, setSubmitting] = useState(false);
+  const [income, setIncome] = useState("");
+  const [incomeError, setIncomeError] = useState("");
 
   const handleSubmit = () => {
     if (!name.trim() || submitting) return;
+    const parsed = parseAnnualIncome(income);
+    if (parsed.error) {
+      setIncomeError(parsed.error);
+      return;
+    }
+    setIncomeError("");
     setSubmitting(true);
     const id = createHouseholdWithHead(
       { addCustomer, addPerson, updateCustomer },
-      { name, type, primaryUserId },
+      { name, type, primaryUserId, annualIncome: parsed.value },
     );
     setSubmitting(false);
     if (!id) {
@@ -87,6 +96,28 @@ export function QuickHouseholdInlineForm({ initialName, onCreated, onCancel }: P
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
+      </div>
+      <div>
+        <label
+          htmlFor="qh-income"
+          className="block text-[10px] text-gray-500 mb-0.5"
+        >
+          世帯主年収（万円）<span className="text-gray-400">(任意)</span>
+        </label>
+        <input
+          id="qh-income"
+          type="number"
+          min={0}
+          value={income}
+          onChange={(e) => setIncome(e.target.value)}
+          placeholder="例: 500"
+          className="w-32 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        />
+        {incomeError && (
+          <p role="alert" className="text-xs text-red-600 mt-0.5">
+            {incomeError}
+          </p>
+        )}
       </div>
       <div className="flex gap-2 justify-end">
         <button

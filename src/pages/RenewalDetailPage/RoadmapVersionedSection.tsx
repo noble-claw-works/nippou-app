@@ -12,6 +12,7 @@ import type {
   RenewalRoadmapItemDef,
 } from "../../types";
 import { activeRoadmapItems } from "../../utils/roadmapTemplate";
+import { DateInput } from "../../components/common/DateInput";
 
 interface RoadmapVersionedSectionProps {
   rc: RenewalCase;
@@ -113,8 +114,7 @@ export function RoadmapVersionedSection({ rc }: RoadmapVersionedSectionProps) {
         <div className="grid grid-cols-3 gap-2 mb-3">
           <label className="text-xs text-gray-600">
             入力日
-            <input
-              type="date"
+            <DateInput
               value={inputDate}
               onChange={(e) => setInputDate(e.target.value)}
               className="mt-1 w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg"

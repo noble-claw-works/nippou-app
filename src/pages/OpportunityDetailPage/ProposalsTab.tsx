@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Edit2, Trash2, Check, X } from "lucide-react";
 import type { Opportunity, ProposalRound } from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface ProposalsTabProps {
   opp: Opportunity;
@@ -95,8 +96,7 @@ export function ProposalsTab({
               <label className="block text-xs text-gray-600 mb-1">
                 提案日 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="date"
+              <DateInput
                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
                 value={roundDraft.proposalDate}
                 onChange={(e) =>
@@ -108,8 +108,7 @@ export function ProposalsTab({
               <label className="block text-xs text-gray-600 mb-1">
                 修正日（ステージ不変）
               </label>
-              <input
-                type="date"
+              <DateInput
                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
                 value={roundDraft.revisedDate}
                 onChange={(e) =>

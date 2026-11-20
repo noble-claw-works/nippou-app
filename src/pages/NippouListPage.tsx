@@ -5,13 +5,14 @@
 // - フィルタ: 日付範囲・作成者・ステータス・キーワード
 // - 行クリックで /reports/:date へ遷移
 // =====================================================
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, ChevronRight } from 'lucide-react';
-import { useAppStore } from '../store';
-import { StatusBadge } from '../components/ui/StatusBadge';
-import { formatDate } from '../utils';
-import type { ReportStatus } from '../types';
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, ChevronRight } from "lucide-react";
+import { useAppStore } from "../store";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { formatDate } from "../utils";
+import type { ReportStatus } from "../types";
+import { DateInput } from "../components/common/DateInput";
 
 const STATUS_LABELS: Record<ReportStatus, string> = {
   planning: '予定作成中',
@@ -150,8 +151,7 @@ export function NippouListPage() {
           </select>
 
           {/* 日付From */}
-          <input
-            type="date"
+          <DateInput
             value={filterDateFrom}
             onChange={(e) => setFilterDateFrom(e.target.value)}
             className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -159,8 +159,7 @@ export function NippouListPage() {
           />
           <span className="text-xs text-gray-400 self-center">〜</span>
           {/* 日付To */}
-          <input
-            type="date"
+          <DateInput
             value={filterDateTo}
             onChange={(e) => setFilterDateTo(e.target.value)}
             className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"

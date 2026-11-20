@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { CheckSquare, Plus, Trash2, Check } from "lucide-react";
 import type { RenewalCase, Task } from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface TasksSectionProps {
   rc: RenewalCase;
@@ -72,8 +73,7 @@ export function TasksSection({
             autoFocus
             className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
           />
-          <input
-            type="date"
+          <DateInput
             value={draft.dueDate}
             onChange={(e) =>
               setDraft((d) => ({ ...d, dueDate: e.target.value }))

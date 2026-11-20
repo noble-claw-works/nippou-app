@@ -19,7 +19,13 @@ import {
   RENEWAL_STATUS_OPTIONS,
 } from "../utils/renewalLabels";
 import type { RenewalCase, RenewalStatus, RenewalMethod } from "../types";
-import type { RenewalListViewMode, RenewalRowView } from "../utils/renewalListView";
+import type {
+  RenewalListViewMode,
+  RenewalRowView,
+} from "../utils/renewalListView";
+import { DateInput } from "../components/common/DateInput";
+
+import { stickyCellBg } from "../utils/stickyCellBg";
 
 const STATUS_COLOR: Record<RenewalCase["status"], string> = {
   not_started: "bg-gray-100 text-gray-600",
@@ -166,7 +172,8 @@ export function RenewalListRow({
     <tr className={rowCls}>
       {/* 契約者（sticky 固定・算出/読取） */}
       <td
-        className="sticky left-0 z-10 bg-inherit px-4 py-3 font-medium text-gray-900 whitespace-nowrap"
+        className={`sticky left-0 z-10 ${stickyCellBg(view)} px-4 py-3 font-medium text-gray-900 whitespace-nowrap`}
+        title={rc.contractorName || undefined}
         onClick={go}
       >
         {rc.contractorName || <span className="text-gray-300">—</span>}
@@ -249,8 +256,7 @@ export function RenewalListRow({
       {/* 手続日（編集可） */}
       <td className="px-3 py-3 whitespace-nowrap" onClick={go}>
         {editing ? (
-          <input
-            type="date"
+          <DateInput
             value={procedureDate}
             onChange={(e) => {
               const v = e.target.value;
@@ -293,7 +299,7 @@ export function RenewalListRow({
         )}
       </td>
       {/* 手続き手段 method（編集可） */}
-      <td className="px-3 py-3 whitespace-nowrap" onClick={go}>
+      <td className="px-3 py-3 whitespace-nowrap min-w-[10rem]" onClick={go}>
         {editing ? (
           <select
             value={method}
@@ -313,13 +319,16 @@ export function RenewalListRow({
             ))}
           </select>
         ) : (
-          <span className="text-gray-600">
+          <span
+            className="text-gray-600"
+            title={RENEWAL_METHOD_LABEL[rc.method]}
+          >
             {RENEWAL_METHOD_LABEL[rc.method]}
           </span>
         )}
       </td>
       {/* 状況 status（編集可） */}
-      <td className="px-3 py-3 whitespace-nowrap" onClick={go}>
+      <td className="px-3 py-3 whitespace-nowrap min-w-[9rem]" onClick={go}>
         {editing ? (
           <select
             value={status}
@@ -334,6 +343,7 @@ export function RenewalListRow({
           </select>
         ) : (
           <span
+            title={RENEWAL_STATUS_LABEL[rc.status]}
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[rc.status]}`}
           >
             {RENEWAL_STATUS_LABEL[rc.status]}

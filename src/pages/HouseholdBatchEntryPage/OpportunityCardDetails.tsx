@@ -14,6 +14,7 @@ import {
 } from "../../utils/householdBatchEntry";
 import { MilestoneDateField } from "./MilestoneDateField";
 import type { DraftOpportunity } from "../../utils/householdBatchEntry";
+import { DateInput } from "../../components/common/DateInput";
 
 interface OpportunityCardDetailsProps {
   draft: DraftOpportunity;
@@ -277,8 +278,7 @@ export function OpportunityCardDetails({
                         <span>解消済み</span>
                       </label>
                       {def.resolved && (
-                        <input
-                          type="date"
+                        <DateInput
                           value={def.resolvedDate ?? ""}
                           onChange={(e) =>
                             onUpdateDeficiencyField(def.id, {

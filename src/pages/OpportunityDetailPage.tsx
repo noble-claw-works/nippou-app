@@ -16,6 +16,7 @@ import { TasksTab } from "./OpportunityDetailPage/TasksTab";
 import { ProposalsTab } from "./OpportunityDetailPage/ProposalsTab";
 import { IssuedPoliciesTab } from "./OpportunityDetailPage/IssuedPoliciesTab";
 import { ActivityTimeline } from "./OpportunityDetailPage/ActivityTimeline";
+import { isNextActionOverdue, OVERDUE_CLASS } from "../utils/nextActionOverdue";
 
 // ④: タスクタブを外したタブ定義
 type Tab = "overview" | "proposals" | "issued_policies";
@@ -206,7 +207,12 @@ export function OpportunityDetailPage() {
                   </button>
                 )}
               {opp.nextAction && (
-                <span className="text-sm text-gray-500">
+                <span
+                  className={`text-sm ${isNextActionOverdue(opp.nextActionDate) ? OVERDUE_CLASS : "text-gray-500"}`}
+                  data-overdue={
+                    isNextActionOverdue(opp.nextActionDate) || undefined
+                  }
+                >
                   次: {opp.nextAction}
                   {opp.nextActionDate && ` (${opp.nextActionDate})`}
                 </span>

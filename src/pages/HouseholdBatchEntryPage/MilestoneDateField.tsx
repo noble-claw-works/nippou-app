@@ -1,3 +1,4 @@
+import { DateInput } from "../../components/common/DateInput";
 // B-2b: マイルストーン日付フィールド（小コンポーネント）
 
 interface MilestoneDateFieldProps {
@@ -16,8 +17,7 @@ export function MilestoneDateField({
   return (
     <div className="flex flex-col gap-0.5">
       <label className="block text-[10px] text-gray-500">{label}</label>
-      <input
-        type="date"
+      <DateInput
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || undefined)}
         className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"

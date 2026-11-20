@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Phone, Store, MapPin, Mail, MoreHorizontal, X } from "lucide-react";
 import type { InteractionKind, Person } from "../../types";
 import { INTERACTION_KIND_LABEL } from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface InteractionAddFormProps {
   persons: Person[];
@@ -133,9 +134,8 @@ export function InteractionAddForm({
         >
           対応日 <span className="text-red-500">*</span>
         </label>
-        <input
+        <DateInput
           id={idOccurredAt}
-          type="date"
           value={occurredAt}
           onChange={(e) => setOccurredAt(e.target.value)}
           required
@@ -197,9 +197,8 @@ export function InteractionAddForm({
         >
           次回予定日 <span className="text-gray-400 font-normal">(任意)</span>
         </label>
-        <input
+        <DateInput
           id={idNextAppointment}
-          type="date"
           value={nextAppointment}
           onChange={(e) => setNextAppointment(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

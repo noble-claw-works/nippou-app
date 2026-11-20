@@ -4,9 +4,8 @@
 //   ＋「＋行を追加」ボタン。onChange で全量配列を返す（置換マージ設計）。
 // =====================================================
 import type { RenewalContactRecord } from "../../types/renewal";
-import {
-  RENEWAL_CONTACT_RESULT_OPTIONS,
-} from "../../utils/renewalLabels";
+import { RENEWAL_CONTACT_RESULT_OPTIONS } from "../../utils/renewalLabels";
+import { DateInput } from "../../components/common/DateInput";
 
 /** 簡易ユニークID（contact 行用） */
 function contactUid(): string {
@@ -50,8 +49,7 @@ export function ContactEditor({
               key={c.id}
               className="flex flex-col sm:flex-row sm:items-center gap-2"
             >
-              <input
-                type="date"
+              <DateInput
                 value={c.date ?? ""}
                 onChange={(e) => update(c.id, { date: e.target.value })}
                 className="sm:w-40 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"

@@ -8,6 +8,7 @@ import {
   RENEWAL_CONCERN_OPTIONS,
 } from "../../utils/renewalLabels";
 import { RoadmapVersionedSection } from "./RoadmapVersionedSection";
+import { DateInput } from "../../components/common/DateInput";
 
 interface RoadmapTabProps {
   rc: RenewalCase;
@@ -114,8 +115,7 @@ export function RoadmapTab({ rc, onSurveyChange, onCommit }: RoadmapTabProps) {
           {/* 入力日 */}
           <div>
             <FieldLabel>入力日</FieldLabel>
-            <input
-              type="date"
+            <DateInput
               value={display.inputDate ?? ""}
               onChange={(e) =>
                 editing && handleChange("inputDate", e.target.value || undefined)

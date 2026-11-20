@@ -1,6 +1,11 @@
 import { Edit2 } from "lucide-react";
 import type { Opportunity } from "../../types";
 import { LOST_REASON_LABELS } from "./constants";
+import { DateInput } from "../../components/common/DateInput";
+import {
+  isNextActionOverdue,
+  OVERDUE_CLASS,
+} from "../../utils/nextActionOverdue";
 
 interface OverviewTabProps {
   opp: Opportunity;
@@ -73,8 +78,7 @@ export function OverviewTab({
             <div>
               <span className="text-gray-500">クローズ予定日: </span>
               {editingFields ? (
-                <input
-                  type="date"
+                <DateInput
                   className="border border-gray-300 rounded px-2 py-0.5 text-sm"
                   value={fieldDraft.expectedCloseDate}
                   onChange={(e) =>
@@ -126,8 +130,7 @@ export function OverviewTab({
                     })
                   }
                 />
-                <input
-                  type="date"
+                <DateInput
                   className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
                   value={fieldDraft.nextActionDate}
                   onChange={(e) =>
@@ -139,7 +142,16 @@ export function OverviewTab({
                 />
               </div>
             ) : (
-              <span>
+              <span
+                className={
+                  isNextActionOverdue(opp.nextActionDate)
+                    ? OVERDUE_CLASS
+                    : undefined
+                }
+                data-overdue={
+                  isNextActionOverdue(opp.nextActionDate) || undefined
+                }
+              >
                 {opp.nextAction ?? "—"}
                 {opp.nextActionDate ? ` (${opp.nextActionDate})` : ""}
               </span>

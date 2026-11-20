@@ -1,7 +1,12 @@
 // ProductFormFields.tsx — 保険商品フォームの共通フィールド（追加・編集で共用）
 // 400行制限遵守のため PoliciesPane.tsx から切り出し
 
-import type { Person, InsuranceCompany, ProductCategoryMaster } from '../../types';
+import type {
+  Person,
+  InsuranceCompany,
+  ProductCategoryMaster,
+} from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 export interface PolicyFormState {
   insuredPersonId: string;
@@ -135,8 +140,7 @@ export function ProductFormFields({
         <label className="block text-[10px] text-gray-500 mb-0.5">
           初回相談日
         </label>
-        <input
-          type="date"
+        <DateInput
           value={form.firstConsultDate}
           onChange={e => onChange({ firstConsultDate: e.target.value })}
           className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"

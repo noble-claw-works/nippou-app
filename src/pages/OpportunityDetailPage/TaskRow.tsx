@@ -1,5 +1,6 @@
 import { Edit2, Trash2 } from "lucide-react";
 import type { Task } from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface TaskRowProps {
   task: Task;
@@ -42,8 +43,7 @@ export function TaskRow({
           autoFocus
         />
         <div className="flex gap-2">
-          <input
-            type="date"
+          <DateInput
             value={taskEditDraft.dueDate ?? ""}
             onChange={(e) =>
               onEditDraftChange({

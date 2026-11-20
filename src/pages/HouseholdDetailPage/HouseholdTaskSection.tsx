@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Edit } from "lucide-react";
 import type { Customer, Task, User } from "../../types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface HouseholdTaskSectionProps {
   customer: Customer;
@@ -81,8 +82,7 @@ export function HouseholdTaskSection({
             className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
             autoFocus
           />
-          <input
-            type="date"
+          <DateInput
             value={draft.dueDate}
             onChange={(e) =>
               setDraft((d) => ({ ...d, dueDate: e.target.value }))
@@ -163,8 +163,7 @@ export function HouseholdTaskSection({
                     className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm"
                     autoFocus
                   />
-                  <input
-                    type="date"
+                  <DateInput
                     value={editDraft.dueDate ?? ""}
                     onChange={(e) =>
                       setEditDraft((d) => ({

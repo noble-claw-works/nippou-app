@@ -6,6 +6,7 @@ import {
   MILESTONE_ITEMS,
 } from "./constants";
 import type { FormState } from "./types";
+import { DateInput } from "../../components/common/DateInput";
 
 interface ReportFormProps {
   form: FormState;
@@ -28,8 +29,7 @@ export function ReportForm({
         <label className="text-sm font-medium text-gray-600 w-24 shrink-0">
           報告日
         </label>
-        <input
-          type="date"
+        <DateInput
           value={form.reportDate}
           onChange={(e) => setField("reportDate", e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -144,8 +144,7 @@ export function ReportForm({
         <label className="text-sm font-medium text-gray-600 w-24 shrink-0">
           次回アポ日
         </label>
-        <input
-          type="date"
+        <DateInput
           value={form.nextActionDate}
           onChange={(e) => setField("nextActionDate", e.target.value)}
           className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"

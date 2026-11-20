@@ -1,9 +1,10 @@
 // PersonEditModal.tsx — 世帯員 追加/編集モーダル (Phase 1)
 
-import { useState } from 'react';
-import { Modal } from '../ui/Modal';
-import { FormField } from '../ui/EmptyState';
-import type { Person, PersonRelation, PersonGender } from '../../types';
+import { useState } from "react";
+import { Modal } from "../ui/Modal";
+import { FormField } from "../ui/EmptyState";
+import type { Person, PersonRelation, PersonGender } from "../../types";
+import { DateInput } from "../common/DateInput";
 
 const RELATION_LABELS: Record<PersonRelation, string> = {
   head: '世帯主',
@@ -83,10 +84,11 @@ export function PersonEditModal({ open, onClose, onSave, initial, title = '世�
 
         <div className="grid grid-cols-2 gap-4">
           <FormField label="生年月日">
-            <input
-              type="date"
-              value={form.birthDate ?? ''}
-              onChange={e => setForm(f => ({ ...f, birthDate: e.target.value }))}
+            <DateInput
+              value={form.birthDate ?? ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, birthDate: e.target.value }))
+              }
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
             />
           </FormField>
@@ -104,6 +106,23 @@ export function PersonEditModal({ open, onClose, onSave, initial, title = '世�
             </select>
           </FormField>
         </div>
+
+        <FormField label="年収（万円）">
+          <input
+            type="number"
+            min={0}
+            value={form.annualIncome ?? ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              setForm((f) => ({
+                ...f,
+                annualIncome: v === "" ? undefined : Number(v),
+              }));
+            }}
+            placeholder="例: 500"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"
+          />
+        </FormField>
 
         <FormField label="職業">
           <input

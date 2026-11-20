@@ -1,7 +1,13 @@
-import { useState } from 'react';
-import { X } from 'lucide-react';
-import { useAppStore } from '../../store';
-import type { Policy, PolicyStatus, PayMode, ProductCategory } from '../../types';
+import { useState } from "react";
+import { X } from "lucide-react";
+import { useAppStore } from "../../store";
+import type {
+  Policy,
+  PolicyStatus,
+  PayMode,
+  ProductCategory,
+} from "../../types";
+import { DateInput } from "../common/DateInput";
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   life: '生命保険', medical: '医療保険', cancer: 'がん保険',
@@ -50,12 +56,18 @@ export function PolicyEditModal({ householdId, policy, onClose }: Props) {
       }
   );
 
+  const [premiumError, setPremiumError] = useState("");
+
   const set = <K extends keyof Draft>(key: K, val: Draft[K]) =>
     setDraft(d => ({ ...d, [key]: val }));
 
   const handleSave = () => {
     if (!draft.insurer || !draft.productName) {
       addToast({ type: 'error', message: '保険会社・商品名は必須です' });
+      return;
+    }
+    if (!(draft.monthlyPremium > 0)) {
+      setPremiumError("0より大きい金額を入力してください");
       return;
     }
     if (policy) {
@@ -170,20 +182,24 @@ export function PolicyEditModal({ householdId, policy, onClose }: Props) {
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">契約日</label>
-              <input
-                type="date"
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                契約日
+              </label>
+              <DateInput
                 value={draft.startDate}
                 onChange={e => set('startDate', e.target.value)}
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">満期日</label>
-              <input
-                type="date"
-                value={draft.maturityDate ?? ''}
-                onChange={e => set('maturityDate', e.target.value || undefined)}
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                満期日
+              </label>
+              <DateInput
+                value={draft.maturityDate ?? ""}
+                onChange={(e) =>
+                  set("maturityDate", e.target.value || undefined)
+                }
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
             </div>
@@ -196,9 +212,17 @@ export function PolicyEditModal({ householdId, policy, onClose }: Props) {
               <input
                 type="number"
                 value={draft.monthlyPremium}
-                onChange={e => set('monthlyPremium', Number(e.target.value))}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                onChange={(e) => {
+                  set("monthlyPremium", Number(e.target.value));
+                  setPremiumError("");
+                }}
+                className={`w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 ${premiumError ? "border-red-400" : "border-gray-200"}`}
               />
+              {premiumError && (
+                <p role="alert" className="text-xs text-red-500 mt-1">
+                  {premiumError}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">払込方法</label>

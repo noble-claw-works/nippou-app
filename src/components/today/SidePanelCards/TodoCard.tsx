@@ -6,6 +6,7 @@ import {
 } from "../../../utils/todoReadOnly";
 import type { SidePanelCardsProps } from "../SidePanelCards";
 import type { ReportStatus } from "../../../utils/todoReadOnly";
+import { DateInput } from "../../common/DateInput";
 
 interface TodoInputState {
   text: string;
@@ -135,8 +136,7 @@ export function TodoCard({
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 期限
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={input.dueDate}
                 onChange={(e) =>
                   setInput({ ...input, dueDate: e.target.value })

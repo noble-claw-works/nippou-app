@@ -1,11 +1,18 @@
-import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
-import { useAppStore } from '../store';
-import { StatusBadge } from '../components/ui/StatusBadge';
-import { EmptyState } from '../components/ui/EmptyState';
-import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, calcMiniTimelineSegments, formatDate } from '../utils';
-import type { ReportStatus } from '../types';
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Search, X } from "lucide-react";
+import { useAppStore } from "../store";
+import { StatusBadge } from "../components/ui/StatusBadge";
+import { EmptyState } from "../components/ui/EmptyState";
+import {
+  BLOCK_COLORS,
+  BLOCK_EMOJIS,
+  BLOCK_LABELS,
+  calcMiniTimelineSegments,
+  formatDate,
+} from "../utils";
+import type { ReportStatus } from "../types";
+import { DateInput } from "../components/common/DateInput";
 
 const ALL_STATUSES: ReportStatus[] = ['planning', 'in_progress', 'submitted', 'confirmed'];
 
@@ -90,14 +97,24 @@ export function SearchPage() {
         </div>
         <div className="grid grid-cols-2 gap-3 mb-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">期間（開始）</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
+            <label className="block text-xs text-gray-500 mb-1">
+              期間（開始）
+            </label>
+            <DateInput
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+            />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">期間（終了）</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none" />
+            <label className="block text-xs text-gray-500 mb-1">
+              期間（終了）
+            </label>
+            <DateInput
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+            />
           </div>
         </div>
         <div className="flex flex-wrap gap-2 mb-3">

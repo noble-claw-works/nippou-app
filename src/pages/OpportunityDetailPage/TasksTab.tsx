@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Opportunity, Task, User } from "../../types";
 import { TaskRow } from "./TaskRow";
+import { DateInput } from "../../components/common/DateInput";
 
 interface TasksTabProps {
   opp: Opportunity;
@@ -105,8 +106,7 @@ export function TasksTab({
             className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-300 outline-none"
             autoFocus
           />
-          <input
-            type="date"
+          <DateInput
             value={taskDraft.dueDate}
             onChange={(e) =>
               setTaskDraft((d) => ({ ...d, dueDate: e.target.value }))
