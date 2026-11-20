@@ -152,7 +152,7 @@ export function RenewalImportPage() {
         <Link
           to="/renewals"
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500"
-          aria-label="更新一覧に戻る"
+          aria-label="損保更新に戻る"
         >
           <ChevronLeft className="w-5 h-5" />
         </Link>
@@ -176,14 +176,14 @@ export function RenewalImportPage() {
               {importedCount}件の更新予定を取り込みました
             </p>
             <p className="text-sm text-green-600 mt-1">
-              更新一覧に追加されました。localStorage に永続化されています。
+              損保更新に追加されました。localStorage に永続化されています。
             </p>
             <div className="flex gap-3 mt-3">
               <button
                 onClick={() => navigate("/renewals")}
                 className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
-                更新一覧へ
+                損保更新へ
               </button>
               <button
                 onClick={() => {
@@ -291,7 +291,7 @@ export function RenewalImportPage() {
             取り込み確定
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            上記 <strong>{preview.length}件</strong> を更新一覧に追加します。
+            上記 <strong>{preview.length}件</strong> を損保更新に追加します。
             取り込んだデータはブラウザの localStorage に永続化されます。
           </p>
           <div className="flex gap-3">

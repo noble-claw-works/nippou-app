@@ -61,7 +61,7 @@ const NAV_ITEMS = [
   {
     to: "/renewals",
     icon: CalendarClock,
-    label: "更新一覧",
+    label: "損保更新",
     roles: ["general", "manager", "executive", "admin"],
   },
   {

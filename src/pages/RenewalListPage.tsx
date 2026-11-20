@@ -1,5 +1,5 @@
 // =====================================================
-// RenewalListPage — 更新一覧（保険契約 更新対応ワークリスト）
+// RenewalListPage — 損保更新（保険契約 更新対応ワークリスト）
 //
 // 独立ページ (/renewals) として AppShell NAV から直接アクセス。
 // §5 T5-02/T5-03:
@@ -127,7 +127,7 @@ export function RenewalListPage() {
         <div>
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-blue-500" />
-            更新一覧
+            損保更新
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
             損害保険の更新対応ワークリスト {cases.length}件

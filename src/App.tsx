@@ -152,7 +152,7 @@ function AppLayout() {
           element={<HouseholdDetailPage />}
         />
         <Route path="/policies/:id" element={<PolicyDetailPage />} />
-        {/* 更新一覧 (/renewals) */}
+        {/* 損保更新 (/renewals) */}
         <Route path="/renewals" element={<RenewalListPage />} />
         <Route path="/renewals/import" element={<RenewalImportPage />} />
         <Route path="/renewals/:id" element={<RenewalDetailPage />} />

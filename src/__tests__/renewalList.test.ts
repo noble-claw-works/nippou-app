@@ -1,5 +1,5 @@
 // =====================================================
-// renewalList.test.ts — 更新一覧の抽出ロジック単体テスト
+// renewalList.test.ts — 損保更新の抽出ロジック単体テスト
 // filterRenewalPolicies / daysUntilRenewal / isRenewalNear
 // =====================================================
 import { describe, it, expect } from "vitest";

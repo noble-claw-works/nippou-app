@@ -1,5 +1,5 @@
 // =====================================================
-// filterRenewalPolicies — 更新一覧の抽出ロジック（純粋関数）
+// filterRenewalPolicies — 損保更新の抽出ロジック（純粋関数）
 //
 // 損害保険（NONLIFE_CATEGORIES）かつ renewalDate あり・inforce のみを
 // renewalDate 昇順で返す。世帯グループ化は呼び出し側が行う。
