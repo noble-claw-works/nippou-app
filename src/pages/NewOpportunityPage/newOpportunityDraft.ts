@@ -1,7 +1,7 @@
 // newOpportunityDraft.ts — 新規案件作成（3ペイン）の入力下書きと純関数
 // 11/08 指示書 design.md §5。画面状態に依存しない計算だけを置き、単体テストで固定する。
 
-import type { OpportunityStage, ProductCategory, ProposalProduct, ConfidenceUnified } from '../../types';
+import type { ContractMilestones, OpportunityStage, ProductCategory, ProposalProduct, ConfidenceUnified } from '../../types';
 import type { AppState } from '../../store/_internal/types';
 
 export const INITIAL_STAGES: OpportunityStage[] = [
@@ -21,6 +21,8 @@ export interface OpportunityDraft {
   /** ユーザーが手で変更したか。true の間は世帯切替で上書きしない */
   channelTouched: boolean;
   memo: string;
+  /** D3: 前段の日付の手入力（現ステージの進入日は作成時に自動記録） */
+  milestones: ContractMilestones;
 }
 
 export type AddOpportunityInput = Parameters<AppState['addOpportunity']>[0];
@@ -37,6 +39,7 @@ export function makeInitialDraft(ownerId: string): OpportunityDraft {
     channelId: '',
     channelTouched: false,
     memo: '',
+    milestones: {},
   };
 }
 
@@ -64,6 +67,7 @@ export function isDraftDirty(d: OpportunityDraft): boolean {
     d.proposalProducts.length > 0 ||
     d.confidence !== '' ||
     d.channelTouched ||
+    Object.keys(d.milestones).length > 0 ||
     d.memo.trim() !== ''
   );
 }
@@ -96,6 +100,7 @@ export function buildOpportunityInput(d: OpportunityDraft, householdId: string):
     illustrationProvided: false,
     tags: [],
     memo: d.memo.trim(),
+    ...(Object.keys(d.milestones).length ? { milestones: d.milestones } : {}),
   };
 }
 
@@ -110,4 +115,23 @@ export function formatMonthlyTotal(n: number): string {
 /** 配列に含まれていれば外し、無ければ足す */
 export function toggleIn<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter(x => x !== item) : [...list, item];
+}
+
+/** D8: 世帯に属さない対象者・商品の被保険者/契約者を外す（世帯切替の取りこぼし防止）。変化が無ければ同一参照 */
+export function pruneDraftToHousehold(d: OpportunityDraft, memberIds: string[]): OpportunityDraft {
+  const ok = new Set(memberIds);
+  const targets = d.targetPersonIds.filter(id => ok.has(id));
+  const products = d.proposalProducts.map(p => {
+    const badInsured = p.insuredPersonId && !ok.has(p.insuredPersonId);
+    const badContractor = p.contractorPersonId && !ok.has(p.contractorPersonId);
+    if (!badInsured && !badContractor) return p;
+    return {
+      ...p,
+      insuredPersonId: badInsured ? '' : p.insuredPersonId,
+      contractorPersonId: badContractor ? undefined : p.contractorPersonId,
+    };
+  });
+  const productsChanged = products.some((p, i) => p !== d.proposalProducts[i]);
+  if (targets.length === d.targetPersonIds.length && !productsChanged) return d;
+  return { ...d, targetPersonIds: targets, proposalProducts: products };
 }

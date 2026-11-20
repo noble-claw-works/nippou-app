@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -9,7 +9,7 @@ import { OpportunityDraftPane } from './NewOpportunityPage/OpportunityDraftPane'
 import { ProposalProductsPane } from './NewOpportunityPage/ProposalProductsPane';
 import { useNewOpportunityDraft } from './NewOpportunityPage/useNewOpportunityDraft';
 import { useHouseholdSelection, resolveInitialHouseholdId } from './NewOpportunityPage/useHouseholdSelection';
-import { buildOpportunityInput, resolveDefaultOwnerId, validateDraft } from './NewOpportunityPage/newOpportunityDraft';
+import { buildOpportunityInput, pruneDraftToHousehold, resolveDefaultOwnerId, validateDraft } from './NewOpportunityPage/newOpportunityDraft';
 
 // =====================================================
 // NewOpportunityPage — 新規案件(商談)作成の専用フルページ（3ペイン）
@@ -32,12 +32,19 @@ export function NewOpportunityPage() {
   const initialId = resolveInitialHouseholdId(customerId, searchParams.get('householdId'), activeIds);
 
   const defaultOwnerId = resolveDefaultOwnerId(currentUserId, users);
-  const { draft, update, reset, isDirty, error, setError } = useNewOpportunityDraft(defaultOwnerId);
+  const { draft, setDraft, update, reset, isDirty, error, setError } = useNewOpportunityDraft(defaultOwnerId);
 
   // 未入力のまま世帯を替えたら、前の世帯の対象者だけ外す
   const clearTargets = useCallback(() => update({ targetPersonIds: [] }), [update]);
   const selection = useHouseholdSelection({ initialId, isDirty, resetDraft: reset, onSwitched: clearTargets });
   const householdId = selection.householdId;
+
+  // D8: 世帯が変わったら、その世帯に属さない対象者・商品の被保険者/契約者を外す
+  const persons = useAppStore(s => s.persons);
+  useEffect(() => {
+    const ids = persons.filter(p => p.householdId === householdId).map(p => p.id);
+    setDraft(prev => pruneDraftToHousehold(prev, ids));
+  }, [householdId, persons, setDraft]);
 
   // スマホでは世帯を選んだら②の見出しまでスクロール
   const scrollToPane2 = () => {

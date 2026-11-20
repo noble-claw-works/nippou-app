@@ -49,7 +49,7 @@ export function buildNewPolicyFromProduct(
     id: policyId,
     householdId: opp.householdId,
     ownerId: userId,
-    contractorPersonId: fallbackInsured,
+    contractorPersonId: pp.contractorPersonId || fallbackInsured,
     insuredPersonIds: pp.insuredPersonId
       ? [pp.insuredPersonId]
       : opp.targetPersonIds,
@@ -59,6 +59,9 @@ export function buildNewPolicyFromProduct(
     status: "pending",
     startDate: now.slice(0, 10),
     monthlyPremium: pp.monthlyPremium,
+    // E2: 年払・一時払は年額(annualPremium)に載せる
+    ...(pp.paymentMode === "annual" && pp.annualPremium ? { annualPremium: pp.annualPremium } : {}),
+    ...(pp.paymentMode === "lump" && pp.lumpSumPremium ? { annualPremium: pp.lumpSumPremium } : {}),
     payMode: "monthly",
     hasCashValue: ["life", "savings", "nursing"].includes(pp.productCategory),
     sourceOpportunityId: opp.id,
@@ -118,6 +121,9 @@ export function projectReflectedPolicies(
         productName: pp.productName,
         productCategory: pp.productCategory as ProductCategory,
         monthlyPremium: pp.monthlyPremium,
+        // E2: 年払・一時払は年額(annualPremium)に載せる
+        ...(pp.paymentMode === "annual" && pp.annualPremium ? { annualPremium: pp.annualPremium } : {}),
+        ...(pp.paymentMode === "lump" && pp.lumpSumPremium ? { annualPremium: pp.lumpSumPremium } : {}),
         status: "pending",
       });
     } else {

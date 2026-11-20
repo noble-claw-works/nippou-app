@@ -24,7 +24,8 @@ import {
   generateTasksOnProductAdded,
   generateTasksOnStageReached,
 } from "../../utils/taskGenerator";
-import { normalizeStage } from "../../utils/opportunityStage";
+import { normalizeStage, STAGE_MILESTONE_KEY } from "../../utils/opportunityStage";
+import type { ContractMilestones } from "../../types";
 import { applyStageMilestones } from "../../utils/stageMilestones";
 import { buildValueChange } from "../../utils/policyHistory";
 import { buildNewPolicyFromProduct } from "../../utils/reflectionPolicyFactory";
@@ -59,8 +60,13 @@ export const createOpportunitySlice: StateCreator<
       (sum, p) => sum + p.monthlyPremium,
       0,
     );
+    // D3: 作成時に選んだ初期ステージの進入日を作成日で自動記録（手入力済みは尊重）
+    const stageKey = STAGE_MILESTONE_KEY[normalizeStage(partial.stage)];
+    const milestones: ContractMilestones = { ...(partial.milestones ?? {}) };
+    if (!milestones[stageKey]) milestones[stageKey] = today;
     const baseOpp: Opportunity = {
       ...partial,
+      milestones,
       tasks: partial.tasks ?? [],
       id: uid(),
       totalMonthlyPremium:

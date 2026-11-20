@@ -4,6 +4,7 @@ import type { ProposalProduct } from '../../types';
 import {
   newProposalProductId,
   validateProposalProduct,
+  focusFirstProductError,
   type ProposalProductErrors,
 } from './proposalProductMeta';
 import { ProposalProductFormFields } from './ProposalProductFormFields';
@@ -30,6 +31,9 @@ export function ProposalProductEditModal({ product, householdId, onClose, onSave
     contractorPersonId: product?.contractorPersonId,
     channelId: product?.channelId,
     firstYearCommission: product?.firstYearCommission,
+    paymentMode: product?.paymentMode,
+    annualPremium: product?.annualPremium,
+    lumpSumPremium: product?.lumpSumPremium,
     monthlyPremium: product?.monthlyPremium ?? 0,
     faceAmount: product?.faceAmount,
     memo: product?.memo ?? '',
@@ -44,6 +48,8 @@ export function ProposalProductEditModal({ product, householdId, onClose, onSave
   const validate = () => {
     const e = validateProposalProduct(form);
     setErrors(e);
+    // D7: 最初のエラー欄へ移動（描画後にフォーカス）
+    if (Object.keys(e).length > 0) setTimeout(() => focusFirstProductError(e), 0);
     return Object.keys(e).length === 0;
   };
 
@@ -52,6 +58,10 @@ export function ProposalProductEditModal({ product, householdId, onClose, onSave
     onSave({
       ...product, // stage / milestones / reflection 等、フォームに無い項目を保持
       ...form,
+      // E2: 払込方法に無関係な金額欄は持ち越さない（月払合計は月払のみ）
+      monthlyPremium: (form.paymentMode ?? 'monthly') === 'monthly' ? form.monthlyPremium : 0,
+      annualPremium: form.paymentMode === 'annual' ? form.annualPremium : undefined,
+      lumpSumPremium: form.paymentMode === 'lump' ? form.lumpSumPremium : undefined,
       id: product?.id ?? newProposalProductId(),
     });
   };

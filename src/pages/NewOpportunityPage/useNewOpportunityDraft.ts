@@ -21,5 +21,5 @@ export function useNewOpportunityDraft(defaultOwnerId: string) {
 
   const isDirty = useMemo(() => isDraftDirty(draft), [draft]);
 
-  return { draft, update, reset, isDirty, error, setError };
+  return { draft, setDraft, update, reset, isDirty, error, setError };
 }

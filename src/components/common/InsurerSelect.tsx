@@ -12,14 +12,19 @@ interface Props {
   className?: string;
   invalid?: boolean;
   id?: string;
+  /** E1: 指定すると、その区分（生保/損保）と区分なしの会社だけに絞る（選択済みの会社は残す） */
+  kindFilter?: InsurerKind;
+  /** D7: 最初のエラー欄へフォーカスするための目印（ProposalProductForm 用） */
+  "data-pp-field"?: string;
 }
 
 const OUTSIDE = "__outside__";
 
-export function InsurerSelect({ insurer, insurerId, onChange, className, invalid, id }: Props) {
+export function InsurerSelect({ insurer, insurerId, onChange, className, invalid, id, kindFilter, "data-pp-field": ppField }: Props) {
   const companies = useAppStore((s) => s.insuranceCompanies);
   const active = companies
     .filter((c) => c.isActive || c.id === insurerId)
+    .filter((c) => !kindFilter || !c.kind || c.kind === kindFilter || c.id === insurerId)
     .sort((a, b) => a.order - b.order);
   const inMaster = !!insurerId && companies.some((c) => c.id === insurerId);
   const outside = !inMaster && insurer.trim() !== "";
@@ -35,6 +40,7 @@ export function InsurerSelect({ insurer, insurerId, onChange, className, invalid
   return (
     <select
       id={id}
+      data-pp-field={ppField}
       className={
         className ??
         `w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${invalid ? "border-red-400" : "border-gray-300"}`

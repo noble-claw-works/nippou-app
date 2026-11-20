@@ -33,6 +33,15 @@ import {
   PERSONS,
 } from "../data/seed";
 import { DEFAULT_DEMO_PASSWORD } from "./auth";
+import { CUSTOMERS } from "../data/seed";
+import {
+  loadAddedHouseholds,
+  mergeById,
+  pickAdded,
+  saveAddedHouseholds,
+} from "./addedHouseholds";
+
+const _added = loadAddedHouseholds();
 
 // Slices
 import { createAuthSlice } from "./_slices/authSlice";
@@ -88,8 +97,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   ),
   users: USERS,
   teams: TEAMS,
-  customers: _initialCustomers,
-  persons: PERSONS,
+  customers: mergeById(_initialCustomers, _added.customers),
+  persons: mergeById(PERSONS, _added.persons),
   reports: REPORTS,
   templates: TEMPLATES,
   quickChips: DEFAULT_QUICK_CHIPS,
@@ -139,3 +148,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   ...createProductCategorySlice(set, get, undefined as never),
   ...createSalesChannelSlice(set, get, undefined as never),
 }));
+
+// D1: 画面で追加した世帯・構成員を永続化（seed 分は保存しない）
+useAppStore.subscribe((s, prev) => {
+  if (s.customers === prev.customers && s.persons === prev.persons) return;
+  saveAddedHouseholds(pickAdded(s.customers, s.persons, CUSTOMERS, PERSONS));
+});

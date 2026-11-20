@@ -2,7 +2,18 @@
 // 必須 3 項目の検証もここに置く（.tsx から関数を export すると react-refresh の lint に掛かるため）。
 // ProposalProductEditModal（案件詳細）と新規案件作成③ペインで共用する（11/08 指示書 S1）。
 
-import type { ProductCategory, ProposalProduct } from '../../types';
+import type { PaymentMode, ProductCategory, ProposalProduct } from '../../types';
+
+export const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
+  monthly: '月払',
+  annual: '年払',
+  lump: '一時払',
+};
+
+/** 払込方法（未設定は月払） */
+export function paymentModeOf(p: { paymentMode?: PaymentMode }): PaymentMode {
+  return p.paymentMode ?? 'monthly';
+}
 
 export const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
   life:      '生命保険',
@@ -43,15 +54,48 @@ export function emptyProposalProduct(): Omit<ProposalProduct, 'id'> {
 }
 
 export type ProposalProductDraft = Omit<ProposalProduct, 'id'>;
-export type ProposalProductErrors = Partial<Record<'productName' | 'insurer' | 'monthlyPremium' | 'firstYearCommission', string>>;
+export type ProposalProductErrors = Partial<
+  Record<
+    | 'productName' | 'insurer' | 'contractorPersonId' | 'monthlyPremium'
+    | 'annualPremium' | 'lumpSumPremium' | 'firstYearCommission',
+    string
+  >
+>;
+
+/** 画面上の項目順（D7: 最初のエラー欄へ移動するための順序） */
+export const PRODUCT_FIELD_ORDER = [
+  'productName', 'insurer', 'contractorPersonId', 'monthlyPremium',
+  'annualPremium', 'lumpSumPremium', 'firstYearCommission',
+] as const;
+
+/** D7: エラーの最初の欄へスクロール+フォーカス（data-pp-field 属性で探す） */
+export function focusFirstProductError(errors: ProposalProductErrors, root: ParentNode = document): string | undefined {
+  const key = PRODUCT_FIELD_ORDER.find((k) => errors[k]);
+  if (!key) return undefined;
+  const el = root.querySelector<HTMLElement>(`[data-pp-field="${key}"]`);
+  if (el) {
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    el.focus?.();
+  }
+  return key;
+}
 
 /** 必須 3 項目の検証。エラーが無ければ空オブジェクトを返す */
 export function validateProposalProduct(form: ProposalProductDraft): ProposalProductErrors {
   const e: ProposalProductErrors = {};
   if (!form.productName.trim()) e.productName = "商品名は必須です";
   if (!form.insurer.trim()) e.insurer = "保険会社は必須です";
-  if (form.monthlyPremium <= 0)
+  // D4: 契約者は必須（案件の契約者の継承はしない。欠落データは読み込み時に世帯主で補完済み）
+  if (!form.contractorPersonId) e.contractorPersonId = "契約者は必須です";
+  // E2: 払込方法ごとに必須の金額欄が変わる（月払のみ月払額必須）
+  const mode = paymentModeOf(form);
+  const bad = (n: number | undefined) => n === undefined || !(n > 0);
+  if (mode === 'monthly' && bad(form.monthlyPremium))
     e.monthlyPremium = "0より大きい金額を入力してください";
+  if (mode === 'annual' && bad(form.annualPremium))
+    e.annualPremium = "0より大きい金額を入力してください";
+  if (mode === 'lump' && bad(form.lumpSumPremium))
+    e.lumpSumPremium = "0より大きい金額を入力してください";
   const c = form.firstYearCommission;
   if (c !== undefined && (!Number.isInteger(c) || c < 0))
     e.firstYearCommission = "0以上の整数（円）で入力してください";
@@ -72,4 +116,22 @@ export function effectiveChannelId(
   opp: { channelId?: string },
 ): string | undefined {
   return p.channelId || opp.channelId || undefined;
+}
+
+/** E2: 一覧表示用の保険料ラベル（払込方法ごと） */
+export function premiumLabel(p: {
+  paymentMode?: PaymentMode;
+  monthlyPremium: number;
+  annualPremium?: number;
+  lumpSumPremium?: number;
+}): string {
+  const mode = paymentModeOf(p);
+  const amount =
+    mode === 'annual' ? p.annualPremium ?? 0 : mode === 'lump' ? p.lumpSumPremium ?? 0 : p.monthlyPremium ?? 0;
+  return `${PAYMENT_MODE_LABELS[mode]} ¥${amount.toLocaleString()}`;
+}
+
+/** D5: 案件の初年度手数料合計（未入力の商品は 0 扱い） */
+export function totalFirstYearCommission(products: { firstYearCommission?: number }[]): number {
+  return products.reduce((s, p) => s + (p.firstYearCommission ?? 0), 0);
 }

@@ -2,12 +2,15 @@
 // 案件詳細のモーダル（ProposalProductEditModal）と新規案件作成③ペインのインラインフォームで共用する。
 // 11/08 指示書 S1 でモーダル本体から中身を変えずに切り出した。
 
-import type { ProductCategory, Person } from '../../types';
+import type { PaymentMode, ProductCategory, Person } from '../../types';
 import { useAppStore } from '../../store';
+import { insurerKindForCategory } from '../../utils/insurerMatch';
 import { InsurerSelect } from '../common/InsurerSelect';
 import { ChannelSelect } from '../../pages/HouseholdBatchEntryPage/ChannelSelect';
 import {
+  PAYMENT_MODE_LABELS,
   PRODUCT_CATEGORY_LABELS,
+  paymentModeOf,
   type ProposalProductDraft,
   type ProposalProductErrors,
 } from './proposalProductMeta';
@@ -51,6 +54,7 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
       </label>
       <input
         type="text"
+        data-pp-field="productName"
         className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.productName ? 'border-red-400' : 'border-gray-300'}`}
         placeholder="例: 収入保障保険"
         value={form.productName}
@@ -65,6 +69,9 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
         保険会社 <span className="text-red-500">*</span>
       </label>
       <InsurerSelect
+        id="pp-insurer"
+        data-pp-field="insurer"
+        kindFilter={insurerKindForCategory(form.productCategory)}
         insurer={form.insurer}
         insurerId={form.insurerId}
         invalid={!!errors.insurer}
@@ -91,23 +98,43 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
       </select>
     </div>
 
-    {/* Contractor（被保険者と別） */}
+    {/* Contractor（被保険者と別・必須: D4） */}
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">契約者</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        契約者 <span className="text-red-500">*</span>
+      </label>
       <select
         aria-label="契約者"
-        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        data-pp-field="contractorPersonId"
+        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.contractorPersonId ? 'border-red-400' : 'border-gray-300'}`}
         value={form.contractorPersonId ?? ''}
         onChange={e => set('contractorPersonId', e.target.value || undefined)}
       >
-        <option value="">（案件の契約者を使う）</option>
+        <option value="">（選択してください）</option>
         {persons.map(p => (
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
       </select>
+      {errors.contractorPersonId && <p className="text-xs text-red-500 mt-1">{errors.contractorPersonId}</p>}
     </div>
 
-    {/* Monthly premium */}
+    {/* Payment mode（E2） */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">払込方法</label>
+      <select
+        aria-label="払込方法"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={paymentModeOf(form)}
+        onChange={e => set('paymentMode', e.target.value as PaymentMode)}
+      >
+        {(Object.entries(PAYMENT_MODE_LABELS) as [PaymentMode, string][]).map(([k, v]) => (
+          <option key={k} value={k}>{v}</option>
+        ))}
+      </select>
+    </div>
+
+    {/* Premium（払込方法で入力欄が変わる） */}
+    {paymentModeOf(form) === 'monthly' && (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         月払額 (円) <span className="text-red-500">*</span>
@@ -116,6 +143,7 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
         type="number"
         min="0"
         step="100"
+        data-pp-field="monthlyPremium"
         className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.monthlyPremium ? 'border-red-400' : 'border-gray-300'}`}
         placeholder="例: 4800"
         value={form.monthlyPremium || ''}
@@ -123,6 +151,45 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
       />
       {errors.monthlyPremium && <p className="text-xs text-red-500 mt-1">{errors.monthlyPremium}</p>}
     </div>
+    )}
+    {paymentModeOf(form) === 'annual' && (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        年払額 (円) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="1000"
+        aria-label="年払額"
+        data-pp-field="annualPremium"
+        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.annualPremium ? 'border-red-400' : 'border-gray-300'}`}
+        placeholder="例: 57600"
+        value={form.annualPremium || ''}
+        onChange={e => set('annualPremium', e.target.value ? Number(e.target.value) : undefined)}
+      />
+      {errors.annualPremium && <p className="text-xs text-red-500 mt-1">{errors.annualPremium}</p>}
+    </div>
+    )}
+    {paymentModeOf(form) === 'lump' && (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        一時払額 (円) <span className="text-red-500">*</span>
+      </label>
+      <input
+        type="number"
+        min="0"
+        step="10000"
+        aria-label="一時払額"
+        data-pp-field="lumpSumPremium"
+        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.lumpSumPremium ? 'border-red-400' : 'border-gray-300'}`}
+        placeholder="例: 1000000"
+        value={form.lumpSumPremium || ''}
+        onChange={e => set('lumpSumPremium', e.target.value ? Number(e.target.value) : undefined)}
+      />
+      {errors.lumpSumPremium && <p className="text-xs text-red-500 mt-1">{errors.lumpSumPremium}</p>}
+    </div>
+    )}
 
     {/* Face amount */}
     <div>
@@ -146,6 +213,7 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
         min="0"
         step="1"
         aria-label="初年度手数料"
+        data-pp-field="firstYearCommission"
         className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstYearCommission ? 'border-red-400' : 'border-gray-300'}`}
         placeholder="例: 57600"
         value={form.firstYearCommission ?? ''}

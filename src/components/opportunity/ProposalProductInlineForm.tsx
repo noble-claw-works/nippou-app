@@ -8,6 +8,7 @@ import {
   emptyProposalProduct,
   newProposalProductId,
   validateProposalProduct,
+  focusFirstProductError,
   type ProposalProductDraft,
   type ProposalProductErrors,
 } from './proposalProductMeta';
@@ -41,9 +42,17 @@ export function ProposalProductInlineForm({ mode, initial, householdId, onSave, 
   const handleSave = () => {
     const e = validateProposalProduct(form);
     setErrors(e);
-    if (Object.keys(e).length > 0) return;
+    if (Object.keys(e).length > 0) {
+      // D7: 最初のエラー欄へ移動
+      setTimeout(() => focusFirstProductError(e), 0);
+      return;
+    }
     onSave({
       ...form,
+      // E2: 払込方法に無関係な金額欄は持ち越さない（月払合計は月払のみ）
+      monthlyPremium: (form.paymentMode ?? 'monthly') === 'monthly' ? form.monthlyPremium : 0,
+      annualPremium: form.paymentMode === 'annual' ? form.annualPremium : undefined,
+      lumpSumPremium: form.paymentMode === 'lump' ? form.lumpSumPremium : undefined,
       id: mode === 'edit' && initial ? initial.id : newProposalProductId(),
       productName: form.productName.trim(),
       insurer: form.insurer.trim(),

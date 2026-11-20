@@ -139,6 +139,26 @@ const directVisit: SalesChannel = {
 };
 
 // ───────────────────────────────────────────
+// 住宅（2026-11-20 テスター第2回報告で追加）
+// ───────────────────────────────────────────
+const parentHousing: SalesChannel = {
+  id: 'ch_housing',
+  name: '住宅（工務店・住宅会社）',
+  parentId: null,
+  isActive: true,
+  order: 5,
+  memo: '工務店・住宅会社経由の案件',
+};
+
+const housingIedate: SalesChannel = {
+  id: 'ch_housing_iedate',
+  name: 'イエタテ',
+  parentId: 'ch_housing',
+  isActive: true,
+  order: 1,
+};
+
+// ───────────────────────────────────────────
 // エクスポート
 // ───────────────────────────────────────────
 
@@ -163,6 +183,9 @@ export const SALES_CHANNELS: SalesChannel[] = [
   // 直接営業配下
   directTelephone,
   directVisit,
+  // 住宅配下
+  parentHousing,
+  housingIedate,
 ];
 
 /** 親チャネル一覧（parentId=null） */

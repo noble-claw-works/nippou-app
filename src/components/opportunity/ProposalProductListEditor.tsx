@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import type { ProposalProduct, ProductCategory } from '../../types';
 import { ProposalProductEditModal } from './ProposalProductEditModal';
+import { premiumLabel } from './proposalProductMeta';
 
 // =====================================================
 // ProposalProductListEditor — 新規案件作成用の提案商品行リスト
@@ -75,7 +76,7 @@ export function ProposalProductListEditor({ householdId, products, onChange }: P
                   <span className="font-medium text-gray-800 truncate">{p.productName || '(商品名未入力)'}</span>
                 </div>
                 <div className="text-xs text-gray-500 truncate">
-                  {p.insurer || '保険会社未入力'} · 月払 {p.monthlyPremium.toLocaleString()}円
+                  {p.insurer || '保険会社未入力'} · {premiumLabel(p)}
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">

@@ -8,6 +8,8 @@ import { useAppStore } from '../../store';
 import { STAGE_META } from '../../components/opportunity/StageBadge';
 import { CONFIDENCE_LABELS, CONFIDENCE_OPTIONS } from '../../utils/householdBatchEntry';
 import { PRODUCT_CATEGORY_LABELS } from '../../components/opportunity/proposalProductMeta';
+import { DateInput } from '../../components/common/DateInput';
+import { STAGE_MILESTONE_KEY, STAGE_ORDER_7, TAB_META } from '../../utils/opportunityStage';
 import { INITIAL_STAGES, toggleIn, applyHouseholdChannelDefault, type OpportunityDraft } from './newOpportunityDraft';
 
 interface Props {
@@ -94,6 +96,33 @@ export function OpportunityDraftPane({ householdId, draft, onChange, error }: Pr
           })}
         </div>
       </div>
+
+      {/* D3: 前段の日付（縦並び）。選んだ初期ステージの進入日は作成日が自動で入る */}
+      {STAGE_ORDER_7.indexOf(draft.stage as (typeof STAGE_ORDER_7)[number]) > 0 && (
+        <div data-testid="no-prev-stage-dates" className="flex flex-col gap-2 max-w-xs">
+          <span className={LABEL}>前段の日付（任意）</span>
+          {STAGE_ORDER_7.slice(0, STAGE_ORDER_7.indexOf(draft.stage as (typeof STAGE_ORDER_7)[number])).map(st => {
+            const key = STAGE_MILESTONE_KEY[st];
+            const label = `${TAB_META.find(t => t.key === st)!.label}日`;
+            return (
+              <div key={st} className="flex flex-col gap-0.5">
+                <label className="text-[11px] text-gray-500">{label}</label>
+                <DateInput
+                  aria-label={label}
+                  className={INPUT}
+                  value={draft.milestones[key] ?? ''}
+                  onChange={e => {
+                    const next = { ...draft.milestones };
+                    if (e.target.value) next[key] = e.target.value;
+                    else delete next[key];
+                    onChange({ milestones: next });
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div>
         <span className={LABEL}>対象者 (提案対象世帯員・複数可)</span>

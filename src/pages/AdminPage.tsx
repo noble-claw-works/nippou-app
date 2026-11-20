@@ -8,9 +8,10 @@ import { AuditLogTab } from "./admin/AuditLogTab";
 import { TaskTemplatesTab } from "./admin/TaskTemplatesTab";
 import { RoadmapTemplateTab } from "./admin/RoadmapTemplateTab";
 import { InsuranceCompaniesTab } from "./admin/InsuranceCompaniesTab";
+import { ChannelMasterTab } from "./SettingsPage/ChannelMasterTab";
 import { isAdmin } from "../utils/roles";
 
-type AdminTab = "users" | "teams" | "audit" | "task_templates" | "roadmap" | "insurers";
+type AdminTab = "users" | "teams" | "audit" | "task_templates" | "roadmap" | "insurers" | "channels";
 
 const ALL_TABS: { id: AdminTab; label: string }[] = [
   { id: "users", label: "👥 ユーザー" },
@@ -19,6 +20,7 @@ const ALL_TABS: { id: AdminTab; label: string }[] = [
   { id: "task_templates", label: "☑️ タスク初期値" },
   { id: "roadmap", label: "🗺️ ロードマップ項目" },
   { id: "insurers", label: "🏦 保険会社" },
+  { id: "channels", label: "🔗 チャネル" },
 ];
 
 export function AdminPage() {
@@ -35,6 +37,8 @@ export function AdminPage() {
     if (t.id === "roadmap") return isAdminOrExec || isManager;
     // 保険会社マスタはシステム管理者のみ（Q8）
     if (t.id === "insurers") return currentRole === "admin";
+    // チャネルマスタもシステム管理者のみ（E3）
+    if (t.id === "channels") return currentRole === "admin";
     return isAdminOrExec;
   });
 
@@ -98,6 +102,7 @@ export function AdminPage() {
         {safeTab === "insurers" && currentRole === "admin" && (
           <InsuranceCompaniesTab canEdit={canEditAdmin} />
         )}
+        {safeTab === "channels" && currentRole === "admin" && <ChannelMasterTab />}
         {safeTab === "roadmap" && (
           <RoadmapTemplateTab canEdit={canEditRoadmap} />
         )}

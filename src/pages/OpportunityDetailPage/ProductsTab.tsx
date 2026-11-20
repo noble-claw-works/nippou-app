@@ -2,6 +2,7 @@ import { Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
 import type { Opportunity, Person, ProposalProduct } from "../../types";
 import { PRODUCT_CATEGORY_LABELS } from "./constants";
 import { ReflectionControl } from "../../components/policy/ReflectionControl";
+import { premiumLabel, totalFirstYearCommission } from "../../components/opportunity/proposalProductMeta";
 import { formatMonthlyTotal } from "../NewOpportunityPage/newOpportunityDraft";
 
 interface ProductsTabProps {
@@ -40,8 +41,12 @@ export function ProductsTab({
         </p>
       ) : (
         <div className="space-y-3">
+          <div className="text-sm text-gray-700" data-testid="pp-total-commission">
+            初年度手数料 合計: ¥{totalFirstYearCommission(opp.proposalProducts).toLocaleString()}
+          </div>
           {opp.proposalProducts.map((pp) => {
             const person = persons.find((p) => p.id === pp.insuredPersonId);
+            const contractor = persons.find((p) => p.id === pp.contractorPersonId);
             const productTasks = (opp.tasks ?? []).filter(
               (t) => t.scope === "product" && t.productId === pp.id,
             );
@@ -87,9 +92,18 @@ export function ProductsTab({
                       {person && (
                         <span> / 被保険者: {person.name}</span>
                       )}
+                      {contractor && (
+                        <span> / 契約者: {contractor.name}</span>
+                      )}
                     </div>
                     <div className="text-sm font-medium text-gray-700">
-                      月払: ¥{pp.monthlyPremium.toLocaleString()}
+                      {premiumLabel(pp)}
+                      {pp.firstYearCommission != null && (
+                        <span className="text-gray-500 font-normal" data-testid="pp-commission">
+                          {" "}
+                          / 初年度手数料: ¥{pp.firstYearCommission.toLocaleString()}
+                        </span>
+                      )}
                       {pp.faceAmount && (
                         <span className="text-gray-500 font-normal">
                           {" "}

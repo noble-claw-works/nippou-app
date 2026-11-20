@@ -34,7 +34,8 @@ export function StageDatesPanel({ opp, onChange }: Props) {
   return (
     <div className="mt-3" data-testid="stage-dates-panel">
       <p className="text-xs text-gray-500 mb-1">各段の日付（ステージ変更時に自動記録・ここで修正できます）</p>
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+      {/* D6: 横並びをやめて縦並び */}
+      <div className="flex flex-col gap-2 max-w-xs" data-testid="stage-dates-list">
         {stages.map((st) => {
           const label = TAB_META.find((t) => t.key === st)!.label;
           const key = STAGE_MILESTONE_KEY[st];

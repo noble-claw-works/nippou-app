@@ -26,8 +26,8 @@ const opp = (insurers: Array<[string, string?]>): Opportunity =>
   }) as unknown as Opportunity;
 
 describe("初期マスタ", () => {
-  it("12社で生保/損保区分がある", () => {
-    expect(INIT).toHaveLength(12);
+  it("15社で生保/損保区分がある", () => {
+    expect(INIT).toHaveLength(15);
     expect(INIT.every((c) => c.kind === "life" || c.kind === "non_life")).toBe(true);
     expect(INIT.filter((c) => c.kind === "non_life").length).toBeGreaterThan(0);
   });
@@ -40,7 +40,7 @@ describe("findInsurerByName", () => {
     expect(findInsurerByName(INIT, " 東京海上日動 ")?.id).toBe("ic_05");
   });
   it("部分一致・空・不明は見つからない", () => {
-    expect(findInsurerByName(INIT, "東京海上日動あんしん生命")).toBeUndefined();
+    expect(findInsurerByName(INIT, "東京海上日動あんしん")).toBeUndefined();
     expect(findInsurerByName(INIT, "日本")).toBeUndefined();
     expect(findInsurerByName(INIT, "")).toBeUndefined();
     expect(findInsurerByName(INIT, undefined)).toBeUndefined();
@@ -71,7 +71,7 @@ describe("mergeInsuranceCompanies", () => {
   const legacy = INIT.slice(0, 7).map(({ id, name, isActive, order }) => ({ id, name, isActive, order }));
   it("旧データに kind/aliases を補完し、足りない会社を末尾追加", () => {
     const m = mergeInsuranceCompanies(legacy, INIT);
-    expect(m).toHaveLength(12);
+    expect(m).toHaveLength(15);
     expect(m.find((c) => c.id === "ic_05")?.kind).toBe("non_life");
     expect(m.find((c) => c.id === "ic_01")?.aliases).toContain("日本生命");
   });

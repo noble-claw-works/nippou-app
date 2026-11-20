@@ -173,7 +173,7 @@ export function OpportunityDetailPage() {
                     className="text-blue-600 hover:underline font-medium"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {household?.name ?? opp.householdId}
+                    {household?.name ?? '（世帯情報なし）'}
                   </Link>
                   <span>・</span>
                   <span>担当: {owner?.name ?? opp.ownerId}</span>

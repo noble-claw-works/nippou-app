@@ -45,6 +45,7 @@ export type {
   OpportunityStatus,
   LostReason,
   ProductCategory,
+  PaymentMode,
   ProposalProduct,
   ReflectionMode,
   ProposalReflection,

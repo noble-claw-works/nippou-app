@@ -58,6 +58,8 @@ export type ProductCategory =
   | "liability"
   | "other";
 
+export type PaymentMode = "monthly" | "annual" | "lump";
+
 export interface ProposalProduct {
   id: string;
   productCategory: ProductCategory;
@@ -67,7 +69,11 @@ export interface ProposalProduct {
   insuredPersonId: string; // 被保険者
   contractorPersonId?: string; // 契約者 Person.id（被保険者と別。未設定=案件の契約者を継承）
   channelId?: string; // チャネル（紹介元・葉）SalesChannel.id（未設定=案件のチャネルを継承）
-  monthlyPremium: number; // 月払額
+  /** 払込方法（E2）。未設定=月払（後方互換）。月払のみ monthlyPremium 必須。 */
+  paymentMode?: PaymentMode;
+  annualPremium?: number; // 年払額（paymentMode==="annual" のとき）
+  lumpSumPremium?: number; // 一時払額（paymentMode==="lump" のとき）
+  monthlyPremium: number; // 月払額（年払・一時払の商品は 0。月払合計は月払商品のみで集計）
   faceAmount?: number; // 保険金額
   firstYearCommission?: number; // ★NEW 初年度手数料（円）salesPerf first_year_commission と整合 (§3-4)
   firstConsultDate?: string; // 初回相談日 YYYY-MM-DD（商品行ごとに保持）

@@ -69,7 +69,7 @@ export function SettingsPage() {
 
       {/* Tabs */}
       <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-4 flex-wrap">
-        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定'], ...(canManageTaskTemplates ? [['channel_master', '🔗 チャネルマスタ'], ['task_master', '☑️ タスクマスタ']] : [])].map(([id, label]) => (
+        {[['profile', '👤 プロフィール'], ['password', '🔑 パスワード'], ['chips', '⚡ クイックチップ'], ['notifications', '🔔 通知'], ['display', '🎨 表示設定'], ...(currentRole === 'admin' ? [['channel_master', '🔗 チャネルマスタ']] : []), ...(canManageTaskTemplates ? [['task_master', '☑️ タスクマスタ']] : [])].map(([id, label]) => (
           <button key={id} onClick={() => setActiveTab(id)}
             className={`px-3 py-2 text-xs rounded-lg transition-colors ${activeTab === id ? 'bg-white shadow font-medium text-gray-900' : 'text-gray-500'}`}>
             {label}
@@ -327,7 +327,7 @@ export function SettingsPage() {
         )}
 
         {/* チャネルマスタ（管理者/役員のみ） */}
-        {activeTab === 'channel_master' && canManageTaskTemplates && (
+        {activeTab === 'channel_master' && currentRole === 'admin' && (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-1">チャネルマスタ</h2>
             <p className="text-xs text-gray-500 mb-3">

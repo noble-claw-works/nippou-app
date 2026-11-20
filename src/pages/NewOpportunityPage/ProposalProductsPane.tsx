@@ -6,7 +6,7 @@ import { ShieldPlus, Pencil, Trash2 } from 'lucide-react';
 import type { ProposalProduct } from '../../types';
 import { useAppStore } from '../../store';
 import { ProposalProductInlineForm } from '../../components/opportunity/ProposalProductInlineForm';
-import { PRODUCT_CATEGORY_LABELS } from '../../components/opportunity/proposalProductMeta';
+import { PRODUCT_CATEGORY_LABELS, premiumLabel } from '../../components/opportunity/proposalProductMeta';
 import { formatMonthlyTotal, sumMonthlyPremium } from './newOpportunityDraft';
 
 interface Props {
@@ -94,7 +94,10 @@ export function ProposalProductsPane({ householdId, products, onChange }: Props)
                     {p.insurer}
                     {p.insuredPersonId && personName(p.insuredPersonId) && ` · 被保険者 ${personName(p.insuredPersonId)}`}
                   </p>
-                  <p className="text-xs text-gray-700">¥{p.monthlyPremium.toLocaleString()} / 月</p>
+                  <p className="text-xs text-gray-700">{premiumLabel(p)}</p>
+                  {personName(p.contractorPersonId ?? '') && (
+                    <p className="text-xs text-gray-500">契約者 {personName(p.contractorPersonId ?? '')}</p>
+                  )}
                 </div>
                 <button
                   type="button"

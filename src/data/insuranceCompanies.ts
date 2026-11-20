@@ -18,4 +18,8 @@ export const INITIAL_INSURANCE_COMPANIES: InsuranceCompany[] = [
   { id: "ic_10", name: "アフラック生命保険", isActive: true, order: 10, kind: "life", aliases: ["アフラック"] },
   { id: "ic_11", name: "富国生命保険", isActive: true, order: 11, kind: "life", aliases: ["富国生命"] },
   { id: "ic_12", name: "朝日生命保険", isActive: true, order: 12, kind: "life", aliases: ["朝日生命"] },
+  // 2026-11-20 テスター第2回報告: 追加（既存ブラウザへは mergeInsuranceCompanies が読み込み時に補う）
+  { id: "ic_13", name: "東京海上日動あんしん生命保険", isActive: true, order: 13, kind: "life", aliases: ["あんしん生命", "東京海上日動あんしん生命"] },
+  { id: "ic_14", name: "ネオファースト生命保険", isActive: true, order: 14, kind: "life", aliases: ["ネオファースト生命", "ネオファースト"] },
+  { id: "ic_15", name: "メットライフ生命保険", isActive: true, order: 15, kind: "life", aliases: ["メットライフ生命", "メットライフ"] },
 ];

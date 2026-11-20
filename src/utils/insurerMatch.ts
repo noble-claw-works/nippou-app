@@ -60,8 +60,9 @@ export function mergeInsuranceCompanies(
   });
   const have = new Set(stored.map((c) => c.id));
   const maxOrder = stored.reduce((m, c) => Math.max(m, c.order), 0);
+  // 同名/別名が既に在る（テスターが手で追加済み等）なら重複追加しない（冪等）
   const added = initial
-    .filter((c) => !have.has(c.id))
+    .filter((c) => !have.has(c.id) && !findInsurerByName(stored, c.name))
     .map((c, i) => ({ ...c, order: maxOrder + i + 1 }));
   return [...merged, ...added];
 }
@@ -93,4 +94,26 @@ export function isOutsideMaster(
 ): boolean {
   if (p.insurerId && companies.some((c) => c.id === p.insurerId)) return false;
   return !!p.insurer?.trim();
+}
+
+/**
+ * E1: 商品カテゴリから保険会社の区分（生保/損保）を決める。
+ * 自動車・火災・賠償責任=損保、その他の保障/貯蓄系=生保、"other" は絞り込まない(undefined)。
+ */
+export function insurerKindForCategory(category: string): InsurerKind | undefined {
+  switch (category) {
+    case "auto":
+    case "fire":
+    case "liability":
+      return "non_life";
+    case "life":
+    case "medical":
+    case "cancer":
+    case "income":
+    case "nursing":
+    case "savings":
+      return "life";
+    default:
+      return undefined;
+  }
 }

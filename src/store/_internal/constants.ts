@@ -4,6 +4,7 @@
 import {
   USERS,
   CUSTOMERS,
+  PERSONS,
   OPPORTUNITIES,
   POLICIES,
   POLICY_STATUS_HISTORY,
@@ -24,6 +25,9 @@ import {
 } from "../../utils/insurerMatch";
 import { INITIAL_PRODUCT_CATEGORIES } from "../../data/productCategories";
 import { SALES_CHANNELS } from "../../data/salesChannels";
+import { backfillProposalContractors } from "../../utils/migrations/proposalContractor";
+import { loadAddedHouseholds, mergeById } from "../addedHouseholds";
+import { mergeSalesChannels } from "../../utils/salesChannelMerge";
 import type {
   SalesTarget,
   Opportunity,
@@ -245,9 +249,14 @@ export const _initialInsuranceCompanies = (() => {
 })();
 
 // 読み込み時変換（冪等）。SEED_VERSION は上げない＝テスターの入力データを残す。
-export const _initialOpportunities = backfillOpportunityInsurerIds(
-  migrateOpportunitiesStage(_rawOpportunities), // B1: 旧9段 → 7段
-  _initialInsuranceCompanies,
+const _addedHh = loadAddedHouseholds();
+export const _initialOpportunities = backfillProposalContractors(
+  backfillOpportunityInsurerIds(
+    migrateOpportunitiesStage(_rawOpportunities), // B1: 旧9段 → 7段
+    _initialInsuranceCompanies,
+  ),
+  mergeById(CUSTOMERS, _addedHh.customers), // D4: 契約者欠落を世帯主で補完
+  mergeById(PERSONS, _addedHh.persons),
 );
 
 export const _initialProductCategories = (() => {
@@ -266,7 +275,8 @@ export const _initialSalesChannels = (() => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = window.localStorage.getItem("nippou.salesChannels.v1");
-      if (raw) return JSON.parse(raw) as SalesChannel[];
+      // 2026-11-20: 不足チャネル（住宅/イエタテ 等）を冪等に補う
+      if (raw) return mergeSalesChannels(JSON.parse(raw) as SalesChannel[], SALES_CHANNELS);
     } catch {
       /* ignore */
     }
