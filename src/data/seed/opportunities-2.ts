@@ -11,7 +11,7 @@ import { d, f } from "./helpers";
 import { mkOpp } from "./opportunities-helpers";
 
 export const OPP_DATA_4_5 = [
-  mkOpp("opp4", "c6", "u2", "鈴木家 生命保険 見直し", "approach", "open", {
+  mkOpp("opp4", "c6", "u2", "鈴木家 生命保険 見直し", "first_consult", "open", {
     targetPersonIds: ["p_c6_head"],
     contractorPersonId: "p_c6_head",
     productCategories: ["life"],
@@ -34,7 +34,7 @@ export const OPP_DATA_4_5 = [
     nextActionDate: f(7),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(5) + "T09:00:00",
         changedByUserId: "u2",
         note: "既存顧客からの紹介で接触",
@@ -53,7 +53,7 @@ export const OPP_DATA_4_5 = [
   }),
 
   // c8: 高橋 誠 — 自動車保険 (fact_finding ステージ)
-  mkOpp("opp5", "c8", "u1", "高橋家 自動車保険 新規", "fact_finding", "open", {
+  mkOpp("opp5", "c8", "u1", "高橋家 自動車保険 新規", "first_consult", "open", {
     targetPersonIds: ["p_c8_head"],
     contractorPersonId: "p_c8_head",
     productCategories: ["auto"],
@@ -74,12 +74,12 @@ export const OPP_DATA_4_5 = [
     nextActionDate: f(5),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(15) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "fact_finding",
+        stage: "first_consult",
         changedAt: d(7) + "T10:00:00",
         changedByUserId: "u1",
         note: "紹介案件、前向きな雰囲気",

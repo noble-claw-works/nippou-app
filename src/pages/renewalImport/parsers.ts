@@ -27,7 +27,7 @@ export function parseMethod(raw: string): RenewalMethod {
   if (raw.includes("電話")) return "phone";
   if (raw.includes("来店")) return "visit";
   if (raw.includes("郵送")) return "mail";
-  if (raw.includes("更新落ち") || raw.includes("更新落")) return "renewal_lost";
+  // 「更新落ち」は手段から廃止(B5)。取込は未定扱い（状況列はMVP対象外・Q9）
   return "undecided";
 }
 

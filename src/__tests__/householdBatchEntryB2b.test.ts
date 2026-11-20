@@ -28,7 +28,7 @@ const baseOpportunity: Opportunity = {
   householdId: 'hh_test',
   ownerId: 'u1',
   title: 'テスト案件',
-  stage: 'approach',
+  stage: 'first_consult',
   status: 'open',
   targetPersonIds: ['p1'],
   productCategories: ['life'],
@@ -106,6 +106,7 @@ describe('getMilestoneOrderWarnings', () => {
       'lifePlanDate',
       'proposalDate',
       'applicationDate',
+      'contractDate',
       'establishedDate',
     ]);
   });

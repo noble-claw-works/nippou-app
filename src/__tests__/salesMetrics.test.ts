@@ -247,7 +247,7 @@ describe('calcFunnel', () => {
   const opps: Opportunity[] = [
     {
       id: 'o1', householdId: 'c1', ownerId: 'u1', title: 'テスト商談1',
-      targetPersonIds: [], stage: 'proposal', status: 'open',
+      targetPersonIds: [], stage: 'proposed', status: 'open',
       productCategories: [], proposalProducts: [],
       needsAnalysisDone: false, illustrationProvided: false,
       stageHistory: [], tags: [], memo: '',
@@ -255,7 +255,7 @@ describe('calcFunnel', () => {
     },
     {
       id: 'o2', householdId: 'c2', ownerId: 'u1', title: 'テスト商談2',
-      targetPersonIds: [], stage: 'negotiation', status: 'open',
+      targetPersonIds: [], stage: 'proposed', status: 'open',
       productCategories: [], proposalProducts: [],
       needsAnalysisDone: false, illustrationProvided: false,
       stageHistory: [], tags: [], memo: '',
@@ -263,7 +263,7 @@ describe('calcFunnel', () => {
     },
     {
       id: 'o3', householdId: 'c3', ownerId: 'u2', title: '他者商談',
-      targetPersonIds: [], stage: 'approach', status: 'open',
+      targetPersonIds: [], stage: 'first_consult', status: 'open',
       productCategories: [], proposalProducts: [],
       needsAnalysisDone: false, illustrationProvided: false,
       stageHistory: [], tags: [], memo: '',
@@ -273,14 +273,13 @@ describe('calcFunnel', () => {
 
   it('ownerIds でフィルタして集計', () => {
     const funnel = calcFunnel(opps, ['u1']);
-    expect(funnel.proposal).toBe(1);
-    expect(funnel.negotiation).toBe(1);
-    expect(funnel.approach).toBe(0);  // u2 のは含まない
+    expect(funnel.proposed).toBe(2);
+    expect(funnel.first_consult).toBe(0);  // u2 のは含まない
   });
 
   it('複数 ownerIds で合算', () => {
     const funnel = calcFunnel(opps, ['u1', 'u2']);
-    expect(funnel.approach).toBe(1);
-    expect(funnel.proposal).toBe(1);
+    expect(funnel.first_consult).toBe(1);
+    expect(funnel.proposed).toBe(2);
   });
 });

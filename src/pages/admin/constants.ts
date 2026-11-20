@@ -27,14 +27,12 @@ export const PRIORITY_LABELS: Record<TaskPriority, string> = {
 };
 
 export const STAGE_OPTIONS: { value: OpportunityStage; label: string }[] = [
-  { value: "approach", label: "アプローチ" },
-  { value: "fact_finding", label: "ヒアリング" },
-  { value: "needs_analysis", label: "ニーズ分析" },
-  { value: "proposal", label: "提案" },
-  { value: "negotiation", label: "交渉" },
-  { value: "application", label: "申込" },
-  { value: "underwriting", label: "引受査定" },
-  { value: "issued", label: "契約成立" },
+  { value: "first_consult", label: "初回相談" },
+  { value: "lifeplan", label: "LP提案" },
+  { value: "proposed", label: "提案" },
+  { value: "contract_pending", label: "契約予定" },
+  { value: "contract", label: "契約" },
+  { value: "issued", label: "成立" },
   { value: "lost", label: "失注" },
 ];
 

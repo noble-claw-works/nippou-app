@@ -12,7 +12,7 @@ import { d, f } from "./helpers";
 import { mkOpp } from "./opportunities-helpers";
 
 export const OPP_DATA_1_3 = [
-  mkOpp("opp1", "c1", "u1", "GILSON家 生命保険 見直し", "proposal", "open", {
+  mkOpp("opp1", "c1", "u1", "GILSON家 生命保険 見直し", "proposed", "open", {
     targetPersonIds: ["p_c1_head"],
     productCategories: ["life", "medical"],
     proposalProducts: [
@@ -46,22 +46,22 @@ export const OPP_DATA_1_3 = [
     nextActionDate: f(3),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(30) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "fact_finding",
+        stage: "first_consult",
         changedAt: d(21) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "needs_analysis",
+        stage: "lifeplan",
         changedAt: d(14) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "proposal",
+        stage: "proposed",
         changedAt: d(5) + "T10:00:00",
         changedByUserId: "u1",
         note: "設計書を提示しました",
@@ -144,7 +144,7 @@ export const OPP_DATA_1_3 = [
   }),
 
   // c2: 齋藤 和久 — 医療保険 (negotiation ステージ)
-  mkOpp("opp2", "c2", "u1", "齋藤家 医療保険 新規", "negotiation", "open", {
+  mkOpp("opp2", "c2", "u1", "齋藤家 医療保険 新規", "proposed", "open", {
     targetPersonIds: ["p_c2_head"],
     productCategories: ["medical"],
     proposalProducts: [
@@ -166,27 +166,27 @@ export const OPP_DATA_1_3 = [
     nextActionDate: f(7),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(45) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "fact_finding",
+        stage: "first_consult",
         changedAt: d(30) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "needs_analysis",
+        stage: "lifeplan",
         changedAt: d(20) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "proposal",
+        stage: "proposed",
         changedAt: d(10) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "negotiation",
+        stage: "proposed",
         changedAt: d(3) + "T10:00:00",
         changedByUserId: "u1",
         note: "奥様が同席を希望",
@@ -269,7 +269,7 @@ export const OPP_DATA_1_3 = [
   }),
 
   // c4: 水野 幸重 — 自動車保険 (application ステージ)
-  mkOpp("opp3", "c4", "u1", "水野家 自動車保険 更新", "application", "open", {
+  mkOpp("opp3", "c4", "u1", "水野家 自動車保険 更新", "contract_pending", "open", {
     targetPersonIds: ["p_c4_head"],
     tasks: [
       {
@@ -322,22 +322,22 @@ export const OPP_DATA_1_3 = [
     nextActionDate: f(2),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(20) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "proposal",
+        stage: "proposed",
         changedAt: d(7) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "negotiation",
+        stage: "proposed",
         changedAt: d(4) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "application",
+        stage: "contract_pending",
         changedAt: d(1) + "T10:00:00",
         changedByUserId: "u1",
         note: "申込意向確認済み",

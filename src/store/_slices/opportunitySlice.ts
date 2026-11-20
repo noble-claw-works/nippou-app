@@ -24,6 +24,8 @@ import {
   generateTasksOnProductAdded,
   generateTasksOnStageReached,
 } from "../../utils/taskGenerator";
+import { normalizeStage } from "../../utils/opportunityStage";
+import { applyStageMilestones } from "../../utils/stageMilestones";
 import { buildValueChange } from "../../utils/policyHistory";
 import { buildNewPolicyFromProduct } from "../../utils/reflectionPolicyFactory";
 
@@ -181,7 +183,7 @@ export const createOpportunitySlice: StateCreator<
     });
   },
 
-  changeOpportunityStage: (id, newStage, note?, userId?) => {
+  changeOpportunityStage: (id, newStage, note?, userId?, opts?) => {
     const now = new Date().toISOString();
     const today = format(new Date(), "yyyy-MM-dd");
     const masters = get().taskTemplates;
@@ -203,7 +205,20 @@ export const createOpportunitySlice: StateCreator<
         } else if (newStage === "lost") {
           status = "lost";
           actualCloseDate = actualCloseDate ?? now.slice(0, 10);
+        } else if (o.status === "won" || o.status === "lost") {
+          // 成立/失注から戻した → 進行中に戻す
+          status = "open";
+          actualCloseDate = undefined;
         }
+        // B1: 変更先の段の日付が空なら今日を記録 / 戻しは後ろの日付を消す
+        const from = normalizeStage(o.stage);
+        const milestones = applyStageMilestones(
+          o.milestones,
+          from,
+          newStage,
+          today,
+          opts,
+        );
         // ステージ到達トリガー — 自動タスク生成
         const stageTasks = generateTasksOnStageReached(
           { ...o, tasks: o.tasks ?? [] },
@@ -216,6 +231,7 @@ export const createOpportunitySlice: StateCreator<
           stage: newStage,
           status,
           actualCloseDate,
+          milestones,
           stageHistory: [...o.stageHistory, historyEntry],
           tasks: [...(o.tasks ?? []), ...stageTasks],
           updatedAt: now,

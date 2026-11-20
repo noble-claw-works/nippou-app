@@ -17,41 +17,33 @@
 import type {
   Opportunity,
   OpportunityStage,
+  LegacyOpportunityStage,
   ContractMilestones,
 } from "../types";
 
-// ─── Funnel 順序（lost は funnel 外の終端） ─────────────────────────────────────
-export const FUNNEL_ORDER: OpportunityStage[] = [
-  "approach",
-  "fact_finding",
-  "needs_analysis",
-  "proposal",
-  "negotiation",
-  "application",
-  "underwriting",
+// ─── 7段（B1）。タブ・ステージ・ファネルは同じキーで一本化 ─────────────────────
+/** 7タブキー型 = ステージ型（B1 で内部も 7 値になった） */
+export type StageTabKey7 = OpportunityStage;
+
+/** 進行順（lost は終端で別扱い） */
+export const STAGE_ORDER_7: OpportunityStage[] = [
+  "first_consult",
+  "lifeplan",
+  "proposed",
+  "contract_pending",
+  "contract",
   "issued",
 ];
+
+/** Funnel 順序（lost は funnel 外）。STAGE_ORDER_7 と同一 */
+export const FUNNEL_ORDER: OpportunityStage[] = STAGE_ORDER_7;
 
 // Funnel インデックス取得（funnel 外の stage は -1）
 function funnelIndex(stage: OpportunityStage): number {
   return FUNNEL_ORDER.indexOf(stage);
 }
 
-// ─── 7タブ キー型（ADR-B4 v2 確定語彙） ─────────────────────────────────────────
-/**
- * 7タブキー型（ADR-B4 v2 §B4-4）
- * 初回相談 / LP提案 / 提案 / 契約予定 / 契約 / 成立 / 失注
- */
-export type StageTabKey7 =
-  | "first_consult"
-  | "lifeplan"
-  | "proposed"
-  | "contract_pending"
-  | "contract"
-  | "issued"
-  | "lost";
-
-/** 7タブ定義（left→right 順）。single source（ADR-B4 v2 §B4-4） */
+/** 7タブ定義（left→right 順）。single source */
 export const TAB_META: Array<{ key: StageTabKey7; label: string }> = [
   { key: "first_consult", label: "初回相談" },
   { key: "lifeplan", label: "LP提案" },
@@ -62,11 +54,19 @@ export const TAB_META: Array<{ key: StageTabKey7; label: string }> = [
   { key: "lost", label: "失注" },
 ];
 
-/**
- * 9段 funnel stage → 7タブキー の対応マップ（ADR-B4 v2 §B4-3）
- * approach → first_consult（「新案件」タブ廃止・最左へ吸収）
- */
-export const STAGE_TO_TAB: Record<OpportunityStage, StageTabKey7> = {
+/** 各段 → 進入日（milestones のキー） */
+export const STAGE_MILESTONE_KEY: Record<OpportunityStage, keyof ContractMilestones> = {
+  first_consult: "firstConsultDate",
+  lifeplan: "lifePlanDate",
+  proposed: "proposalDate",
+  contract_pending: "applicationDate",
+  contract: "contractDate",
+  issued: "establishedDate",
+  lost: "lostDate",
+};
+
+/** 旧9段 → 7段（Q1 主上OK 2026-11-20） */
+export const LEGACY_STAGE_MAP: Record<LegacyOpportunityStage, OpportunityStage> = {
   approach: "first_consult",
   fact_finding: "first_consult",
   needs_analysis: "lifeplan",
@@ -74,9 +74,28 @@ export const STAGE_TO_TAB: Record<OpportunityStage, StageTabKey7> = {
   negotiation: "proposed",
   application: "contract_pending",
   underwriting: "contract",
-  issued: "issued",
-  lost: "lost",
 };
+
+const STAGE_SET = new Set<string>([...STAGE_ORDER_7, "lost"]);
+
+/** 旧値 → 7値。7値ならそのまま（冪等）。不明値・空は first_consult */
+export function normalizeStage(s: string | undefined | null): OpportunityStage {
+  if (s && STAGE_SET.has(s)) return s as OpportunityStage;
+  if (s && s in LEGACY_STAGE_MAP) return LEGACY_STAGE_MAP[s as LegacyOpportunityStage];
+  return "first_consult";
+}
+
+/** 旧9段の値か（移行判定用） */
+export function isLegacyStage(s: string | undefined | null): boolean {
+  return !!s && !STAGE_SET.has(s);
+}
+
+/** 日付を持つ段のうち、target より後ろの段（戻し時に消す日付の対象） */
+export function stagesAfter(target: OpportunityStage): OpportunityStage[] {
+  const idx = STAGE_ORDER_7.indexOf(target);
+  if (idx < 0) return []; // lost への遷移は後ろ無し
+  return STAGE_ORDER_7.slice(idx + 1);
+}
 
 // ─── ADR-B4 v2 §B4-3-1. 提案日: proposals 最新ラウンド or milestones fallback ───
 /**
@@ -98,12 +117,12 @@ export function latestProposalDate(opp: Opportunity): string | undefined {
  * 真理値表（上から順・早い者勝ち）:
  *   1. lostDate あり     → 'lost'       (失注・最優先)
  *   2. establishedDate あり → 'issued'   (成立)
- *   3. contractDate あり    → 'underwriting' (契約)
- *   4. applicationDate あり → 'application'  (契約予定)
- *   5. proposalDate あり    → 'proposal'     (提案)
- *   6. lifePlanDate あり    → 'needs_analysis' (LP提案)
- *   7. firstConsultDate あり → 'fact_finding'  (初回相談)
- *   8. どの日付も無い       → 'approach'      (日付ゼロ)
+ *   3. contractDate あり    → 'contract' (契約)
+ *   4. applicationDate あり → 'contract_pending' (契約予定)
+ *   5. proposalDate あり    → 'proposed' (提案)
+ *   6. lifePlanDate あり    → 'lifeplan' (LP提案)
+ *   7. firstConsultDate あり → 'first_consult' (初回相談)
+ *   8. どの日付も無い       → 'first_consult' (日付ゼロ)
  *
  * @param opp - 案件（proposals の latestProposalDate 参照に使用）
  * @param m - 判定対象の milestones（案件 or 商品個別）
@@ -113,21 +132,21 @@ export function stageFromMilestones(
   m: ContractMilestones | undefined,
 ): OpportunityStage {
   // milestones 満者も proposals もない場合は approach
-  if (!m && !opp.proposals?.length) return "approach";
+  if (!m && !opp.proposals?.length) return "first_consult";
   const lostDate = m?.lostDate;
   if (lostDate != null) return "lost";
   if (m?.establishedDate != null) return "issued";
-  if (m?.contractDate != null) return "underwriting";
-  if (m?.applicationDate != null) return "application";
+  if (m?.contractDate != null) return "contract";
+  if (m?.applicationDate != null) return "contract_pending";
   // 提案日: 案件の milestones と同一（または未設定）の場合は latestProposalDate を使う（proposals 統合）
   const pr =
     m === opp.milestones || m == null
       ? latestProposalDate(opp)
       : m.proposalDate;
-  if (pr != null) return "proposal";
-  if (m?.lifePlanDate != null) return "needs_analysis";
-  if (m?.firstConsultDate != null) return "fact_finding";
-  return "approach";
+  if (pr != null) return "proposed";
+  if (m?.lifePlanDate != null) return "lifeplan";
+  if (m?.firstConsultDate != null) return "first_consult";
+  return "first_consult";
 }
 
 // ─── ADR-B4 v2 §B4-3-2. effectiveStage（日付正本＋既存seedフォールバック・律速統合） ──
@@ -341,7 +360,7 @@ export function tabOf(opp: Opportunity): StageTabKey7 {
   }
 
   const effStage = effectiveStage(opp);
-  return STAGE_TO_TAB[effStage];
+  return effStage;
 }
 
 // ─── 後方互換: isVisited（廃止・stageFromMilestones に吸収） ─────────────────────

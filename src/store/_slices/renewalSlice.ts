@@ -11,11 +11,16 @@ import type {
 } from "../_internal/types";
 import { uid } from "../_internal/constants";
 import type {
-  RenewalStatus,
   RenewalLogKind,
   RenewalActivityLog,
   RenewalNote,
 } from "../../types/renewal";
+
+import { RENEWAL_STATUS_LABEL } from "../../utils/renewalLabels";
+import {
+  canMarkRenewed,
+  withDefaultRenewedPremium,
+} from "../../utils/renewalYoY";
 
 const STORAGE_KEY = "nippou.renewalCases.v1";
 
@@ -230,19 +235,19 @@ export const createRenewalSlice: StateCreator<
     const effectiveUserId = userId ?? state.currentUserId;
     const now = new Date().toISOString();
 
-    const STATUS_LABELS: Record<RenewalStatus, string> = {
-      not_started: "未対応",
-      in_progress: "対応中",
-      completed: "完了",
-    };
+    const target = state.renewalCases.find((rc) => rc.id === id);
+    // Q6: 更改済は更改保険料が必須（既定=前年保険料）。金額が一切無ければ変更しない
+    if (target && status === "renewed" && !canMarkRenewed(target)) return;
 
     const updated = state.renewalCases.map((rc) => {
       if (rc.id !== id) return rc;
-      const fromLabel = STATUS_LABELS[rc.status];
-      const toLabel = STATUS_LABELS[status];
+      const fromLabel = RENEWAL_STATUS_LABEL[rc.status];
+      const toLabel = RENEWAL_STATUS_LABEL[status];
       return {
         ...rc,
         status,
+        survey:
+          status === "renewed" ? withDefaultRenewedPremium(rc, now) : rc.survey,
         activityLog: [
           ...rc.activityLog,
           makeLog(

@@ -10,8 +10,22 @@ import type { Task } from "./task";
 type _ProductCategoryRef = ProductCategory;
 
 /** 更新対応の進捗ステータス */
-export type RenewalStatus = "not_started" | "in_progress" | "completed";
-// not_started=未対応 / in_progress=対応中 / completed=完了
+export type RenewalStatus =
+  | "not_started" // 未対応
+  | "in_progress" // 対応中
+  | "renewed" // 更改済
+  | "lost_to_competitor" // 他社流出
+  | "cancelled"; // 解約
+
+/** 移行専用の旧状況値（localStorage 旧データ読み込み時のみ存在し得る） */
+export type LegacyRenewalStatus = "completed";
+
+/** 終端状況（対応が終わったもの） */
+export const TERMINAL_RENEWAL_STATUSES: readonly RenewalStatus[] = [
+  "renewed",
+  "lost_to_competitor",
+  "cancelled",
+];
 
 /** 手続き手段（更新方法）。一覧「手続き手段」列 + renewal2「更新方法」 */
 export type RenewalMethod =
@@ -19,7 +33,6 @@ export type RenewalMethod =
   | "phone" // 電話募集
   | "visit" // 来店
   | "mail" // 郵送
-  | "renewal_lost" // 更新落ち
   | "undecided"; // 未定
 
 /** 一覧「種目」列。保険種目（元シート語彙）。ProductCategory と別語彙なので独自 union */
@@ -227,7 +240,9 @@ export interface RenewalCase {
   prevYearPremium?: number; // 前年保険料（円）
   method: RenewalMethod; // 手続き手段（一覧列 = survey.consult.renewalMethod と同期可）
   // ── ワークリスト状態 ──
-  status: RenewalStatus; // 未対応/対応中/完了
+  status: RenewalStatus; // 未対応/対応中/更改済/他社流出/解約
+  /** 旧データで手段=更新落ちだったもの（Q5保留: 移行先未決定の「要確認」印） */
+  legacyRenewalLost?: boolean;
   survey: RenewalSurvey; // アンケート回答（renewal2〜4）
   notes: RenewalNote[]; // 留意事項（追記型）
   activityLog: RenewalActivityLog[]; // 対応履歴（追記型・削除なし）

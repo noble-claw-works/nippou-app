@@ -4,9 +4,10 @@
 
 import type { ProductCategory, Person } from '../../types';
 import { useAppStore } from '../../store';
+import { InsurerSelect } from '../common/InsurerSelect';
+import { ChannelSelect } from '../../pages/HouseholdBatchEntryPage/ChannelSelect';
 import {
   PRODUCT_CATEGORY_LABELS,
-  COMMON_INSURERS,
   type ProposalProductDraft,
   type ProposalProductErrors,
 } from './proposalProductMeta';
@@ -17,11 +18,11 @@ interface Props {
   onChange: (key: keyof ProposalProductDraft, value: unknown) => void;
   errors: ProposalProductErrors;
   householdId: string;
-  /** 保険会社候補の datalist id（同一画面で重複しないよう呼び出し側が渡す） */
-  datalistId: string;
+  /** 旧: 保険会社候補 datalist の id。B3 でプルダウン化したため未使用（呼び出し側互換のため残置） */
+  datalistId?: string;
 }
 
-export function ProposalProductFormFields({ value, onChange, errors, householdId, datalistId }: Props) {
+export function ProposalProductFormFields({ value, onChange, errors, householdId }: Props) {
   const { getPersonsByHousehold } = useAppStore();
   const persons: Person[] = getPersonsByHousehold(householdId);
   const form = value;
@@ -63,17 +64,15 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
       <label className="block text-sm font-medium text-gray-700 mb-1">
         保険会社 <span className="text-red-500">*</span>
       </label>
-      <input
-        type="text"
-        list={datalistId}
-        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.insurer ? 'border-red-400' : 'border-gray-300'}`}
-        placeholder="例: 東京海上日動"
-        value={form.insurer}
-        onChange={e => set('insurer', e.target.value)}
+      <InsurerSelect
+        insurer={form.insurer}
+        insurerId={form.insurerId}
+        invalid={!!errors.insurer}
+        onChange={({ insurer, insurerId }) => {
+          set('insurer', insurer);
+          set('insurerId', insurerId);
+        }}
       />
-      <datalist id={datalistId}>
-        {COMMON_INSURERS.map(i => <option key={i} value={i} />)}
-      </datalist>
       {errors.insurer && <p className="text-xs text-red-500 mt-1">{errors.insurer}</p>}
     </div>
 
@@ -86,6 +85,22 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
         onChange={e => set('insuredPersonId', e.target.value)}
       >
         <option value="">（未選択）</option>
+        {persons.map(p => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+    </div>
+
+    {/* Contractor（被保険者と別） */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">契約者</label>
+      <select
+        aria-label="契約者"
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={form.contractorPersonId ?? ''}
+        onChange={e => set('contractorPersonId', e.target.value || undefined)}
+      >
+        <option value="">（案件の契約者を使う）</option>
         {persons.map(p => (
           <option key={p.id} value={p.id}>{p.name}</option>
         ))}
@@ -120,6 +135,34 @@ export function ProposalProductFormFields({ value, onChange, errors, householdId
         placeholder="例: 5000000"
         value={form.faceAmount ?? ''}
         onChange={e => set('faceAmount', e.target.value ? Number(e.target.value) : undefined)}
+      />
+    </div>
+
+    {/* First-year commission */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">初年度手数料 (円・任意)</label>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        aria-label="初年度手数料"
+        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstYearCommission ? 'border-red-400' : 'border-gray-300'}`}
+        placeholder="例: 57600"
+        value={form.firstYearCommission ?? ''}
+        onChange={e => set('firstYearCommission', e.target.value === '' ? undefined : Number(e.target.value))}
+      />
+      {form.firstYearCommission !== undefined && !errors.firstYearCommission && (
+        <p className="text-xs text-gray-500 mt-1">{form.firstYearCommission.toLocaleString('ja-JP')} 円</p>
+      )}
+      {errors.firstYearCommission && <p className="text-xs text-red-500 mt-1">{errors.firstYearCommission}</p>}
+    </div>
+
+    {/* Channel（紹介元） */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">チャネル（紹介元・任意）</label>
+      <ChannelSelect
+        channelId={form.channelId}
+        onChange={id => set('channelId', id || undefined)}
       />
     </div>
 

@@ -1,8 +1,9 @@
 // =====================================================
-// SalesFunnelPanel — Opportunity 8 stage ファネル
+// SalesFunnelPanel — Opportunity 7 段ファネル
 // =====================================================
 import type { Opportunity } from '../../types';
 import { calcFunnel } from '../../utils/salesMetrics';
+import { STAGE_ORDER_7, TAB_META } from '../../utils/opportunityStage';
 import type { OpportunityStage } from '../../types';
 
 interface Props {
@@ -10,28 +11,12 @@ interface Props {
   ownerIds: string[];
 }
 
-const STAGE_LABELS: Record<OpportunityStage, string> = {
-  approach: '🌱 アプローチ',
-  fact_finding: '🔍 ヒアリング',
-  needs_analysis: '📊 ニーズ分析',
-  proposal: '📄 設計書提示',
-  negotiation: '💬 検討中',
-  application: '✍️ 申込',
-  underwriting: '🏥 査定中',
-  issued: '🎉 証券発行',
-  lost: '❌ 失注',
-};
+// ラベルはタブ(TAB_META)と共通。件数は calcFunnel(tabOf) なのでタブと一致する
+const STAGE_LABELS = Object.fromEntries(
+  TAB_META.map(t => [t.key, t.label]),
+) as Record<OpportunityStage, string>;
 
-const FUNNEL_ORDER: OpportunityStage[] = [
-  'approach',
-  'fact_finding',
-  'needs_analysis',
-  'proposal',
-  'negotiation',
-  'application',
-  'underwriting',
-  'issued',
-];
+const FUNNEL_ORDER = STAGE_ORDER_7;
 
 export function SalesFunnelPanel({ opportunities, ownerIds }: Props) {
   const funnel = calcFunnel(opportunities, ownerIds);

@@ -37,29 +37,29 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
     const opp = mkOpp({
       id: "es1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
     });
-    expect(effectiveStage(opp)).toBe("proposal");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("milestones に firstConsultDate のみ → fact_finding（日付駆動）", () => {
     const opp = mkOpp({
       id: "es2",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       milestones: { firstConsultDate: "2026-07-01" },
     });
-    expect(effectiveStage(opp)).toBe("fact_finding");
+    expect(effectiveStage(opp)).toBe("first_consult");
   });
 
   it("contractDate あり・establishedDate なし → underwriting（契約タブ）", () => {
     const opp = mkOpp({
       id: "es3",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -68,14 +68,14 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
         contractDate: "2026-08-10",
       },
     });
-    expect(effectiveStage(opp)).toBe("underwriting");
+    expect(effectiveStage(opp)).toBe("contract");
   });
 
   it("proposals があれば latestProposalDate で提案ステージを判定", () => {
     const opp = mkOpp({
       id: "es4",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposals: [
         {
@@ -88,14 +88,14 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
       ],
     });
     // proposals から proposalDate が取れる → proposal stage
-    expect(effectiveStage(opp)).toBe("proposal");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("lostDate は最優先 → 他の日付があっても lost", () => {
     const opp = mkOpp({
       id: "es5",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       milestones: {
         establishedDate: "2026-08-20",
@@ -109,7 +109,7 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
     const opp = mkOpp({
       id: "es6",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -150,7 +150,7 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
       ],
     });
     // 生命=underwriting(contractDate), 医療=proposal(proposalDateまで) → proposal に律速
-    expect(effectiveStage(opp)).toBe("proposal");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("商品個別 milestones なし・商品 stage あり → legacy 律速（B3 互換）", () => {
@@ -158,7 +158,7 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
     const opp = mkOpp({
       id: "es7",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       proposalProducts: [
         {
@@ -169,10 +169,10 @@ describe("effectiveStage（ADR-B4 v2 日付駆動版）", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "fact_finding",
+          stage: "first_consult",
         },
       ],
     });
-    expect(effectiveStage(opp)).toBe("fact_finding");
+    expect(effectiveStage(opp)).toBe("first_consult");
   });
 });

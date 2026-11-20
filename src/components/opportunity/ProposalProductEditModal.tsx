@@ -25,7 +25,11 @@ export function ProposalProductEditModal({ product, householdId, onClose, onSave
     productCategory: product?.productCategory ?? 'life',
     productName: product?.productName ?? '',
     insurer: product?.insurer ?? '',
+    insurerId: product?.insurerId,
     insuredPersonId: product?.insuredPersonId ?? '',
+    contractorPersonId: product?.contractorPersonId,
+    channelId: product?.channelId,
+    firstYearCommission: product?.firstYearCommission,
     monthlyPremium: product?.monthlyPremium ?? 0,
     faceAmount: product?.faceAmount,
     memo: product?.memo ?? '',
@@ -46,6 +50,7 @@ export function ProposalProductEditModal({ product, householdId, onClose, onSave
   const handleSave = () => {
     if (!validate()) return;
     onSave({
+      ...product, // stage / milestones / reflection 等、フォームに無い項目を保持
       ...form,
       id: product?.id ?? newProposalProductId(),
     });

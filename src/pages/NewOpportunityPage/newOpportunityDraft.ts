@@ -5,7 +5,7 @@ import type { OpportunityStage, ProductCategory, ProposalProduct, ConfidenceUnif
 import type { AppState } from '../../store/_internal/types';
 
 export const INITIAL_STAGES: OpportunityStage[] = [
-  'approach', 'fact_finding', 'needs_analysis', 'proposal',
+  'first_consult', 'lifeplan', 'proposed',
 ];
 
 export interface OpportunityDraft {
@@ -16,6 +16,10 @@ export interface OpportunityDraft {
   categories: ProductCategory[];
   proposalProducts: ProposalProduct[];
   confidence: ConfidenceUnified | '';
+  /** チャネル（葉の SalesChannel.id）。世帯選択時に世帯の channelId が既定で入る */
+  channelId: string;
+  /** ユーザーが手で変更したか。true の間は世帯切替で上書きしない */
+  channelTouched: boolean;
   memo: string;
 }
 
@@ -25,13 +29,25 @@ export function makeInitialDraft(ownerId: string): OpportunityDraft {
   return {
     title: '',
     ownerId,
-    stage: 'approach',
+    stage: 'first_consult',
     targetPersonIds: [],
     categories: [],
     proposalProducts: [],
     confidence: '',
+    channelId: '',
+    channelTouched: false,
     memo: '',
   };
+}
+
+/** 世帯の channelId を既定値として下書きに入れる（手動変更済みなら据え置き・同値なら同一参照） */
+export function applyHouseholdChannelDefault(
+  d: OpportunityDraft,
+  householdChannelId: string | undefined,
+): OpportunityDraft {
+  if (d.channelTouched) return d;
+  const next = householdChannelId ?? '';
+  return d.channelId === next ? d : { ...d, channelId: next };
 }
 
 /** 担当者の初期値: ログイン中ユーザーが一覧にいればその人、いなければ先頭（旧フォームと同じ） */
@@ -47,6 +63,7 @@ export function isDraftDirty(d: OpportunityDraft): boolean {
     d.categories.length > 0 ||
     d.proposalProducts.length > 0 ||
     d.confidence !== '' ||
+    d.channelTouched ||
     d.memo.trim() !== ''
   );
 }
@@ -74,6 +91,7 @@ export function buildOpportunityInput(d: OpportunityDraft, householdId: string):
     productCategories,
     proposalProducts: d.proposalProducts,
     ...(d.confidence ? { confidence: d.confidence } : {}),
+    ...(d.channelId ? { channelId: d.channelId } : {}),
     needsAnalysisDone: false,
     illustrationProvided: false,
     tags: [],

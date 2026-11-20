@@ -19,7 +19,7 @@ describe("RENEWAL_CASES シードデータ", () => {
       expect(rc.maturityDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(rc.productType).toBeTruthy();
       expect(rc.method).toBeTruthy();
-      expect(rc.status).toMatch(/^(not_started|in_progress|completed)$/);
+      expect(rc.status).toMatch(/^(not_started|in_progress|renewed)$/);
     }
   });
 
@@ -49,15 +49,15 @@ describe("RENEWAL_CASES シードデータ", () => {
     }
   });
 
-  it("status 分布: not_started / in_progress / completed が混在する", () => {
+  it("status 分布: not_started / in_progress / renewed が混在する", () => {
     if (RENEWAL_CASES.length >= 5) {
       const statuses = new Set(RENEWAL_CASES.map((rc) => rc.status));
-      // 5件以上あれば3種類すべて出るはず（デザイン: 0,1→in_progress / 2,3→completed / 4+→not_started）
+      // 5件以上あれば3種類すべて出るはず（デザイン: 0,1→in_progress / 2,3→renewed / 4+→not_started）
       expect(statuses.has("in_progress")).toBe(true);
-      expect(statuses.has("completed")).toBe(true);
+      expect(statuses.has("renewed")).toBe(true);
       expect(statuses.has("not_started")).toBe(true);
     } else if (RENEWAL_CASES.length >= 3) {
-      // 3〜4件の場合は in_progress と completed が存在する
+      // 3〜4件の場合は in_progress と renewed が存在する
       const statuses = new Set(RENEWAL_CASES.map((rc) => rc.status));
       expect(statuses.has("in_progress")).toBe(true);
     }
@@ -72,9 +72,9 @@ describe("RENEWAL_CASES シードデータ", () => {
     }
   });
 
-  it("completed な案件は consult.procedureDate が設定されている", () => {
-    const completed = RENEWAL_CASES.filter((rc) => rc.status === "completed");
-    for (const rc of completed) {
+  it("renewed な案件は consult.procedureDate が設定されている", () => {
+    const renewed = RENEWAL_CASES.filter((rc) => rc.status === "renewed");
+    for (const rc of renewed) {
       expect(rc.survey.consult?.procedureDate).toBeTruthy();
     }
   });

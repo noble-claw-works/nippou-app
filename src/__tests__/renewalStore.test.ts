@@ -238,7 +238,9 @@ describe("changeRenewalStatus — activityLog 生成", () => {
   const STATUS_LABELS = {
     not_started: "未対応",
     in_progress: "対応中",
-    completed: "完了",
+    renewed: "更改済",
+    lost_to_competitor: "他社流出",
+    cancelled: "解約",
   };
 
   it("not_started → in_progress 遷移でログ文言が正しい", () => {
@@ -250,13 +252,13 @@ describe("changeRenewalStatus — activityLog 生成", () => {
     expect(logBody).toBe("ステータスを変更しました: 未対応→対応中");
   });
 
-  it("in_progress → completed 遷移でログ文言が正しい", () => {
+  it("in_progress → renewed 遷移でログ文言が正しい", () => {
     const rc = makeRenewalCase({ status: "in_progress" });
     const fromLabel = STATUS_LABELS[rc.status];
-    const toLabel = STATUS_LABELS["completed"];
+    const toLabel = STATUS_LABELS["renewed"];
     const logBody = `ステータスを変更しました: ${fromLabel}→${toLabel}`;
 
-    expect(logBody).toBe("ステータスを変更しました: 対応中→完了");
+    expect(logBody).toBe("ステータスを変更しました: 対応中→更改済");
   });
 
   it("ステータス変更後に activityLog に kind=status_change が追加される", () => {

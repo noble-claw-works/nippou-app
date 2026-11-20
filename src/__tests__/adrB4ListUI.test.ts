@@ -48,31 +48,31 @@ describe("要件2: タブ語彙 / StageBadge ラベル整合", () => {
 
   // StageBadge ラベルが 7タブ語彙に整合（旧「アプローチ/ヒアリング等」は使わない）
   it("approach ラベルが '初回相談' であること（旧：アプローチ）", () => {
-    expect(STAGE_META["approach"].label).toBe("初回相談");
+    expect(STAGE_META["first_consult"].label).toBe("初回相談");
   });
 
   it("fact_finding ラベルが '初回相談' であること（旧：ヒアリング）", () => {
-    expect(STAGE_META["fact_finding"].label).toBe("初回相談");
+    expect(STAGE_META["first_consult"].label).toBe("初回相談");
   });
 
   it("needs_analysis ラベルが 'LP提案' であること（旧：ニーズ分析）", () => {
-    expect(STAGE_META["needs_analysis"].label).toBe("LP提案");
+    expect(STAGE_META["lifeplan"].label).toBe("LP提案");
   });
 
   it("proposal ラベルが '提案' であること（旧：設計書提示）", () => {
-    expect(STAGE_META["proposal"].label).toBe("提案");
+    expect(STAGE_META["proposed"].label).toBe("提案");
   });
 
   it("negotiation ラベルが '提案' であること（旧：検討中）", () => {
-    expect(STAGE_META["negotiation"].label).toBe("提案");
+    expect(STAGE_META["proposed"].label).toBe("提案");
   });
 
   it("application ラベルが '契約予定' であること（旧：申込書記入）", () => {
-    expect(STAGE_META["application"].label).toBe("契約予定");
+    expect(STAGE_META["contract_pending"].label).toBe("契約予定");
   });
 
   it("underwriting ラベルが '契約' であること（旧：査定中）", () => {
-    expect(STAGE_META["underwriting"].label).toBe("契約");
+    expect(STAGE_META["contract"].label).toBe("契約");
   });
 
   it("issued ラベルが '成立' であること（旧：証券発行）", () => {
@@ -85,13 +85,13 @@ describe("要件2: タブ語彙 / StageBadge ラベル整合", () => {
 
   it("全 9ステージの emoji が残っていること（内部 enum 不変）", () => {
     const allStages: OpportunityStage[] = [
-      "approach",
-      "fact_finding",
-      "needs_analysis",
-      "proposal",
-      "negotiation",
-      "application",
-      "underwriting",
+      "first_consult",
+      "first_consult",
+      "lifeplan",
+      "proposed",
+      "proposed",
+      "contract_pending",
+      "contract",
       "issued",
       "lost",
     ];
@@ -102,13 +102,13 @@ describe("要件2: タブ語彙 / StageBadge ラベル整合", () => {
 
   it("全 9ステージの color が残っていること（Tailwind トークンのみ・hex なし）", () => {
     const allStages: OpportunityStage[] = [
-      "approach",
-      "fact_finding",
-      "needs_analysis",
-      "proposal",
-      "negotiation",
-      "application",
-      "underwriting",
+      "first_consult",
+      "first_consult",
+      "lifeplan",
+      "proposed",
+      "proposed",
+      "contract_pending",
+      "contract",
       "issued",
       "lost",
     ];

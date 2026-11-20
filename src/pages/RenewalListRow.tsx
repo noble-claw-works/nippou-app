@@ -17,7 +17,16 @@ import {
   RENEWAL_PRODUCT_TYPE_LABEL,
   RENEWAL_STATUS_LABEL,
   RENEWAL_STATUS_OPTIONS,
+  RENEWAL_STATUS_COLOR,
+  LEGACY_RENEWAL_LOST_LABEL,
 } from "../utils/renewalLabels";
+import { needsLegacyReview } from "../utils/migrations/renewalCases";
+import {
+  calcYoY,
+  formatYoY,
+  yoyColorClass,
+  canMarkRenewed,
+} from "../utils/renewalYoY";
 import type { RenewalCase, RenewalStatus, RenewalMethod } from "../types";
 import type {
   RenewalListViewMode,
@@ -27,11 +36,7 @@ import { DateInput } from "../components/common/DateInput";
 
 import { stickyCellBg } from "../utils/stickyCellBg";
 
-const STATUS_COLOR: Record<RenewalCase["status"], string> = {
-  not_started: "bg-gray-100 text-gray-600",
-  in_progress: "bg-blue-100 text-blue-700",
-  completed: "bg-green-100 text-green-700",
-};
+const STATUS_COLOR = RENEWAL_STATUS_COLOR;
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -145,6 +150,15 @@ export function RenewalListRow({
   };
 
   const handleStatus = (next: RenewalStatus) => {
+    // Q6: 更改済は更改保険料が必須（空なら前年保険料を既定値として自動入力）
+    if (next === "renewed") {
+      if (!renewedPremium && rc.prevYearPremium != null) {
+        setRenewedPremium(String(rc.prevYearPremium));
+      } else if (!renewedPremium && !canMarkRenewed(rc)) {
+        onError("更改保険料を入力してから「更改済」にしてください。");
+        return;
+      }
+    }
     setStatus(next);
     // status は即時確定（履歴記録を伴うため debounce せず）
     try {
@@ -253,6 +267,18 @@ export function RenewalListRow({
           <span className="text-gray-300">—</span>
         )}
       </td>
+      {/* 前年比（読取） */}
+      <td
+        className="px-3 py-3 text-right whitespace-nowrap tabular-nums"
+        onClick={go}
+      >
+        {(() => {
+          const y = calcYoY(rc);
+          return (
+            <span className={yoyColorClass(y)}>{formatYoY(y, rc.status)}</span>
+          );
+        })()}
+      </td>
       {/* 手続日（編集可） */}
       <td className="px-3 py-3 whitespace-nowrap" onClick={go}>
         {editing ? (
@@ -347,6 +373,14 @@ export function RenewalListRow({
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[rc.status]}`}
           >
             {RENEWAL_STATUS_LABEL[rc.status]}
+          </span>
+        )}
+        {needsLegacyReview(rc) && (
+          <span
+            data-testid="legacy-renewal-lost"
+            className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800"
+          >
+            {LEGACY_RENEWAL_LOST_LABEL}
           </span>
         )}
       </td>

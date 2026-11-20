@@ -43,7 +43,7 @@ export function emptyProposalProduct(): Omit<ProposalProduct, 'id'> {
 }
 
 export type ProposalProductDraft = Omit<ProposalProduct, 'id'>;
-export type ProposalProductErrors = Partial<Record<'productName' | 'insurer' | 'monthlyPremium', string>>;
+export type ProposalProductErrors = Partial<Record<'productName' | 'insurer' | 'monthlyPremium' | 'firstYearCommission', string>>;
 
 /** 必須 3 項目の検証。エラーが無ければ空オブジェクトを返す */
 export function validateProposalProduct(form: ProposalProductDraft): ProposalProductErrors {
@@ -52,5 +52,24 @@ export function validateProposalProduct(form: ProposalProductDraft): ProposalPro
   if (!form.insurer.trim()) e.insurer = "保険会社は必須です";
   if (form.monthlyPremium <= 0)
     e.monthlyPremium = "0より大きい金額を入力してください";
+  const c = form.firstYearCommission;
+  if (c !== undefined && (!Number.isInteger(c) || c < 0))
+    e.firstYearCommission = "0以上の整数（円）で入力してください";
   return e;
+}
+
+/** 提案商品の契約者: 商品に無ければ案件の契約者を継承 */
+export function effectiveContractorId(
+  p: { contractorPersonId?: string },
+  opp: { contractorPersonId?: string },
+): string | undefined {
+  return p.contractorPersonId || opp.contractorPersonId || undefined;
+}
+
+/** 提案商品のチャネル: 商品に無ければ案件のチャネルを継承 */
+export function effectiveChannelId(
+  p: { channelId?: string },
+  opp: { channelId?: string },
+): string | undefined {
+  return p.channelId || opp.channelId || undefined;
 }

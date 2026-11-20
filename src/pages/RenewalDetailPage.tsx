@@ -26,7 +26,16 @@ import type { RenewalCase, RenewalSurvey } from "../types";
 import {
   RENEWAL_STATUS_OPTIONS,
   RENEWAL_PRODUCT_TYPE_LABEL,
+  RENEWAL_STATUS_COLOR,
+  LEGACY_RENEWAL_LOST_LABEL,
 } from "../utils/renewalLabels";
+import { needsLegacyReview } from "../utils/migrations/renewalCases";
+import {
+  calcYoY,
+  formatYoY,
+  yoyColorClass,
+  canMarkRenewed,
+} from "../utils/renewalYoY";
 import { ConsultTab } from "./RenewalDetailPage/ConsultTab";
 import { RoadmapTab } from "./RenewalDetailPage/RoadmapTab";
 import { RiderTab } from "./RenewalDetailPage/RiderTab";
@@ -39,11 +48,7 @@ import { RenewalTimeline } from "./RenewalDetailPage/RenewalTimeline";
 type Tab =
   "consult" | "roadmap" | "rider" | "pairmtg" | "policycollect";
 
-const STATUS_COLOR: Record<RenewalCase["status"], string> = {
-  not_started: "bg-gray-100 text-gray-700",
-  in_progress: "bg-blue-100 text-blue-700",
-  completed: "bg-green-100 text-green-700",
-};
+const STATUS_COLOR = RENEWAL_STATUS_COLOR;
 
 export function RenewalDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -295,6 +300,14 @@ export function RenewalDetailPage() {
                 value={rc.status}
                 onChange={(e) => {
                   if (!id) return;
+                  const next = e.target.value as RenewalCase["status"];
+                  // Q6: 更改済は更改保険料が必須（空なら前年保険料を自動入力）
+                  if (next === "renewed" && !canMarkRenewed(rc)) {
+                    window.alert(
+                      "更改保険料が未入力です。事前調査で更改保険料を入力してから「更改済」にしてください。",
+                    );
+                    return;
+                  }
                   changeRenewalStatus(
                     id,
                     e.target.value as RenewalCase["status"],
@@ -309,6 +322,14 @@ export function RenewalDetailPage() {
                   </option>
                 ))}
               </select>
+              {needsLegacyReview(rc) && (
+                <span
+                  data-testid="legacy-renewal-lost"
+                  className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-yellow-100 text-yellow-800"
+                >
+                  {LEGACY_RENEWAL_LOST_LABEL}
+                </span>
+              )}
               {/* M2: 世帯情報リンク */}
               <Link
                 to={`/households/${rc.householdId}`}
@@ -358,6 +379,23 @@ export function RenewalDetailPage() {
                   {rc.prevYearPremium.toLocaleString()}
                 </span>
               )}
+              <span>
+                <span className="text-gray-400">更改保険料:</span>{" "}
+                {rc.survey?.consult?.renewedPremium != null
+                  ? `¥${rc.survey.consult.renewedPremium.toLocaleString()}`
+                  : "—"}
+              </span>
+              {(() => {
+                const y = calcYoY(rc);
+                return (
+                  <span data-testid="detail-yoy">
+                    <span className="text-gray-400">前年比:</span>{" "}
+                    <span className={yoyColorClass(y)}>
+                      {formatYoY(y, rc.status)}
+                    </span>
+                  </span>
+                );
+              })()}
               {daysFcToMaturity !== null && (
                 <span>
                   <span className="text-gray-400">満期日-FC日:</span>{" "}

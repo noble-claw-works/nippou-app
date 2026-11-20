@@ -18,15 +18,28 @@ import type {
 export const RENEWAL_STATUS_LABEL: Record<RenewalStatus, string> = {
   not_started: "未対応",
   in_progress: "対応中",
-  completed: "完了",
+  renewed: "更改済",
+  lost_to_competitor: "他社流出",
+  cancelled: "解約",
 };
+
+/** 状況バッジ色（一覧・詳細で共通） */
+export const RENEWAL_STATUS_COLOR: Record<RenewalStatus, string> = {
+  not_started: "bg-gray-100 text-gray-600",
+  in_progress: "bg-blue-100 text-blue-700",
+  renewed: "bg-green-100 text-green-700",
+  lost_to_competitor: "bg-orange-100 text-orange-700",
+  cancelled: "bg-red-100 text-red-700",
+};
+
+/** Q5保留: 旧「更新落ち」データの要確認表示 */
+export const LEGACY_RENEWAL_LOST_LABEL = "要確認(旧:更新落ち)";
 
 export const RENEWAL_METHOD_LABEL: Record<RenewalMethod, string> = {
   rakuraku_seat: "らくらく着座",
   phone: "電話募集",
   visit: "来店",
   mail: "郵送",
-  renewal_lost: "更新落ち",
   undecided: "未定",
 };
 

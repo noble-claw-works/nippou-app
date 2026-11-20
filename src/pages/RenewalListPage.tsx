@@ -25,6 +25,7 @@ import {
 } from "../utils/renewalLabels";
 import type { RenewalStatus, RenewalProductType } from "../types/renewal";
 import { RenewalListRow } from "./RenewalListRow";
+import { summarizeYoY } from "../utils/renewalYoY";
 
 /** 当日 yyyy-MM-dd（ローカル） */
 function todayStr(): string {
@@ -108,6 +109,11 @@ export function RenewalListPage() {
       return true;
     });
   }, [allRows, filterStatus, filterProduct, filterOwner, filterNear]);
+
+  const yoySummary = useMemo(
+    () => summarizeYoY(rows.map((r) => r.rc)),
+    [rows],
+  );
 
   const nearCount = useMemo(
     () => allRows.filter((r) => r.view.near).length,
@@ -281,6 +287,33 @@ export function RenewalListPage() {
         </div>
       )}
 
+      {/* 前年比の合計（絞り込み後） */}
+      {rows.length > 0 && (
+        <div
+          data-testid="renewal-yoy-summary"
+          className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600 bg-white rounded-lg border border-gray-200 px-4 py-2"
+        >
+          <span>
+            前年合計: ¥{yoySummary.prevTotal.toLocaleString("ja-JP")}
+          </span>
+          <span>
+            更改合計: ¥{yoySummary.renewedTotal.toLocaleString("ja-JP")}
+          </span>
+          <span
+            className={
+              yoySummary.diffTotal > 0
+                ? "text-green-600"
+                : yoySummary.diffTotal < 0
+                  ? "text-red-600"
+                  : ""
+            }
+          >
+            増減合計: {yoySummary.diffTotal > 0 ? "+" : yoySummary.diffTotal < 0 ? "−" : "±"}¥
+            {Math.abs(yoySummary.diffTotal).toLocaleString("ja-JP")}
+          </span>
+        </div>
+      )}
+
       {/* テーブル */}
       {cases.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">
@@ -302,6 +335,9 @@ export function RenewalListPage() {
                 <th className={TH_CLS}>種目</th>
                 <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
                   前年保険料
+                </th>
+                <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">
+                  前年比
                 </th>
                 <th className={TH_CLS}>手続日</th>
                 <th className="text-right px-3 py-3 text-gray-600 font-medium whitespace-nowrap">

@@ -8,16 +8,28 @@ import type { Task } from "./task";
 // Opportunity (商談案件) 型 — Phase 2
 // =====================================================
 
+/**
+ * 案件ステージ（7段・B1 / 2026-11-20 主上決定）。
+ * 初回相談 / LP提案 / 提案 / 契約予定 / 契約 / 成立 / 失注。キーは 7タブ（StageTabKey7）と同一。
+ */
 export type OpportunityStage =
-  | "approach" // 🌱 アプローチ (関係構築)
-  | "fact_finding" // 🔍 ヒアリング (家族構成・既契約棚卸)
-  | "needs_analysis" // 📊 ニーズ分析
-  | "proposal" // 📄 設計書提示
-  | "negotiation" // 💬 検討中 (質問対応)
-  | "application" // ✍️ 申込書記入
-  | "underwriting" // 🏥 引受査定中
-  | "issued" // 🎉 証券発行 (won)
-  | "lost"; // ❌ 失注
+  | "first_consult" // 初回相談
+  | "lifeplan" // LP提案
+  | "proposed" // 提案
+  | "contract_pending" // 契約予定（申込）
+  | "contract" // 契約（審査中）
+  | "issued" // 成立 (won)
+  | "lost"; // 失注
+
+/** 旧9段のうち廃止された値（移行専用。移行関数とテスト以外で使わない） */
+export type LegacyOpportunityStage =
+  | "approach"
+  | "fact_finding"
+  | "needs_analysis"
+  | "proposal"
+  | "negotiation"
+  | "application"
+  | "underwriting";
 
 export type OpportunityStatus =
   "open" | "won" | "partial_won" | "lost" | "on_hold";
@@ -53,6 +65,8 @@ export interface ProposalProduct {
   insurer: string; // 保険会社（名前文字列・後方互換維持）
   insurerId?: string; // ★NEW 保険会社マスタID（工程D）
   insuredPersonId: string; // 被保険者
+  contractorPersonId?: string; // 契約者 Person.id（被保険者と別。未設定=案件の契約者を継承）
+  channelId?: string; // チャネル（紹介元・葉）SalesChannel.id（未設定=案件のチャネルを継承）
   monthlyPremium: number; // 月払額
   faceAmount?: number; // 保険金額
   firstYearCommission?: number; // ★NEW 初年度手数料（円）salesPerf first_year_commission と整合 (§3-4)

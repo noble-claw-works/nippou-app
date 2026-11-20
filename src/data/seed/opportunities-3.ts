@@ -6,7 +6,7 @@ import { d, f } from "./helpers";
 import { mkOpp } from "./opportunities-helpers";
 
 export const OPP_DATA_6_8 = [
-  mkOpp("opp6", "c10", "u3", "伊藤家 医療保険 検討", "needs_analysis", "open", {
+  mkOpp("opp6", "c10", "u3", "伊藤家 医療保険 検討", "lifeplan", "open", {
     targetPersonIds: ["p_c10_head"],
     contractorPersonId: "p_c10_head",
     tasks: [
@@ -68,17 +68,17 @@ export const OPP_DATA_6_8 = [
     nextActionDate: f(10),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(25) + "T09:00:00",
         changedByUserId: "u3",
       },
       {
-        stage: "fact_finding",
+        stage: "first_consult",
         changedAt: d(15) + "T10:00:00",
         changedByUserId: "u3",
       },
       {
-        stage: "needs_analysis",
+        stage: "lifeplan",
         changedAt: d(7) + "T10:00:00",
         changedByUserId: "u3",
         note: "がんへの関心高い",
@@ -152,22 +152,22 @@ export const OPP_DATA_6_8 = [
     illustrationProvided: true,
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(60) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "proposal",
+        stage: "proposed",
         changedAt: d(45) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "application",
+        stage: "contract_pending",
         changedAt: d(30) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "underwriting",
+        stage: "contract",
         changedAt: d(25) + "T10:00:00",
         changedByUserId: "u1",
       },
@@ -224,17 +224,17 @@ export const OPP_DATA_6_8 = [
     illustrationProvided: true,
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(90) + "T09:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "proposal",
+        stage: "proposed",
         changedAt: d(60) + "T10:00:00",
         changedByUserId: "u1",
       },
       {
-        stage: "negotiation",
+        stage: "proposed",
         changedAt: d(45) + "T10:00:00",
         changedByUserId: "u1",
       },

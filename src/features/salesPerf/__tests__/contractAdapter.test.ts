@@ -26,7 +26,7 @@ function makeOpp(overrides: Partial<Opportunity> = {}): Opportunity {
     ownerId: "u1",
     title: "テスト案件",
     targetPersonIds: ["p1"],
-    stage: "proposal",
+    stage: "proposed",
     status: "open",
     productCategories: ["life"],
     proposalProducts: [

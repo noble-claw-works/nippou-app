@@ -1,12 +1,14 @@
 // OpportunityDraftPane.tsx — 新規案件作成②ペイン: 案件の基本項目（11/08 指示書 design.md §1.5）
 // 3ペイン化前の旧フォームの入力欄から提案商品とボタンを除いたもの。値は下書き（useNewOpportunityDraft）に持つ。
 
+import { useEffect } from 'react';
+import { ChannelSelect } from '../HouseholdBatchEntryPage/ChannelSelect';
 import type { ConfidenceUnified, ProductCategory } from '../../types';
 import { useAppStore } from '../../store';
 import { STAGE_META } from '../../components/opportunity/StageBadge';
 import { CONFIDENCE_LABELS, CONFIDENCE_OPTIONS } from '../../utils/householdBatchEntry';
 import { PRODUCT_CATEGORY_LABELS } from '../../components/opportunity/proposalProductMeta';
-import { INITIAL_STAGES, toggleIn, type OpportunityDraft } from './newOpportunityDraft';
+import { INITIAL_STAGES, toggleIn, applyHouseholdChannelDefault, type OpportunityDraft } from './newOpportunityDraft';
 
 interface Props {
   householdId: string;
@@ -27,6 +29,15 @@ export function OpportunityDraftPane({ householdId, draft, onChange, error }: Pr
   const { users, customers, getPersonsByHousehold } = useAppStore();
   const household = customers.find(c => c.id === householdId);
   const persons = householdId ? getPersonsByHousehold(householdId) : [];
+
+  // 世帯を選んだら世帯の channelId を既定値に（手動変更済みなら上書きしない）
+  const householdChannelId = household?.channelId;
+  useEffect(() => {
+    if (draft.channelTouched) return;
+    const next = applyHouseholdChannelDefault(draft, householdChannelId);
+    if (next !== draft) onChange({ channelId: next.channelId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdId, householdChannelId, draft.channelTouched]);
 
   return (
     <div className="p-4 space-y-4">
@@ -135,6 +146,14 @@ export function OpportunityDraftPane({ householdId, draft, onChange, error }: Pr
             <option key={c} value={c}>{CONFIDENCE_LABELS[c]}</option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className={LABEL}>チャネル (任意)</label>
+        <ChannelSelect
+          channelId={draft.channelId || undefined}
+          onChange={id => onChange({ channelId: id, channelTouched: true })}
+        />
       </div>
 
       <div>

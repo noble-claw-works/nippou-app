@@ -2,16 +2,15 @@ import { useState } from "react";
 import type { Opportunity, OpportunityStage, LostReason } from "../../types";
 import { STAGE_META } from "./StageBadge";
 import { useAppStore } from "../../store";
+import { STAGE_ORDER_7, normalizeStage, STAGE_MILESTONE_KEY } from "../../utils/opportunityStage";
+import { datesToClearOnMove } from "../../utils/stageMilestones";
 import { recordStageChangeActivity } from "../../utils/stageChangeActivity";
 
 // =====================================================
 // StageSelector — ステージ変更プルダウン
 // =====================================================
 
-const STAGE_ORDER: OpportunityStage[] = [
-  'approach', 'fact_finding', 'needs_analysis', 'proposal',
-  'negotiation', 'application', 'underwriting', 'issued', 'lost',
-];
+const STAGE_ORDER: OpportunityStage[] = [...STAGE_ORDER_7, 'lost'];
 
 const LOST_REASON_LABELS: Record<LostReason, string> = {
   price:           '保険料が高い',
@@ -34,7 +33,7 @@ interface Props {
 
 export function StageSelector({ opportunity, onClose, compact = false }: Props) {
   const { changeOpportunityStage, updateOpportunity } = useAppStore();
-  const [selectedStage, setSelectedStage] = useState<OpportunityStage>(opportunity.stage);
+  const [selectedStage, setSelectedStage] = useState<OpportunityStage>(normalizeStage(opportunity.stage));
   const [note, setNote] = useState('');
   const [lostReason, setLostReason] = useState<LostReason>('other');
   const [lostReasonDetail, setLostReasonDetail] = useState('');
@@ -43,9 +42,25 @@ export function StageSelector({ opportunity, onClose, compact = false }: Props) 
   const isTerminal = selectedStage === 'issued' || selectedStage === 'lost';
 
   const handleSave = () => {
-    if (selectedStage === opportunity.stage) {
+    if (selectedStage === normalizeStage(opportunity.stage)) {
       onClose?.();
       return;
+    }
+    // 段を戻す／失注から戻すときは、後ろの段の日付が消えることを確認する（Q2）
+    const clearKeys = datesToClearOnMove(
+      opportunity.milestones,
+      normalizeStage(opportunity.stage),
+      selectedStage,
+    );
+    if (clearKeys.length > 0) {
+      const labels = (STAGE_ORDER as OpportunityStage[])
+        .filter((st) => clearKeys.includes(STAGE_MILESTONE_KEY[st]))
+        .map((st) => STAGE_META[st].label)
+        .join('・');
+      const ok = window.confirm(
+        `ステージを「${STAGE_META[selectedStage].label}」に戻します。\n${labels}の日付が消えます。よろしいですか？`,
+      );
+      if (!ok) return;
     }
     setSaving(true);
     const memo = note || undefined;
@@ -54,7 +69,9 @@ export function StageSelector({ opportunity, onClose, compact = false }: Props) 
       title: opportunity.title,
       stage: opportunity.stage,
     };
-    changeOpportunityStage(opportunity.id, selectedStage, memo);
+    changeOpportunityStage(opportunity.id, selectedStage, memo, undefined, {
+      clearLaterDates: true,
+    });
     recordStageChangeActivity(
       useAppStore.getState(),
       prev,
@@ -147,9 +164,9 @@ export function StageSelector({ opportunity, onClose, compact = false }: Props) 
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving || selectedStage === opportunity.stage}
+          disabled={saving || selectedStage === normalizeStage(opportunity.stage)}
           className={`px-4 py-1.5 text-sm text-white rounded-lg ${
-            selectedStage === opportunity.stage
+            selectedStage === normalizeStage(opportunity.stage)
               ? 'bg-gray-300 cursor-not-allowed'
               : selectedStage === 'lost'
                 ? 'bg-red-500 hover:bg-red-600'
@@ -158,7 +175,7 @@ export function StageSelector({ opportunity, onClose, compact = false }: Props) 
                   : 'bg-blue-500 hover:bg-blue-600'
           }`}
         >
-          {saving ? '保存中...' : selectedStage === opportunity.stage ? '変更なし' : 'ステージを更新'}
+          {saving ? '保存中...' : selectedStage === normalizeStage(opportunity.stage) ? '変更なし' : 'ステージを更新'}
         </button>
       </div>
     </div>

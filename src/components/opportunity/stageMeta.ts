@@ -11,40 +11,29 @@ export interface StageMeta {
   color: string;
 }
 
-// ADR-B4 v2 要件2: 表示ラベルを 7タブ語彙に整合。
-// 内部 9段 enum・ emoji は不変。表示ラベルのみ更新。
+// B1: 内部キーも 7 段（初回相談/LP提案/提案/契約予定/契約/成立/失注）。
 export const STAGE_META: Record<OpportunityStage, StageMeta> = {
-  approach: {
+  first_consult: {
     label: "初回相談",
     emoji: "🌱",
     color: "bg-gray-100 text-gray-700",
   },
-  fact_finding: {
-    label: "初回相談",
-    emoji: "🔍",
-    color: "bg-blue-100 text-blue-700",
-  },
-  needs_analysis: {
+  lifeplan: {
     label: "LP提案",
     emoji: "📊",
     color: "bg-indigo-100 text-indigo-700",
   },
-  proposal: {
+  proposed: {
     label: "提案",
     emoji: "📄",
     color: "bg-purple-100 text-purple-700",
   },
-  negotiation: {
-    label: "提案",
-    emoji: "💬",
-    color: "bg-yellow-100 text-yellow-700",
-  },
-  application: {
+  contract_pending: {
     label: "契約予定",
     emoji: "✍️",
     color: "bg-orange-100 text-orange-700",
   },
-  underwriting: {
+  contract: {
     label: "契約",
     emoji: "🏥",
     color: "bg-pink-100 text-pink-700",

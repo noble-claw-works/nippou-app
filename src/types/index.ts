@@ -41,6 +41,7 @@ export type {
 // 商談案件 / パイプライン
 export type {
   OpportunityStage,
+  LegacyOpportunityStage,
   OpportunityStatus,
   LostReason,
   ProductCategory,
@@ -127,4 +128,4 @@ export type {
 export { INTERACTION_KIND_LABEL } from "./customerInteraction";
 
 // 保険会社マスタ / 種目マスタ
-export type { InsuranceCompany, ProductCategoryMaster } from "./insurance";
+export type { InsuranceCompany, InsurerKind, ProductCategoryMaster } from "./insurance";

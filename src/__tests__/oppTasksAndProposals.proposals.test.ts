@@ -45,7 +45,7 @@ describe("latestProposalDate — proposals ラウンドがある場合", () => {
     const opp = mkOpp({
       id: "lpd1",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposals: [
         {
@@ -64,7 +64,7 @@ describe("latestProposalDate — proposals ラウンドがある場合", () => {
     const opp = mkOpp({
       id: "lpd2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {
@@ -97,7 +97,7 @@ describe("latestProposalDate — proposals ラウンドがある場合", () => {
     const opp = mkOpp({
       id: "lpd3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       milestones: { proposalDate: "2026-07-20" },
     });
@@ -108,7 +108,7 @@ describe("latestProposalDate — proposals ラウンドがある場合", () => {
     const opp = mkOpp({
       id: "lpd4",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
     });
     expect(latestProposalDate(opp)).toBeUndefined();
@@ -120,7 +120,7 @@ describe("提案ラウンド追加 → ステージ自動遷移（stageFromMiles
     const opp = mkOpp({
       id: "s1",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposals: [
         {
@@ -133,25 +133,25 @@ describe("提案ラウンド追加 → ステージ自動遷移（stageFromMiles
       ],
     });
     const stage = stageFromMilestones(opp, opp.milestones);
-    expect(stage).toBe("proposal");
+    expect(stage).toBe("proposed");
   });
 
   it("proposals がなく milestones.proposalDate もなし → stageFromMilestones が approach を返す", () => {
     const opp = mkOpp({
       id: "s2",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
     });
     const stage = stageFromMilestones(opp, undefined);
-    expect(stage).toBe("approach");
+    expect(stage).toBe("first_consult");
   });
 
   it("提案ラウンド追加後 → tabOf が 'proposed' になる", () => {
     const opp = mkOpp({
       id: "s3",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposals: [
         {
@@ -170,7 +170,7 @@ describe("提案ラウンド追加 → ステージ自動遷移（stageFromMiles
     const opp = mkOpp({
       id: "s4",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {
@@ -192,7 +192,7 @@ describe("提案ラウンド追加 → ステージ自動遷移（stageFromMiles
     // latestProposalDate は最も新しい proposalDate
     expect(latestProposalDate(opp)).toBe("2026-08-10");
     // ステージは proposal 以上（proposalDate があるので）
-    expect(stageFromMilestones(opp, opp.milestones)).toBe("proposal");
+    expect(stageFromMilestones(opp, opp.milestones)).toBe("proposed");
   });
 });
 
@@ -201,7 +201,7 @@ describe("修正日はステージ不変", () => {
     const oppBefore = mkOpp({
       id: "r1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {
@@ -231,15 +231,15 @@ describe("修正日はステージ不変", () => {
     };
     const stageAfter = stageFromMilestones(oppAfter, oppAfter.milestones);
 
-    expect(stageBefore).toBe("proposal");
-    expect(stageAfter).toBe("proposal"); // 修正日を追加してもステージ変わらず
+    expect(stageBefore).toBe("proposed");
+    expect(stageAfter).toBe("proposed"); // 修正日を追加してもステージ変わらず
   });
 
   it("revisedDate を追加しても tabOf は変わらない", () => {
     const opp = mkOpp({
       id: "r2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {

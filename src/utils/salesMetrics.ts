@@ -3,6 +3,7 @@
 // =====================================================
 import type { Policy, Opportunity, User, Team } from '../types';
 import type { OpportunityStage } from '../types';
+import { STAGE_ORDER_7, tabOf } from './opportunityStage';
 import { dateInPeriod, childPeriods, type PeriodType } from './salesPeriod';
 import { getSubordinatesOf } from './orgChart';
 import type { Role } from '../types';
@@ -57,27 +58,18 @@ export function achievementRate(actual: number, target: number): number {
   return Math.round((actual / target) * 100);
 }
 
-// ファネルステージ順
-const FUNNEL_ORDER: OpportunityStage[] = [
-  'approach',
-  'fact_finding',
-  'needs_analysis',
-  'proposal',
-  'negotiation',
-  'application',
-  'underwriting',
-  'issued',
-];
-
+// ファネル集計: タブ(tabOf)と同じ基準で数える＝件数がタブと一致する（B1）
 export function calcFunnel(
   opps: Opportunity[],
   ownerIds: string[],
 ): Record<OpportunityStage, number> {
   const mine = opps.filter(o => ownerIds.includes(o.ownerId));
-  const base = Object.fromEntries(FUNNEL_ORDER.map(s => [s, 0])) as Record<OpportunityStage, number>;
-  base.lost = 0;
+  const base = Object.fromEntries(
+    [...STAGE_ORDER_7, 'lost'].map(s => [s, 0]),
+  ) as Record<OpportunityStage, number>;
   for (const o of mine) {
-    base[o.stage] = (base[o.stage] ?? 0) + 1;
+    const t = tabOf(o);
+    base[t] = (base[t] ?? 0) + 1;
   }
   return base;
 }

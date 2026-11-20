@@ -30,7 +30,9 @@ describe("RENEWAL_STATUS_LABEL", () => {
   const statusKeys: RenewalStatus[] = [
     "not_started",
     "in_progress",
-    "completed",
+    "renewed",
+    "lost_to_competitor",
+    "cancelled",
   ];
 
   it("全ステータスキーのラベルが存在する", () => {
@@ -42,7 +44,9 @@ describe("RENEWAL_STATUS_LABEL", () => {
   it("具体的なラベル値が正しい", () => {
     expect(RENEWAL_STATUS_LABEL.not_started).toBe("未対応");
     expect(RENEWAL_STATUS_LABEL.in_progress).toBe("対応中");
-    expect(RENEWAL_STATUS_LABEL.completed).toBe("完了");
+    expect(RENEWAL_STATUS_LABEL.renewed).toBe("更改済");
+    expect(RENEWAL_STATUS_LABEL.lost_to_competitor).toBe("他社流出");
+    expect(RENEWAL_STATUS_LABEL.cancelled).toBe("解約");
   });
 
   it("OPTIONS の長さがラベルマップのキー数と一致する", () => {
@@ -64,7 +68,6 @@ describe("RENEWAL_METHOD_LABEL", () => {
     "phone",
     "visit",
     "mail",
-    "renewal_lost",
     "undecided",
   ];
 
@@ -79,7 +82,7 @@ describe("RENEWAL_METHOD_LABEL", () => {
     expect(RENEWAL_METHOD_LABEL.phone).toBe("電話募集");
     expect(RENEWAL_METHOD_LABEL.visit).toBe("来店");
     expect(RENEWAL_METHOD_LABEL.mail).toBe("郵送");
-    expect(RENEWAL_METHOD_LABEL.renewal_lost).toBe("更新落ち");
+    expect((RENEWAL_METHOD_LABEL as Record<string, string>).renewal_lost).toBeUndefined();
     expect(RENEWAL_METHOD_LABEL.undecided).toBe("未定");
   });
 

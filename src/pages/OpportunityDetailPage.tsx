@@ -7,6 +7,7 @@ import { ChevronLeft, Trash2 } from "lucide-react";
 import { useAppStore } from "../store";
 import type { ProposalProduct, Task } from "../types";
 import { StageBadge } from "../components/opportunity/StageBadge";
+import { StageDatesPanel } from "../components/opportunity/StageDatesPanel";
 import { StageSelector } from "../components/opportunity/StageSelector";
 import { ProposalProductEditModal } from "../components/opportunity/ProposalProductEditModal";
 import { QuickPolicyIssueModal } from "../components/policy/QuickPolicyIssueModal";
@@ -218,6 +219,10 @@ export function OpportunityDetailPage() {
                 </span>
               )}
             </div>
+            <StageDatesPanel
+              opp={opp}
+              onChange={(milestones) => updateOpportunity(opp.id, { milestones })}
+            />
             {editingStage && (
               <div className="mt-3">
                 <StageSelector

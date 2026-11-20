@@ -16,7 +16,7 @@ export const OPP_DATA_9_DEMO1 = [
     "c3",
     "u1",
     "暁和化学ゴム 工場火災保険",
-    "underwriting",
+    "contract",
     "open",
     {
       contractorPersonId: "p_c3_head",
@@ -39,32 +39,32 @@ export const OPP_DATA_9_DEMO1 = [
       nextActionDate: f(14),
       stageHistory: [
         {
-          stage: "approach",
+          stage: "first_consult",
           changedAt: d(40) + "T09:00:00",
           changedByUserId: "u1",
         },
         {
-          stage: "fact_finding",
+          stage: "first_consult",
           changedAt: d(30) + "T10:00:00",
           changedByUserId: "u1",
         },
         {
-          stage: "needs_analysis",
+          stage: "lifeplan",
           changedAt: d(21) + "T10:00:00",
           changedByUserId: "u1",
         },
         {
-          stage: "proposal",
+          stage: "proposed",
           changedAt: d(14) + "T10:00:00",
           changedByUserId: "u1",
         },
         {
-          stage: "application",
+          stage: "contract_pending",
           changedAt: d(7) + "T10:00:00",
           changedByUserId: "u1",
         },
         {
-          stage: "underwriting",
+          stage: "contract",
           changedAt: d(3) + "T10:00:00",
           changedByUserId: "u1",
           note: "申込書提出済み、査定待ち",
@@ -95,7 +95,7 @@ export const OPP_DATA_9_DEMO1 = [
   ),
 
   // c6: 鈴木 — 学資保険 (fact_finding)
-  mkOpp("opp10", "c6", "u2", "鈴木家 学資保険 検討", "fact_finding", "open", {
+  mkOpp("opp10", "c6", "u2", "鈴木家 学資保険 検討", "first_consult", "open", {
     targetPersonIds: ["p_c6_head"],
     contractorPersonId: "p_c6_head",
     productCategories: ["savings"],
@@ -117,12 +117,12 @@ export const OPP_DATA_9_DEMO1 = [
     nextActionDate: f(10),
     stageHistory: [
       {
-        stage: "approach",
+        stage: "first_consult",
         changedAt: d(10) + "T09:00:00",
         changedByUserId: "u2",
       },
       {
-        stage: "fact_finding",
+        stage: "first_consult",
         changedAt: d(3) + "T10:00:00",
         changedByUserId: "u2",
         note: "学費への不安あり",
@@ -140,7 +140,7 @@ export const OPP_DATA_9_DEMO1 = [
     "c4",
     "u1",
     "水野家 生命保険 初回アプローチ",
-    "approach",
+    "first_consult",
     "open",
     {
       targetPersonIds: ["p_c4_head"],
@@ -164,7 +164,7 @@ export const OPP_DATA_9_DEMO1 = [
       nextActionDate: f(14),
       stageHistory: [
         {
-          stage: "approach",
+          stage: "first_consult",
           changedAt: d(2) + "T09:00:00",
           changedByUserId: "u1",
           note: "自動車更新時に生命保険の興味を確認",
@@ -184,7 +184,7 @@ export const OPP_DATA_9_DEMO1 = [
     "c_demo1",
     "u1",
     "松本家 総合保険 見直し",
-    "proposal",
+    "proposed",
     "open",
     {
       contractorPersonId: "p_demo1_head",
@@ -202,7 +202,7 @@ export const OPP_DATA_9_DEMO1 = [
           firstYearCommission: 74400,
           memo: "60歳満了。家族収入特約付",
           // ★ 個別ステージ・申込予定日あり
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: d(25),
             lifePlanDate: d(15),
@@ -220,7 +220,7 @@ export const OPP_DATA_9_DEMO1 = [
           firstYearCommission: 24600,
           memo: "1入院120日型",
           // ★ 個別ステージ同じだが applicationDate 未入力 → ⚠️ が出る
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: d(25),
             proposalDate: d(6),
@@ -236,7 +236,7 @@ export const OPP_DATA_9_DEMO1 = [
           monthlyPremium: 8500,
           memo: "弁護士費用特約+車両保険（一般条件）",
           // ★ 個別ステージあり。applicationDate 未入力
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: d(25),
             proposalDate: d(6),
@@ -250,25 +250,25 @@ export const OPP_DATA_9_DEMO1 = [
       nextActionDate: f(7),
       stageHistory: [
         {
-          stage: "approach",
+          stage: "first_consult",
           changedAt: d(30) + "T09:00:00",
           changedByUserId: "u1",
           note: "紹介案件。同僚からの紹介",
         },
         {
-          stage: "fact_finding",
+          stage: "first_consult",
           changedAt: d(22) + "T10:00:00",
           changedByUserId: "u1",
           note: "家族構成・既契約棚卸し完了",
         },
         {
-          stage: "needs_analysis",
+          stage: "lifeplan",
           changedAt: d(15) + "T10:00:00",
           changedByUserId: "u1",
           note: "LPで家族収入保障の重要性を共有",
         },
         {
-          stage: "proposal",
+          stage: "proposed",
           changedAt: d(6) + "T10:00:00",
           changedByUserId: "u1",
           note: "生命・医療・自動車3商品の設計書を提示",

@@ -63,6 +63,7 @@ export interface AppStateOpportunitiesSlice {
     newStage: OpportunityStage,
     note?: string,
     userId?: string,
+    opts?: { clearLaterDates?: boolean },
   ) => void;
   getOpportunitiesByHousehold: (
     householdId: string,

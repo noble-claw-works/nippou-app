@@ -41,7 +41,7 @@ describe("isActiveOpp", () => {
     const opp = mkOpp({
       id: "a1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
     });
@@ -52,7 +52,7 @@ describe("isActiveOpp", () => {
     const opp = mkOpp({
       id: "a2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "on_hold",
       proposalProducts: [],
     });
@@ -125,7 +125,7 @@ describe("representativeOpp", () => {
     const opp = mkOpp({
       id: "rep1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
     });
@@ -136,7 +136,7 @@ describe("representativeOpp", () => {
     const oppA = mkOpp({
       id: "repA",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       updatedAt: "2026-08-01T00:00:00Z",
@@ -144,7 +144,7 @@ describe("representativeOpp", () => {
     const oppB = mkOpp({
       id: "repB",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       proposalProducts: [],
       updatedAt: "2026-07-01T00:00:00Z",
@@ -157,7 +157,7 @@ describe("representativeOpp", () => {
     const oppA = mkOpp({
       id: "repA2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       updatedAt: "2026-07-01T00:00:00Z",
@@ -165,7 +165,7 @@ describe("representativeOpp", () => {
     const oppB = mkOpp({
       id: "repB2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       updatedAt: "2026-08-01T00:00:00Z",
@@ -178,7 +178,7 @@ describe("representativeOpp", () => {
     const oppA = mkOpp({
       id: "repA3",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       proposalProducts: [
         {
@@ -189,7 +189,7 @@ describe("representativeOpp", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "fact_finding",
+          stage: "first_consult",
         },
       ],
       updatedAt: "2026-08-01T00:00:00Z",
@@ -198,7 +198,7 @@ describe("representativeOpp", () => {
     const oppB = mkOpp({
       id: "repB3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       updatedAt: "2026-07-01T00:00:00Z",
@@ -215,7 +215,7 @@ describe("householdActiveOpps", () => {
       mkOpp({
         id: "h1",
         householdId: "c1",
-        stage: "proposal",
+        stage: "proposed",
         status: "open",
         proposalProducts: [],
       }),
@@ -229,7 +229,7 @@ describe("householdActiveOpps", () => {
       mkOpp({
         id: "h3",
         householdId: "c2",
-        stage: "proposal",
+        stage: "proposed",
         status: "open",
         proposalProducts: [],
       }),
@@ -244,7 +244,7 @@ describe("householdActiveOpps", () => {
       mkOpp({
         id: "h4",
         householdId: "c2",
-        stage: "proposal",
+        stage: "proposed",
         status: "open",
         proposalProducts: [],
       }),

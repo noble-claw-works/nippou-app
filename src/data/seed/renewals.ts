@@ -87,7 +87,7 @@ export const RENEWAL_CASES: RenewalCase[] = renewalPolicies.map(
     if (idx < 2) {
       status = "in_progress";
     } else if (idx < 4) {
-      status = "completed";
+      status = "renewed";
     } else {
       status = "not_started";
     }
@@ -172,7 +172,7 @@ export const RENEWAL_CASES: RenewalCase[] = renewalPolicies.map(
         createdAt,
         updatedAt,
       } satisfies RenewalCase;
-    } else if (status === "completed") {
+    } else if (status === "renewed") {
       // 完了: survey 一部埋め、activityLog 3件、notes 1件、tasks 完了済み1件
       const fcDate = d(45 + idx * 5);
       const procDate = d(20 + idx * 3);

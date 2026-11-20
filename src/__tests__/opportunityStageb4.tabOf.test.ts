@@ -37,7 +37,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab1",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
     });
     expect(tabOf(opp)).toBe("first_consult");
@@ -47,7 +47,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab2",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       milestones: { firstConsultDate: "2026-07-01" },
     });
@@ -58,7 +58,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab3",
       householdId: "c1",
-      stage: "needs_analysis",
+      stage: "lifeplan",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -72,7 +72,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab4",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -87,7 +87,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab5",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -102,7 +102,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab6",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -135,7 +135,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab8",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",
@@ -160,7 +160,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab10",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "lost",
     });
     expect(tabOf(opp)).toBe("lost");
@@ -170,7 +170,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab11",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       milestones: { firstConsultDate: "2026-07-01" },
       proposals: [
@@ -190,7 +190,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab12",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       milestones: { firstConsultDate: "2026-07-01" },
       proposals: [
@@ -217,7 +217,7 @@ describe("tabOf（ADR-B4 v2 7タブ確定真理値表）", () => {
     const opp = mkOpp({
       id: "tab13",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         firstConsultDate: "2026-07-01",

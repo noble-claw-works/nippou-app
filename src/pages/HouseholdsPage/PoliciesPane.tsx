@@ -126,7 +126,7 @@ export function PoliciesPane({ householdId, householdName, selectedPersonId = 'a
         householdId, ownerId: currentUser?.id ?? '',
         title: `${selectedInsurer.name} / ${selectedCategory.name}`,
         targetPersonIds: [form.insuredPersonId],
-        stage: 'approach', status: 'open',
+        stage: 'first_consult', status: 'open',
         productCategories: [product.productCategory],
         proposalProducts: [{ ...product, id: '' }],
         needsAnalysisDone: false, illustrationProvided: false,

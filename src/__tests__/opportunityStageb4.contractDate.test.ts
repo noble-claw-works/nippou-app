@@ -45,7 +45,7 @@ describe("contractDate 新設（ADR-B4 v2 B4-2-1）", () => {
     const opp = mkOpp({
       id: "cd1",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       milestones: {
         proposalDate: "2026-07-20",
@@ -61,7 +61,7 @@ describe("contractDate 新設（ADR-B4 v2 B4-2-1）", () => {
     const opp = mkOpp({
       id: "cd2",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         proposalDate: "2026-07-20",
@@ -75,7 +75,7 @@ describe("contractDate 新設（ADR-B4 v2 B4-2-1）", () => {
     const opp = mkOpp({
       id: "cd3",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         proposalDate: "2026-07-20",
@@ -93,7 +93,7 @@ describe("isRagged（contractDate を含む不揃い判定）", () => {
     const opp = mkOpp({
       id: "rg1",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         proposalDate: "2026-07-20",
@@ -138,7 +138,7 @@ describe("isRagged（contractDate を含む不揃い判定）", () => {
     const opp = mkOpp({
       id: "rg2",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       milestones: {
         proposalDate: "2026-07-20",
@@ -233,9 +233,9 @@ describe("seed 実値 — ADR-B4 v2 タブ語彙確認", () => {
     expect(fcOpps.length + lpOpps.length).toBeGreaterThan(0);
   });
 
-  it("FUNNEL_ORDER の order は B4 v2 後も不変（9段 enum は温存）", () => {
-    expect(FUNNEL_ORDER).toHaveLength(8);
-    expect(FUNNEL_ORDER[0]).toBe("approach");
-    expect(FUNNEL_ORDER[7]).toBe("issued");
+  it("FUNNEL_ORDER の order は B1 以降 7段で固定", () => {
+    expect(FUNNEL_ORDER).toHaveLength(6);
+    expect(FUNNEL_ORDER[0]).toBe("first_consult");
+    expect(FUNNEL_ORDER[5]).toBe("issued");
   });
 });

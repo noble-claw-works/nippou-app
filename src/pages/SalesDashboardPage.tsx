@@ -8,6 +8,7 @@ import { PeriodSwitcher } from '../components/sales/PeriodSwitcher';
 import { PersonSelector } from '../components/sales/PersonSelector';
 import { AchievementCardRow } from '../components/sales/AchievementCardRow';
 import { TargetProgressCard } from '../components/sales/TargetProgressCard';
+import { ExpectedRevenueCard } from '../components/sales/ExpectedRevenueCard';
 import { SalesFunnelPanel } from '../components/sales/SalesFunnelPanel';
 import { RecentPoliciesPanel } from '../components/sales/RecentPoliciesPanel';
 import { TargetEditModal } from '../components/sales/TargetEditModal';
@@ -124,6 +125,8 @@ export function SalesDashboardPage() {
           canEditTarget={canEditTarget}
           onEditTarget={() => setShowEditModal(true)}
         />
+
+        <ExpectedRevenueCard opportunities={opportunities} ownerIds={ownerIds} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <SalesFunnelPanel

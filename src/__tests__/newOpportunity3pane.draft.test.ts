@@ -36,7 +36,7 @@ describe('T1 isDraftDirty', () => {
     expect(isDraftDirty({ ...base, ...patch })).toBe(true);
   });
   it('担当者・初期ステージだけ変えても false', () => {
-    expect(isDraftDirty({ ...base, ownerId: 'u2', stage: 'proposal' })).toBe(false);
+    expect(isDraftDirty({ ...base, ownerId: 'u2', stage: 'proposed' })).toBe(false);
   });
   it('空白だけの案件名・メモは未入力扱い', () => {
     expect(isDraftDirty({ ...base, title: '  ', memo: ' ' })).toBe(false);
@@ -47,7 +47,7 @@ describe('T2 reset', () => {
   it('全項目が初期値（担当者=既定担当）に戻り提案商品が 0 件になる', () => {
     const { result } = renderHook(() => useNewOpportunityDraft('u1'));
     act(() => {
-      result.current.update({ title: 'x', ownerId: 'u2', stage: 'proposal', proposalProducts: [P1, P2], memo: 'm', categories: ['life'], targetPersonIds: ['p1'] });
+      result.current.update({ title: 'x', ownerId: 'u2', stage: 'proposed', proposalProducts: [P1, P2], memo: 'm', categories: ['life'], targetPersonIds: ['p1'] });
       result.current.setError('案件名は必須です');
     });
     expect(result.current.isDirty).toBe(true);
@@ -117,6 +117,6 @@ describe('T9 作成値の形', () => {
   });
   it('固定値（open・未実施・tags 空）と前後空白除去', () => {
     const v = buildOpportunityInput({ ...makeInitialDraft('u1'), title: ' t ', memo: ' m ' }, 'c1');
-    expect(v).toMatchObject({ status: 'open', needsAnalysisDone: false, illustrationProvided: false, tags: [], title: 't', memo: 'm', stage: 'approach' });
+    expect(v).toMatchObject({ status: 'open', needsAnalysisDone: false, illustrationProvided: false, tags: [], title: 't', memo: 'm', stage: 'first_consult' });
   });
 });

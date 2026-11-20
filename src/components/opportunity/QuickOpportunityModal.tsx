@@ -12,7 +12,7 @@ import { ProposalProductListEditor } from './ProposalProductListEditor';
 // =====================================================
 
 const INITIAL_STAGES: OpportunityStage[] = [
-  'approach', 'fact_finding', 'needs_analysis', 'proposal',
+  'first_consult', 'lifeplan', 'proposed',
 ];
 
 const PRODUCT_CATEGORY_LABELS: Record<ProductCategory, string> = {
@@ -43,7 +43,7 @@ export function QuickOpportunityModal({ householdId, householdName, onCreated, o
   const [ownerId, setOwnerId] = useState(() =>
     users.some(u => u.id === currentUserId) ? currentUserId : (users[0]?.id ?? currentUserId)
   );
-  const [stage, setStage] = useState<OpportunityStage>('approach');
+  const [stage, setStage] = useState<OpportunityStage>('first_consult');
   const [targetPersonIds, setTargetPersonIds] = useState<string[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [proposalProducts, setProposalProducts] = useState<ProposalProduct[]>([]);

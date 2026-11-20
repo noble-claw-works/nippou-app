@@ -14,6 +14,14 @@ import {
   CUSTOMER_INTERACTIONS,
 } from "../../data/seed";
 import { INITIAL_INSURANCE_COMPANIES } from "../../data/insuranceCompanies";
+import {
+  migrateOpportunitiesStage,
+  migrateTaskTemplatesStage,
+} from "../../utils/migrations/opportunityStage";
+import {
+  mergeInsuranceCompanies,
+  backfillOpportunityInsurerIds,
+} from "../../utils/insurerMatch";
 import { INITIAL_PRODUCT_CATEGORIES } from "../../data/productCategories";
 import { SALES_CHANNELS } from "../../data/salesChannels";
 import type {
@@ -31,6 +39,7 @@ import type {
   SalesChannel,
 } from "../../types";
 import { buildSeedRoadmapTemplateV1 } from "../../utils/renewalMigration";
+import { migrateRenewalCases } from "../../utils/migrations/renewalCases";
 import { loadAuthSession, loadRoleSwitch } from "../auth";
 import { loadDeletedCustomerIds } from "../deletedCustomers";
 
@@ -105,7 +114,7 @@ export const _initialSalesTargets = (() => {
   return SALES_TARGETS;
 })();
 
-export const _initialOpportunities = (() => {
+const _rawOpportunities = (() => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = window.localStorage.getItem("nippou.opportunities.v2");
@@ -167,19 +176,19 @@ export const _initialTaskTemplates = (() => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = window.localStorage.getItem("nippou.taskTemplates.v1");
-      if (raw) return JSON.parse(raw) as TaskTemplate[];
+      if (raw) return migrateTaskTemplatesStage(JSON.parse(raw) as TaskTemplate[]);
     } catch {
       /* ignore */
     }
   }
-  return TASK_TEMPLATES;
+  return migrateTaskTemplatesStage(TASK_TEMPLATES);
 })();
 
 export const _initialRenewalCases = (() => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = window.localStorage.getItem("nippou.renewalCases.v1");
-      if (raw) return JSON.parse(raw) as RenewalCase[];
+      if (raw) return migrateRenewalCases(JSON.parse(raw) as RenewalCase[]);
     } catch {
       /* ignore */
     }
@@ -221,13 +230,25 @@ export const _initialInsuranceCompanies = (() => {
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = window.localStorage.getItem("nippou.insuranceCompanies.v1");
-      if (raw) return JSON.parse(raw) as InsuranceCompany[];
+      if (raw) {
+        // B3: 旧データに kind/aliases を補完（冪等）
+        return mergeInsuranceCompanies(
+          JSON.parse(raw) as InsuranceCompany[],
+          INITIAL_INSURANCE_COMPANIES,
+        );
+      }
     } catch {
       /* ignore */
     }
   }
   return INITIAL_INSURANCE_COMPANIES;
 })();
+
+// 読み込み時変換（冪等）。SEED_VERSION は上げない＝テスターの入力データを残す。
+export const _initialOpportunities = backfillOpportunityInsurerIds(
+  migrateOpportunitiesStage(_rawOpportunities), // B1: 旧9段 → 7段
+  _initialInsuranceCompanies,
+);
 
 export const _initialProductCategories = (() => {
   if (typeof window !== "undefined" && window.localStorage) {

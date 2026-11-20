@@ -53,7 +53,7 @@ export function createEmptyDraft(params: {
     householdId: params.householdId,
     ownerId: params.ownerId,
     title: "新規案件",
-    stage: "approach",
+    stage: "first_consult",
     status: "open",
     targetPersonIds: [],
     productCategories: [],
@@ -165,6 +165,7 @@ export const MILESTONE_ORDER: Array<keyof ContractMilestones> = [
   "lifePlanDate",
   "proposalDate",
   "applicationDate",
+  "contractDate",
   "establishedDate",
 ];
 

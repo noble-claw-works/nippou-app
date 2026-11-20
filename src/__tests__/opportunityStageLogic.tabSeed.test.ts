@@ -46,7 +46,7 @@ describe("isVisited", () => {
     const opp = mkOpp({
       id: "v1",
       householdId: "c1",
-      stage: "fact_finding",
+      stage: "first_consult",
       status: "open",
       proposalProducts: [],
       milestones: { firstConsultDate: "2026-07-01" },
@@ -58,7 +58,7 @@ describe("isVisited", () => {
     const opp = mkOpp({
       id: "v2",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposalProducts: [],
     });
@@ -69,7 +69,7 @@ describe("isVisited", () => {
     const opp = mkOpp({
       id: "v3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       milestones: {
@@ -108,7 +108,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t3",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
       proposalProducts: [],
     });
@@ -119,7 +119,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t4",
       householdId: "c1",
-      stage: "fact_finding",
+      stage: "first_consult",
       status: "open",
       proposalProducts: [],
       milestones: { firstConsultDate: "2026-07-01" },
@@ -131,7 +131,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t5",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       milestones: {
@@ -146,7 +146,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t6",
       householdId: "c1",
-      stage: "application",
+      stage: "contract_pending",
       status: "open",
       proposalProducts: [],
     });
@@ -157,7 +157,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t7",
       householdId: "c1",
-      stage: "underwriting",
+      stage: "contract",
       status: "open",
       proposalProducts: [],
     });
@@ -169,7 +169,7 @@ describe("tabOf", () => {
     const opp = mkOpp({
       id: "t8",
       householdId: "c1",
-      stage: "negotiation",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -180,7 +180,7 @@ describe("tabOf", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
         },
       ],
       milestones: {
@@ -198,7 +198,7 @@ describe("effectiveExpectedCloseDate", () => {
     const opp = mkOpp({
       id: "ecd1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
       expectedCloseDate: "2026-10-01",
@@ -210,7 +210,7 @@ describe("effectiveExpectedCloseDate", () => {
     const opp = mkOpp({
       id: "ecd2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {

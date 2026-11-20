@@ -41,18 +41,18 @@ describe("effectiveStage", () => {
     const opp = mkOpp({
       id: "o1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
     });
-    expect(effectiveStage(opp)).toBe("proposal");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("全商品が同一ステージ → そのステージを返す", () => {
     const opp = mkOpp({
       id: "o2",
       householdId: "c1",
-      stage: "negotiation",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -63,7 +63,7 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "negotiation",
+          stage: "proposed",
         },
         {
           id: "pp2",
@@ -73,11 +73,11 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 2000,
           memo: "",
-          stage: "negotiation",
+          stage: "proposed",
         },
       ],
     });
-    expect(effectiveStage(opp)).toBe("negotiation");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("商品ステージが案件ステージより手前 → 手前（律速）に引き戻される", () => {
@@ -85,7 +85,7 @@ describe("effectiveStage", () => {
     const opp = mkOpp({
       id: "o3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -96,7 +96,7 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
         },
         {
           id: "pp2",
@@ -106,11 +106,11 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 2000,
           memo: "",
-          stage: "fact_finding",
+          stage: "first_consult",
         },
       ],
     });
-    expect(effectiveStage(opp)).toBe("fact_finding");
+    expect(effectiveStage(opp)).toBe("first_consult");
   });
 
   it("商品ステージが案件ステージより先に進んでいても案件ステージで律速", () => {
@@ -118,7 +118,7 @@ describe("effectiveStage", () => {
     const opp = mkOpp({
       id: "o4",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -129,11 +129,11 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 5000,
           memo: "",
-          stage: "application",
+          stage: "contract_pending",
         },
       ],
     });
-    expect(effectiveStage(opp)).toBe("proposal");
+    expect(effectiveStage(opp)).toBe("proposed");
   });
 
   it("stage=lost は即 lost を返す（funnel外・商品ステージ無視）", () => {
@@ -151,7 +151,7 @@ describe("effectiveStage", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
         },
       ],
     });
@@ -169,9 +169,9 @@ describe("effectiveStage", () => {
     expect(effectiveStage(opp)).toBe("issued");
   });
 
-  it("FUNNEL_ORDER の順序が正しいこと（approach=0, issued=7）", () => {
-    expect(FUNNEL_ORDER.indexOf("approach")).toBe(0);
-    expect(FUNNEL_ORDER.indexOf("issued")).toBe(7);
+  it("FUNNEL_ORDER の順序が正しいこと（first_consult=0, issued=5）", () => {
+    expect(FUNNEL_ORDER.indexOf("first_consult")).toBe(0);
+    expect(FUNNEL_ORDER.indexOf("issued")).toBe(5);
   });
 });
 
@@ -181,7 +181,7 @@ describe("isRagged", () => {
     const opp = mkOpp({
       id: "r1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [],
     });
@@ -192,7 +192,7 @@ describe("isRagged", () => {
     const opp = mkOpp({
       id: "r2",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -203,7 +203,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
         },
       ],
     });
@@ -214,7 +214,7 @@ describe("isRagged", () => {
     const opp = mkOpp({
       id: "r3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -225,7 +225,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
         },
         {
           id: "pp2",
@@ -235,7 +235,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 2000,
           memo: "",
-          stage: "negotiation",
+          stage: "contract_pending",
         },
       ],
     });
@@ -246,7 +246,7 @@ describe("isRagged", () => {
     const opp = mkOpp({
       id: "r4",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -257,7 +257,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: "2026-07-01",
             proposalDate: "2026-08-01",
@@ -272,7 +272,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 2000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: "2026-07-01",
             proposalDate: "2026-08-01",
@@ -287,7 +287,7 @@ describe("isRagged", () => {
     const opp = mkOpp({
       id: "r5",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposalProducts: [
         {
@@ -298,7 +298,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 1000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: "2026-07-01",
             proposalDate: "2026-08-01",
@@ -312,7 +312,7 @@ describe("isRagged", () => {
           insuredPersonId: "p1",
           monthlyPremium: 2000,
           memo: "",
-          stage: "proposal",
+          stage: "proposed",
           milestones: {
             firstConsultDate: "2026-07-01",
             proposalDate: "2026-08-01",

@@ -8,7 +8,8 @@ import {
   stageFromMilestones,
   latestProposalDate,
   TAB_META,
-  STAGE_TO_TAB,
+  LEGACY_STAGE_MAP,
+  normalizeStage,
 } from "../utils/opportunityStage";
 
 // ─── ヘルパー: Opportunity モック生成 ────────────────────────────────────────────
@@ -63,40 +64,26 @@ describe("TAB_META (7タブ定義・ADR-B4 v2 語彙)", () => {
     ]);
   });
 
-  it("STAGE_TO_TAB: approach → first_consult（新案件タブ廃止）", () => {
-    expect(STAGE_TO_TAB["approach"]).toBe("first_consult");
+  it("旧9段 → 7段の対応表（Q1）", () => {
+    expect(LEGACY_STAGE_MAP).toEqual({
+      approach: "first_consult",
+      fact_finding: "first_consult",
+      needs_analysis: "lifeplan",
+      proposal: "proposed",
+      negotiation: "proposed",
+      application: "contract_pending",
+      underwriting: "contract",
+    });
   });
 
-  it("STAGE_TO_TAB: fact_finding → first_consult", () => {
-    expect(STAGE_TO_TAB["fact_finding"]).toBe("first_consult");
-  });
-
-  it("STAGE_TO_TAB: needs_analysis → lifeplan", () => {
-    expect(STAGE_TO_TAB["needs_analysis"]).toBe("lifeplan");
-  });
-
-  it("STAGE_TO_TAB: proposal → proposed", () => {
-    expect(STAGE_TO_TAB["proposal"]).toBe("proposed");
-  });
-
-  it("STAGE_TO_TAB: negotiation → proposed", () => {
-    expect(STAGE_TO_TAB["negotiation"]).toBe("proposed");
-  });
-
-  it("STAGE_TO_TAB: application → contract_pending", () => {
-    expect(STAGE_TO_TAB["application"]).toBe("contract_pending");
-  });
-
-  it("STAGE_TO_TAB: underwriting → contract", () => {
-    expect(STAGE_TO_TAB["underwriting"]).toBe("contract");
-  });
-
-  it("STAGE_TO_TAB: issued → issued", () => {
-    expect(STAGE_TO_TAB["issued"]).toBe("issued");
-  });
-
-  it("STAGE_TO_TAB: lost → lost", () => {
-    expect(STAGE_TO_TAB["lost"]).toBe("lost");
+  it("normalizeStage: 7値はそのまま・旧値は変換・不明は first_consult（冪等）", () => {
+    for (const k of ["first_consult", "lifeplan", "proposed", "contract_pending", "contract", "issued", "lost"]) {
+      expect(normalizeStage(k)).toBe(k);
+    }
+    expect(normalizeStage("negotiation")).toBe("proposed");
+    expect(normalizeStage("???")).toBe("first_consult");
+    expect(normalizeStage(undefined)).toBe("first_consult");
+    expect(normalizeStage(normalizeStage("underwriting"))).toBe("contract");
   });
 });
 
@@ -105,21 +92,21 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
   const baseOpp = mkOpp({
     id: "base",
     householdId: "c1",
-    stage: "approach",
+    stage: "first_consult",
     status: "open",
   });
 
   it("milestones が undefined → approach（日付ゼロ）", () => {
-    expect(stageFromMilestones(baseOpp, undefined)).toBe("approach");
+    expect(stageFromMilestones(baseOpp, undefined)).toBe("first_consult");
   });
 
   it("milestones が空オブジェクト → approach", () => {
-    expect(stageFromMilestones(baseOpp, {})).toBe("approach");
+    expect(stageFromMilestones(baseOpp, {})).toBe("first_consult");
   });
 
   it("firstConsultDate のみ → fact_finding（初回相談タブ）", () => {
     const m: ContractMilestones = { firstConsultDate: "2026-07-01" };
-    expect(stageFromMilestones(baseOpp, m)).toBe("fact_finding");
+    expect(stageFromMilestones(baseOpp, m)).toBe("first_consult");
   });
 
   it("lifePlanDate あり・proposalDate なし → needs_analysis（LP提案タブ）", () => {
@@ -127,7 +114,7 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
       firstConsultDate: "2026-07-01",
       lifePlanDate: "2026-07-10",
     };
-    expect(stageFromMilestones(baseOpp, m)).toBe("needs_analysis");
+    expect(stageFromMilestones(baseOpp, m)).toBe("lifeplan");
   });
 
   it("proposalDate あり・applicationDate なし → proposal（提案タブ）", () => {
@@ -136,7 +123,7 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
       lifePlanDate: "2026-07-10",
       proposalDate: "2026-07-20",
     };
-    expect(stageFromMilestones(baseOpp, m)).toBe("proposal");
+    expect(stageFromMilestones(baseOpp, m)).toBe("proposed");
   });
 
   it("applicationDate あり・contractDate なし → application（契約予定タブ）", () => {
@@ -145,7 +132,7 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
       proposalDate: "2026-07-20",
       applicationDate: "2026-08-01",
     };
-    expect(stageFromMilestones(baseOpp, m)).toBe("application");
+    expect(stageFromMilestones(baseOpp, m)).toBe("contract_pending");
   });
 
   it("contractDate あり・establishedDate なし → underwriting（契約タブ）", () => {
@@ -155,7 +142,7 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
       applicationDate: "2026-08-01",
       contractDate: "2026-08-10",
     };
-    expect(stageFromMilestones(baseOpp, m)).toBe("underwriting");
+    expect(stageFromMilestones(baseOpp, m)).toBe("contract");
   });
 
   it("establishedDate あり → issued（成立タブ）", () => {
@@ -189,7 +176,7 @@ describe("stageFromMilestones（確定真理値表 §B4-3）", () => {
       firstConsultDate: "2026-07-01",
       contractDate: "2026-08-10",
     };
-    expect(stageFromMilestones(baseOpp, m)).toBe("underwriting");
+    expect(stageFromMilestones(baseOpp, m)).toBe("contract");
   });
 });
 
@@ -199,7 +186,7 @@ describe("latestProposalDate（proposals 最新ラウンド / milestones fallbac
     const opp = mkOpp({
       id: "lp1",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       milestones: { proposalDate: "2026-07-20" },
     });
@@ -210,7 +197,7 @@ describe("latestProposalDate（proposals 最新ラウンド / milestones fallbac
     const opp = mkOpp({
       id: "lp2",
       householdId: "c1",
-      stage: "approach",
+      stage: "first_consult",
       status: "open",
     });
     expect(latestProposalDate(opp)).toBeUndefined();
@@ -220,7 +207,7 @@ describe("latestProposalDate（proposals 最新ラウンド / milestones fallbac
     const opp = mkOpp({
       id: "lp3",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {
@@ -239,7 +226,7 @@ describe("latestProposalDate（proposals 最新ラウンド / milestones fallbac
     const opp = mkOpp({
       id: "lp4",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       proposals: [
         {
@@ -272,7 +259,7 @@ describe("latestProposalDate（proposals 最新ラウンド / milestones fallbac
     const opp = mkOpp({
       id: "lp5",
       householdId: "c1",
-      stage: "proposal",
+      stage: "proposed",
       status: "open",
       milestones: { proposalDate: "2026-07-05" }, // 古い値
       proposals: [

@@ -19,7 +19,9 @@ export function ChannelSelect({
   hasError,
   className = "",
 }: ChannelSelectProps) {
-  const salesChannels = useAppStore((s) => s.salesChannels.filter((c) => c.isActive));
+  const allChannels = useAppStore((s) => s.salesChannels);
+  // selector 内で filter すると毎回新配列になり無限再描画になるため useMemo で絞る
+  const salesChannels = useMemo(() => allChannels.filter((c) => c.isActive), [allChannels]);
   const parentChannels = useMemo(() => getParentChannels(salesChannels), [salesChannels]);
   const parentId = useMemo(
     () => getParentChannelId(channelId, salesChannels),
