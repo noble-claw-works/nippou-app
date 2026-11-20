@@ -114,6 +114,7 @@ export function OpportunityDetailPage() {
       nextActionDate: opp.nextActionDate ?? "",
       expectedCloseDate: opp.expectedCloseDate ?? "",
       memo: opp.memo,
+      channelId: opp.channelId ?? "",
     });
     setEditingFields(true);
   };
@@ -124,6 +125,10 @@ export function OpportunityDetailPage() {
       nextActionDate: fieldDraft.nextActionDate ?? opp.nextActionDate,
       expectedCloseDate: fieldDraft.expectedCloseDate ?? opp.expectedCloseDate,
       memo: fieldDraft.memo ?? opp.memo,
+      channelId:
+        fieldDraft.channelId === undefined
+          ? opp.channelId
+          : fieldDraft.channelId || undefined,
     });
     setEditingFields(false);
     setFieldDraft({});

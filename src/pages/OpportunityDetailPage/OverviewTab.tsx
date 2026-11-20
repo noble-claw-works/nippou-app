@@ -2,6 +2,9 @@ import { Edit2 } from "lucide-react";
 import type { Opportunity } from "../../types";
 import { LOST_REASON_LABELS } from "./constants";
 import { DateInput } from "../../components/common/DateInput";
+import { ChannelSelect } from "../HouseholdBatchEntryPage/ChannelSelect";
+import { useAppStore } from "../../store";
+import { getChannelDisplayName } from "../../utils/channelUtils";
 import {
   isNextActionOverdue,
   OVERDUE_CLASS,
@@ -26,6 +29,7 @@ export function OverviewTab({
   onFieldDraftChange,
   onUpdateOpportunity,
 }: OverviewTabProps) {
+  const salesChannels = useAppStore((s) => s.salesChannels);
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -110,6 +114,23 @@ export function OverviewTab({
                   </span>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* チャネル */}
+          <div>
+            <div className="text-gray-500 mb-1">チャネル</div>
+            {editingFields ? (
+              <ChannelSelect
+                channelId={fieldDraft.channelId || undefined}
+                onChange={(channelId) =>
+                  onFieldDraftChange({ ...fieldDraft, channelId })
+                }
+              />
+            ) : (
+              <span data-testid="opp-channel">
+                {getChannelDisplayName(opp.channelId, salesChannels, "—")}
+              </span>
             )}
           </div>
 
