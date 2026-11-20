@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, Check, RotateCcw, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MessageCircle, Check, RotateCcw, Send } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
-import { BLOCK_COLORS, BLOCK_EMOJIS, BLOCK_LABELS, MOOD_EMOJIS, formatDate, formatRelativeTime } from '../utils';
-import { format } from 'date-fns';
+import { MOOD_EMOJIS, formatDate, formatRelativeTime } from '../utils';
+import { ReadOnlyTimeline } from '../components/report/ReadOnlyTimeline';
+
 
 export function ReportDetailPage() {
   const { date } = useParams<{ date: string }>();
   const navigate = useNavigate();
   const { reports, users, customers, currentRole, currentUserId, currentUserId: uid,
-    addComment, deleteComment, confirmReport, sendBackReport, addToast } = useAppStore();
+    confirmReport, withdrawReport, addToast,
+    managerComments, addManagerComment, deleteManagerComment } = useAppStore();
 
   const report = reports.find(r => r.date === date && r.userId === (currentRole === 'general' ? uid : r.userId))
     ?? reports.find(r => r.date === date);
@@ -20,6 +22,9 @@ export function ReportDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [showSendBack, setShowSendBack] = useState(false);
   const [sendBackReason, setSendBackReason] = useState('');
+  
+  // ManagerComment store からこの日報のコメント一覧を取得
+  const dayComments = managerComments.filter(c => c.dayKey === date);
 
   if (!report) {
     return (
@@ -34,19 +39,56 @@ export function ReportDetailPage() {
 
   const reportUser = users.find(u => u.id === report.userId);
   const canComment = currentRole === 'manager' || currentRole === 'executive';
+  // MGR-4: 担当者（general）も自身の日報にコメントを追加できるようにする
+  const canCommentAsAuthor = currentRole === 'general' && report.userId === uid;
+  const canPostComment = canComment || canCommentAsAuthor;
+  const isManagerView = currentRole === 'manager' || currentRole === 'executive';
+
+  // 前後ナビゲーション計算
+  const sortedAccessibleReports = (() => {
+    let scope = reports;
+    if (currentRole === 'general') {
+      scope = reports.filter(r => r.userId === uid);
+    } else if (currentRole === 'manager') {
+      const viewer = users.find(u => u.id === uid);
+      scope = reports.filter(r => {
+        const author = users.find(u => u.id === r.userId);
+        if (!viewer || !author) return false;
+        return viewer.teamIds.some(tid => author.teamIds.includes(tid)) || r.userId === uid;
+      });
+    }
+    return [...scope].sort((a, b) => a.date.localeCompare(b.date) || a.userId.localeCompare(b.userId));
+  })();
+  const currentIdx = sortedAccessibleReports.findIndex(r => r.id === report.id);
+  const prevReport = currentIdx > 0 ? sortedAccessibleReports[currentIdx - 1] : null;
+  const nextReport = currentIdx >= 0 && currentIdx < sortedAccessibleReports.length - 1
+    ? sortedAccessibleReports[currentIdx + 1] : null;
+
+  // 上長ビュー: 未確認（submitted）のみで前後
+  const unconfirmedReports = isManagerView
+    ? sortedAccessibleReports.filter(r => r.status === 'submitted')
+    : [];
+  const unconfirmedCurrentIdx = unconfirmedReports.findIndex(r => r.id === report.id);
+  const prevUnconfirmed = isManagerView && unconfirmedReports.length > 0
+    ? (unconfirmedCurrentIdx > 0 ? unconfirmedReports[unconfirmedCurrentIdx - 1] : unconfirmedReports[unconfirmedReports.length - 1])
+    : null;
+  const nextUnconfirmed = isManagerView && unconfirmedReports.length > 0
+    ? (unconfirmedCurrentIdx >= 0 && unconfirmedCurrentIdx < unconfirmedReports.length - 1
+        ? unconfirmedReports[unconfirmedCurrentIdx + 1]
+        : (unconfirmedCurrentIdx === -1 ? unconfirmedReports[0] : unconfirmedReports[0]))
+    : null;
+
+  const goToReport = (target: typeof report) => {
+    navigate(`/reports/${target.date}${target.userId !== uid ? `?user=${target.userId}` : ''}`);
+  };
   const canConfirm = (currentRole === 'manager' || currentRole === 'executive') && report.status === 'submitted';
   const canSendBack = (currentRole === 'manager' || currentRole === 'executive') && ['submitted', 'confirmed'].includes(report.status);
 
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    addComment(report.id, currentUserId, newComment);
-    setNewComment('');
-    addToast({ type: 'success', message: 'コメントを追加しました' });
-  };
+  // 旧 handleAddComment は削除（ManagerComment 統合で inline に変更）
 
   const handleSendBack = () => {
     if (!sendBackReason.trim()) return;
-    sendBackReport(report.id, sendBackReason);
+    withdrawReport(report.id);
     setShowSendBack(false);
     setSendBackReason('');
     addToast({ type: 'info', message: '日報を差し戻しました' });
@@ -56,12 +98,33 @@ export function ReportDetailPage() {
     <div className="max-w-5xl mx-auto px-4 py-4">
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100">
+        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg hover:bg-gray-100" aria-label="戻る">
           <ArrowLeft className="w-4 h-4 text-gray-600" />
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
+            {/* D2: 日付ナビ — 日報が存在する日へスキップ（「前の日報/次の日報」に一本化） */}
+            <button
+              type="button"
+              onClick={() => prevReport && goToReport(prevReport)}
+              disabled={!prevReport}
+              className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="前の日報"
+              title={prevReport ? `前の日報 (${formatDate(prevReport.date)})` : '前の日報なし'}
+            >
+              <ArrowLeft className="w-4 h-4 text-gray-600" />
+            </button>
             <h1 className="text-lg font-bold text-gray-900">{formatDate(report.date)}</h1>
+            <button
+              type="button"
+              onClick={() => nextReport && goToReport(nextReport)}
+              disabled={!nextReport}
+              className="p-1 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="次の日報"
+              title={nextReport ? `次の日報 (${formatDate(nextReport.date)})` : '次の日報なし'}
+            >
+              <ArrowRight className="w-4 h-4 text-gray-600" />
+            </button>
             <StatusBadge status={report.status} />
             {reportUser && <span className="text-sm text-gray-500">作成者: {reportUser.name}</span>}
           </div>
@@ -82,52 +145,81 @@ export function ReportDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Timeline */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">📅 タイムライン</h2>
-          {report.blocks.length === 0 ? (
-            <p className="text-sm text-gray-400">記録がありません</p>
-          ) : (
-            <div className="space-y-2">
-              {[...report.blocks].sort((a, b) => a.startTime.localeCompare(b.startTime)).map(block => (
-                <div key={block.id} className={`flex gap-3 p-3 rounded-xl border ${BLOCK_COLORS[block.type]}`}>
-                  <div className="flex-shrink-0">
-                    <span className="text-lg">{BLOCK_EMOJIS[block.type]}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">{block.startTime}–{block.endTime}</span>
-                      <span className="text-sm font-medium truncate">{block.title || BLOCK_LABELS[block.type]}</span>
-                    </div>
-                    {block.customerId && (
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        顧客: {customers.find(c => c.id === block.customerId)?.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* D2: 未確認ナビゲーション（上長ビュー専用・日報間移動は日付ナビに一本化） */}
+      {isManagerView && unconfirmedReports.length > 0 && (
+        <nav aria-label="未確認ナビゲーション" className="flex flex-wrap items-center gap-2 mb-4 px-2 py-2 bg-orange-50 border border-orange-100 rounded-lg">
+          <span className="text-xs text-orange-700 font-medium">⚠ 未確認 {unconfirmedReports.length} 件</span>
+          <button
+            type="button"
+            onClick={() => prevUnconfirmed && goToReport(prevUnconfirmed)}
+            disabled={!prevUnconfirmed || prevUnconfirmed.id === report.id}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="前の未確認"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> 前の未確認
+          </button>
+          <button
+            type="button"
+            onClick={() => nextUnconfirmed && goToReport(nextUnconfirmed)}
+            disabled={!nextUnconfirmed || nextUnconfirmed.id === report.id}
+            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="次の未確認"
+          >
+            次の未確認 <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </nav>
+      )}
+
+      {/* BUG-A: Today と同じ 2 列レイアウト（左=タイムライン / 右=TODO+振り返り+上長コメント） */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Timeline (left 2 columns) */}
+        <div className="md:col-span-2 space-y-4">
+          {/* RPT-2 縦軸ピクセルタイムライン — ヘッダーは ReadOnlyTimeline 内で保持 */}
+          <ReadOnlyTimeline blocks={report.blocks} customers={customers} />
         </div>
 
-        {/* Side */}
-        <div className="space-y-4">
+        {/* 右ペイン: TODO + 振り返り + 上長コメント */}
+        <aside className="md:col-span-1 space-y-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">✅ TODO</h2>
             {report.todos.length === 0 ? (
               <p className="text-xs text-gray-400">TODOがありません</p>
             ) : (
               <div className="space-y-1.5">
-                {report.todos.map(todo => (
-                  <div key={todo.id} className="flex items-center gap-2">
-                    <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                      {todo.completed && <Check className="w-3 h-3 text-white" />}
-                    </span>
-                    <span className={`text-sm ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{todo.text}</span>
-                  </div>
-                ))}
+                {report.todos.map(todo => {
+                  // DEAD-1: 期限切れ判定
+                  //   dueDate あり、未完了、今日より過去 → 期限切れ
+                  //   dueDate あり、未完了、今日 → 今日期限
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  const due = todo.dueDate ? new Date(todo.dueDate) : null;
+                  if (due) due?.setHours(0,0,0,0);
+                  const notDone = !todo.completed && todo.status !== 'done';
+                  const isOverdue = notDone && !!due && due < today;
+                  const isDueToday = notDone && !!due && due.getTime() === today.getTime();
+                  return (
+                    <div key={todo.id} className={`flex items-center gap-2 ${isOverdue ? 'bg-red-50 -mx-2 px-2 py-1 rounded' : isDueToday ? 'bg-amber-50 -mx-2 px-2 py-1 rounded' : ''}`}>
+                      <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center ${todo.completed ? 'bg-green-500 border-green-500' : isOverdue ? 'border-red-400' : isDueToday ? 'border-amber-400' : 'border-gray-300'}`}>
+                        {todo.completed && <Check className="w-3 h-3 text-white" />}
+                      </span>
+                      <span className={`text-sm flex-1 ${todo.completed ? 'line-through text-gray-400' : isOverdue ? 'text-red-900 font-medium' : isDueToday ? 'text-amber-900' : 'text-gray-700'}`}>{todo.text}</span>
+                      {todo.dueDate && !todo.completed && (
+                        <span className="text-[10px] text-gray-500 tabular-nums flex-shrink-0" title={`期限: ${todo.dueDate}`}>
+                          {todo.dueDate.slice(5)}
+                        </span>
+                      )}
+                      {isOverdue && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold flex-shrink-0" aria-label="期限切れ" title={`期限: ${todo.dueDate}`}>
+                          ⚠ 期限切れ
+                        </span>
+                      )}
+                      {isDueToday && (
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-600 text-white text-[10px] font-bold flex-shrink-0" aria-label="今日期限">
+                          ⏰ 今日期限
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -150,56 +242,84 @@ export function ReportDetailPage() {
             </div>
           </div>
 
-          {report.status === 'sent_back' && report.sentBackReason && (
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-orange-700 mb-1">↩ 差し戻し理由</h2>
-              <p className="text-sm text-orange-800">{report.sentBackReason}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Comments */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <MessageCircle className="w-4 h-4" /> コメント ({report.comments.length})
-        </h2>
-        {report.comments.length === 0 && (
+          {/* RPT-1: コメント (上長↔部下双方向スレッド) */}
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <MessageCircle className="w-4 h-4" /> コメント ({dayComments.length})
+          </h2>
+        {dayComments.length === 0 && (
           <p className="text-sm text-gray-400 mb-3">コメントがありません</p>
         )}
         <div className="space-y-3 mb-4">
-          {report.comments.map(comment => {
-            const commentUser = users.find(u => u.id === comment.userId);
+          {dayComments.map(comment => {
+            const commentUser = users.find(u => u.id === comment.authorUserId);
+            // authorRole がない場合は authorUserId の role でフォールバック
+            const resolvedRole = comment.authorRole ?? commentUser?.role;
+            const isMemberComment = resolvedRole === 'general';
             return (
               <div key={comment.id} className="flex gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-700 flex-shrink-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                  isMemberComment ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                }`}>
                   {commentUser?.avatarInitials ?? '?'}
                 </div>
                 <div className="flex-1 bg-gray-50 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-700">{commentUser?.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-gray-700">{commentUser?.name}</span>
+                      {isMemberComment && (
+                        <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium">↑ 上長宛</span>
+                      )}
+                    </div>
                     <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
                   </div>
-                  <p className="text-sm text-gray-800">{comment.text}</p>
+                  <p className="text-sm text-gray-800">{comment.body}</p>
+                  {/* 返答表示 */}
+                  {comment.replies.length > 0 && (
+                    <div className="mt-2 space-y-1 pt-2 border-t border-gray-200 text-xs text-gray-600">
+                      {comment.replies.map(reply => {
+                        const replyUser = users.find(u => u.id === reply.userId);
+                        const replyTime = new Date(reply.repliedAt).toLocaleString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                        return (
+                          <div key={reply.userId}>
+                            <span className="font-medium">{replyUser?.name}:</span>
+                            <span className="ml-1">{reply.choice === 'yes' ? '✅ YES' : '❌ NO'}({replyTime})</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+                {(canComment || (canCommentAsAuthor && comment.authorUserId === uid)) && (
+                  <button
+                    onClick={() => deleteManagerComment(comment.id)}
+                    className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-red-500 hover:text-red-700"
+                    title="削除"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
-        {canComment && (
+        {canPostComment && (
           <div className="flex gap-2">
             <input
               type="text" value={newComment} onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleAddComment()}
-              placeholder="コメントを追加..."
+              onKeyDown={e => e.key === 'Enter' && (() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment, currentRole as 'manager' | 'executive' | 'general'); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } })()}
+              placeholder={canCommentAsAuthor ? '上長への返信・補足を入力...' : 'コメントを追加...'}
               className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <button onClick={handleAddComment}
+            <button
+              onClick={() => { if (newComment.trim()) { addManagerComment(date || '', currentUserId, newComment, currentRole as 'manager' | 'executive' | 'general'); setNewComment(''); addToast({ type: 'success', message: 'コメントを追加しました' }); } }}
               className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Send className="w-4 h-4" />
             </button>
           </div>
         )}
+          </div>
+        </aside>
       </div>
 
       {/* Send Back Modal */}

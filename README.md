@@ -71,3 +71,5 @@ export default defineConfig([
   },
 ])
 ```
+
+<!-- ci verification: 2026-06-03T10:10:58Z -->
